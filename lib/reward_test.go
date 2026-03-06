@@ -1,0 +1,181 @@
+package lib
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestListRewards(t *testing.T) {
+	mockRewards := []Reward{
+		{ID: "1", Title: "Ice cream", Points: 10},
+		{ID: "2", Title: "Movie night", Points: 20},
+	}
+
+	mockResponseJSON, _ := json.Marshal(mockRewards)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("Expected GET request, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/rewards" {
+			t.Errorf("Expected path /api/frames/frame1/rewards, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mockResponseJSON)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	rewards, err := client.ListRewards("frame1")
+	if err != nil {
+		t.Fatalf("ListRewards failed: %v", err)
+	}
+
+	if len(rewards) != 2 {
+		t.Errorf("Expected 2 rewards, got %d", len(rewards))
+	}
+
+	if rewards[0].Points != 10 {
+		t.Errorf("Expected 10 points, got %d", rewards[0].Points)
+	}
+}
+
+func TestCreateReward(t *testing.T) {
+	mockReward := Reward{ID: "3", Title: "Game time", Points: 15}
+
+	mockResponseJSON, _ := json.Marshal(mockReward)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(mockResponseJSON)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	reward, err := client.CreateReward("frame1", RewardData{Title: "Game time", Points: 15})
+	if err != nil {
+		t.Fatalf("CreateReward failed: %v", err)
+	}
+
+	if reward.Title != "Game time" {
+		t.Errorf("Expected title 'Game time', got '%s'", reward.Title)
+	}
+}
+
+func TestRedeemReward(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/rewards/reward1/redeem" {
+			t.Errorf("Expected path /api/frames/frame1/rewards/reward1/redeem, got %s", r.URL.Path)
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.RedeemReward("frame1", "reward1")
+	if err != nil {
+		t.Fatalf("RedeemReward failed: %v", err)
+	}
+}
+
+func TestGetRewardPoints(t *testing.T) {
+	mockPoints := RewardPoints{Points: 42}
+
+	mockResponseJSON, _ := json.Marshal(mockPoints)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("Expected GET request, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/reward_points" {
+			t.Errorf("Expected path /api/frames/frame1/reward_points, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mockResponseJSON)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	points, err := client.GetRewardPoints("frame1")
+	if err != nil {
+		t.Fatalf("GetRewardPoints failed: %v", err)
+	}
+
+	if points.Points != 42 {
+		t.Errorf("Expected 42 points, got %d", points.Points)
+	}
+}
+
+func TestRewardErrorHandling(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error": "Not found"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListRewards("frame1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+
+	err = client.RedeemReward("frame1", "nonexistent")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
