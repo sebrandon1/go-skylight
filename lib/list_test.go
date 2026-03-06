@@ -364,3 +364,272 @@ func TestListErrorHandling(t *testing.T) {
 		t.Error("Expected error, got nil")
 	}
 }
+
+func TestCreateListError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateList("frame1", ListData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestUpdateListError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.UpdateList("frame1", "1", ListData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestDeleteListError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.DeleteList("frame1", "1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestAddListItemError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.AddListItem("frame1", "1", ListItemData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestUpdateListItemError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.UpdateListItem("frame1", "1", "item1", ListItemData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestDeleteListItemError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.DeleteListItem("frame1", "1", "item1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestCreateTaskBoxItemError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateTaskBoxItem("frame1", TaskBoxItemData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestListInvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`not valid json`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListLists("frame1")
+	if err == nil {
+		t.Error("Expected error for invalid JSON, got nil")
+	}
+}
+
+func TestGetListError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.GetList("frame1", "1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestCreateListRequestBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody ListRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("Failed to decode request body: %v", err)
+		}
+
+		if reqBody.List.Title != "Grocery List" {
+			t.Errorf("Expected title 'Grocery List', got '%s'", reqBody.List.Title)
+		}
+		if reqBody.List.Color != "#00FF00" {
+			t.Errorf("Expected color '#00FF00', got '%s'", reqBody.List.Color)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":"list1","title":"Grocery List"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateList("frame1", ListData{Title: "Grocery List", Color: "#00FF00"})
+	if err != nil {
+		t.Fatalf("CreateList failed: %v", err)
+	}
+}
+
+func TestAddListItemRequestBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody ListItemRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("Failed to decode request body: %v", err)
+		}
+
+		if reqBody.ListItem.Title != "Milk" {
+			t.Errorf("Expected title 'Milk', got '%s'", reqBody.ListItem.Title)
+		}
+		if reqBody.ListItem.Position != 1 {
+			t.Errorf("Expected position 1, got %d", reqBody.ListItem.Position)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":"item1","title":"Milk"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.AddListItem("frame1", "1", ListItemData{Title: "Milk", Position: 1})
+	if err != nil {
+		t.Fatalf("AddListItem failed: %v", err)
+	}
+}

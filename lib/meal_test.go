@@ -367,3 +367,226 @@ func TestMealErrorHandling(t *testing.T) {
 		t.Error("Expected error, got nil")
 	}
 }
+
+func TestListMealCategoriesError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListMealCategories("frame1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestCreateRecipeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateRecipe("frame1", RecipeData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestUpdateRecipeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.UpdateRecipe("frame1", "1", RecipeData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestDeleteRecipeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.DeleteRecipe("frame1", "1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestListMealSittingsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListMealSittings("frame1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestCreateMealSittingError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateMealSitting("frame1", MealSittingData{RecipeID: "r1", Date: "2024-01-15", MealType: "dinner"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestAddRecipeToGroceryListError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.AddRecipeToGroceryList("frame1", "recipe1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestMealInvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`not valid json`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListRecipes("frame1")
+	if err == nil {
+		t.Error("Expected error for invalid JSON, got nil")
+	}
+}
+
+func TestCreateRecipeRequestBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody RecipeRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("Failed to decode request body: %v", err)
+		}
+
+		if reqBody.Recipe.Title != "Spaghetti" {
+			t.Errorf("Expected title 'Spaghetti', got '%s'", reqBody.Recipe.Title)
+		}
+		if reqBody.Recipe.Description != "Classic Italian" {
+			t.Errorf("Expected description 'Classic Italian', got '%s'", reqBody.Recipe.Description)
+		}
+		if len(reqBody.Recipe.Ingredients) != 2 {
+			t.Errorf("Expected 2 ingredients, got %d", len(reqBody.Recipe.Ingredients))
+		}
+		if reqBody.Recipe.URL != "https://example.com/recipe" {
+			t.Errorf("Expected URL 'https://example.com/recipe', got '%s'", reqBody.Recipe.URL)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":"r1","title":"Spaghetti"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateRecipe("frame1", RecipeData{
+		Title:       "Spaghetti",
+		Description: "Classic Italian",
+		Ingredients: []string{"pasta", "sauce"},
+		URL:         "https://example.com/recipe",
+	})
+	if err != nil {
+		t.Fatalf("CreateRecipe failed: %v", err)
+	}
+}

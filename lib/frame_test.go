@@ -206,3 +206,92 @@ func TestFrameErrorHandling(t *testing.T) {
 		t.Error("Expected error, got nil")
 	}
 }
+
+func TestGetAvatarsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.GetAvatars()
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestGetColorsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.GetColors()
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestFrameInvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`not valid json`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.GetFrame("frame1")
+	if err == nil {
+		t.Error("Expected error for invalid JSON, got nil")
+	}
+}
+
+func TestListDevicesError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListDevices("frame1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}

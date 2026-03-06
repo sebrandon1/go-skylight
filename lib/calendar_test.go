@@ -279,3 +279,202 @@ func TestCalendarEventErrorHandling(t *testing.T) {
 		t.Error("Expected error for not found, got nil")
 	}
 }
+
+func TestUpdateCalendarEventError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestListSourceCalendarsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListSourceCalendars("frame1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestCalendarInvalidJSONResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`not valid json`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListCalendarEvents("frame1", "", "")
+	if err == nil {
+		t.Error("Expected error for invalid JSON, got nil")
+	}
+}
+
+func TestCreateCalendarEventRequestBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody CalendarEventRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("Failed to decode request body: %v", err)
+		}
+
+		if reqBody.CalendarEvent.Title != "Birthday Party" {
+			t.Errorf("Expected title 'Birthday Party', got '%s'", reqBody.CalendarEvent.Title)
+		}
+		if reqBody.CalendarEvent.Description != "Fun party" {
+			t.Errorf("Expected description 'Fun party', got '%s'", reqBody.CalendarEvent.Description)
+		}
+		if reqBody.CalendarEvent.StartAt != "2024-06-15T14:00:00Z" {
+			t.Errorf("Expected start_at '2024-06-15T14:00:00Z', got '%s'", reqBody.CalendarEvent.StartAt)
+		}
+		if reqBody.CalendarEvent.EndAt != "2024-06-15T18:00:00Z" {
+			t.Errorf("Expected end_at '2024-06-15T18:00:00Z', got '%s'", reqBody.CalendarEvent.EndAt)
+		}
+		if reqBody.CalendarEvent.Color != "#FF0000" {
+			t.Errorf("Expected color '#FF0000', got '%s'", reqBody.CalendarEvent.Color)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"id":"evt1","title":"Birthday Party"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.CreateCalendarEvent("frame1", CalendarEventData{
+		Title:       "Birthday Party",
+		Description: "Fun party",
+		StartAt:     "2024-06-15T14:00:00Z",
+		EndAt:       "2024-06-15T18:00:00Z",
+		Color:       "#FF0000",
+	})
+	if err != nil {
+		t.Fatalf("CreateCalendarEvent failed: %v", err)
+	}
+}
+
+func TestDeleteCalendarEventError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error": "Server error"}`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	err = client.DeleteCalendarEvent("frame1", "evt1")
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+func TestListCalendarEventsWithStartDateOnly(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("start_date") != "2024-01-01" {
+			t.Errorf("Expected start_date '2024-01-01', got '%s'", r.URL.Query().Get("start_date"))
+		}
+		if r.URL.Query().Get("end_date") != "" {
+			t.Errorf("Expected no end_date param, got '%s'", r.URL.Query().Get("end_date"))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListCalendarEvents("frame1", "2024-01-01", "")
+	if err != nil {
+		t.Fatalf("ListCalendarEvents with start date only failed: %v", err)
+	}
+}
+
+func TestListCalendarEventsWithEndDateOnly(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("start_date") != "" {
+			t.Errorf("Expected no start_date param, got '%s'", r.URL.Query().Get("start_date"))
+		}
+		if r.URL.Query().Get("end_date") != "2024-01-31" {
+			t.Errorf("Expected end_date '2024-01-31', got '%s'", r.URL.Query().Get("end_date"))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListCalendarEvents("frame1", "", "2024-01-31")
+	if err != nil {
+		t.Fatalf("ListCalendarEvents with end date only failed: %v", err)
+	}
+}
