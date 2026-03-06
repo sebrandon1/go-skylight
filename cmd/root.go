@@ -8,11 +8,11 @@ import (
 )
 
 var (
-	email   string
+	email    string
 	password string
-	token   string
-	userID  string
-	frameID string
+	token    string
+	userID   string
+	frameID  string
 )
 
 var rootCmd = &cobra.Command{

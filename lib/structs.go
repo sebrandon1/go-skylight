@@ -244,14 +244,14 @@ type Frame struct {
 
 // Device represents a physical Skylight device.
 type Device struct {
-	ID            string `json:"id,omitempty"`
-	Name          string `json:"name,omitempty"`
-	Model         string `json:"model,omitempty"`
-	FirmwareVer   string `json:"firmware_version,omitempty"`
-	LastOnlineAt  string `json:"last_online_at,omitempty"`
-	Online        bool   `json:"online,omitempty"`
-	CreatedAt     string `json:"created_at,omitempty"`
-	UpdatedAt     string `json:"updated_at,omitempty"`
+	ID           string `json:"id,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Model        string `json:"model,omitempty"`
+	FirmwareVer  string `json:"firmware_version,omitempty"`
+	LastOnlineAt string `json:"last_online_at,omitempty"`
+	Online       bool   `json:"online,omitempty"`
+	CreatedAt    string `json:"created_at,omitempty"`
+	UpdatedAt    string `json:"updated_at,omitempty"`
 }
 
 // Avatar represents an available avatar option.

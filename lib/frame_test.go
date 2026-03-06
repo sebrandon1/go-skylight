@@ -135,6 +135,51 @@ func TestGetAvatars(t *testing.T) {
 	}
 }
 
+func TestGetColors(t *testing.T) {
+	mockColors := []Color{
+		{ID: "1", Name: "Red", Value: "#FF0000"},
+		{ID: "2", Name: "Blue", Value: "#0000FF"},
+	}
+
+	mockResponseJSON, _ := json.Marshal(mockColors)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("Expected GET request, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/colors" {
+			t.Errorf("Expected path /api/colors, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mockResponseJSON)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	colors, err := client.GetColors()
+	if err != nil {
+		t.Fatalf("GetColors failed: %v", err)
+	}
+
+	if len(colors) != 2 {
+		t.Errorf("Expected 2 colors, got %d", len(colors))
+	}
+
+	if colors[0].Value != "#FF0000" {
+		t.Errorf("Expected value '#FF0000', got '%s'", colors[0].Value)
+	}
+}
+
 func TestFrameErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

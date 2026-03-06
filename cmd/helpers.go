@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func printJSON(data interface{}) {
+func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		fmt.Printf("Error marshaling JSON: %v\n", err)

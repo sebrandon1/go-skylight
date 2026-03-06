@@ -20,6 +20,19 @@ type Client struct {
 	UserID     string
 	APIToken   string
 	HTTPClient *http.Client
+	authCache  string
+}
+
+func newHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout: 10 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+	}
 }
 
 // NewClient authenticates via email/password and returns an authenticated client.
@@ -28,18 +41,8 @@ func NewClient(email, password string) (*Client, error) {
 		return nil, errors.New("email and password are required")
 	}
 
-	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 10 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
 	c := &Client{
-		HTTPClient: &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
-		},
+		HTTPClient: newHTTPClient(),
 	}
 
 	session, err := c.Login(email, password)
@@ -49,6 +52,7 @@ func NewClient(email, password string) (*Client, error) {
 
 	c.UserID = session.UserID
 	c.APIToken = session.APIToken
+	c.authCache = "Basic " + base64.StdEncoding.EncodeToString([]byte(c.UserID+":"+c.APIToken))
 
 	return c, nil
 }
@@ -59,30 +63,21 @@ func NewClientWithToken(userID, token string) (*Client, error) {
 		return nil, errors.New("user ID and token are required")
 	}
 
-	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 10 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
 	return &Client{
-		UserID:   userID,
-		APIToken: token,
-		HTTPClient: &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: transport,
-		},
+		UserID:     userID,
+		APIToken:   token,
+		authCache:  "Basic " + base64.StdEncoding.EncodeToString([]byte(userID+":"+token)),
+		HTTPClient: newHTTPClient(),
 	}, nil
 }
 
-func (c *Client) authHeader() string {
-	return "Basic " + base64.StdEncoding.EncodeToString([]byte(c.UserID+":"+c.APIToken))
+func (c *Client) setHeaders(req *http.Request) {
+	req.Header.Set("Authorization", c.authCache)
+	req.Header.Set("Content-Type", "application/json")
 }
 
 func (c *Client) get(req *http.Request, v any) error {
-	req.Header.Set("Authorization", c.authHeader())
-	req.Header.Set("Content-Type", "application/json")
+	c.setHeaders(req)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -100,8 +95,7 @@ func (c *Client) get(req *http.Request, v any) error {
 }
 
 func (c *Client) post(req *http.Request, v any) error {
-	req.Header.Set("Authorization", c.authHeader())
-	req.Header.Set("Content-Type", "application/json")
+	c.setHeaders(req)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -123,8 +117,7 @@ func (c *Client) post(req *http.Request, v any) error {
 }
 
 func (c *Client) put(req *http.Request, v any) error {
-	req.Header.Set("Authorization", c.authHeader())
-	req.Header.Set("Content-Type", "application/json")
+	c.setHeaders(req)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -146,8 +139,7 @@ func (c *Client) put(req *http.Request, v any) error {
 }
 
 func (c *Client) patch(req *http.Request, v any) error {
-	req.Header.Set("Authorization", c.authHeader())
-	req.Header.Set("Content-Type", "application/json")
+	c.setHeaders(req)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -169,8 +161,7 @@ func (c *Client) patch(req *http.Request, v any) error {
 }
 
 func (c *Client) doDelete(req *http.Request) error {
-	req.Header.Set("Authorization", c.authHeader())
-	req.Header.Set("Content-Type", "application/json")
+	c.setHeaders(req)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {

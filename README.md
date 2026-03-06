@@ -28,82 +28,89 @@ go-skylight get calendar list --user-id YOUR_USER_ID --token YOUR_TOKEN --frame-
 
 ## CLI Usage
 
+All `get` commands require `--user-id` and `--token` for authentication. The examples below assume these are provided:
+
+```bash
+# For brevity, all examples below need these auth flags appended:
+#   --user-id YOUR_USER_ID --token YOUR_TOKEN
+```
+
 ### Calendar Events
 
 ```bash
 # List events
-go-skylight get calendar list --frame-id FRAME_ID --start-date 2024-01-01 --end-date 2024-01-31
+go-skylight get calendar list --user-id USER_ID --token TOKEN --frame-id FRAME_ID --start-date 2024-01-01 --end-date 2024-01-31
 
 # Create event
-go-skylight get calendar create --frame-id FRAME_ID --title "Meeting" --start-at "2024-01-15T10:00:00Z" --end-at "2024-01-15T11:00:00Z"
+go-skylight get calendar create --user-id USER_ID --token TOKEN --frame-id FRAME_ID --title "Meeting" --start-at "2024-01-15T10:00:00Z" --end-at "2024-01-15T11:00:00Z"
 
 # Delete event
-go-skylight get calendar delete --frame-id FRAME_ID --event-id EVENT_ID
+go-skylight get calendar delete --user-id USER_ID --token TOKEN --frame-id FRAME_ID --event-id EVENT_ID
 
 # List source calendars
-go-skylight get calendar sources --frame-id FRAME_ID
+go-skylight get calendar sources --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 ```
 
 ### Chores
 
 ```bash
 # List chores
-go-skylight get chore list --frame-id FRAME_ID
+go-skylight get chore list --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 
 # Create chore
-go-skylight get chore create --frame-id FRAME_ID --title "Clean room" --points 5
+go-skylight get chore create --user-id USER_ID --token TOKEN --frame-id FRAME_ID --title "Clean room" --points 5
 ```
 
 ### Lists
 
 ```bash
 # List all lists
-go-skylight get list all --frame-id FRAME_ID
+go-skylight get list all --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 
 # Get a specific list
-go-skylight get list info --frame-id FRAME_ID --list-id LIST_ID
+go-skylight get list info --user-id USER_ID --token TOKEN --frame-id FRAME_ID --list-id LIST_ID
 
 # Add item to list
-go-skylight get list add-item --frame-id FRAME_ID --list-id LIST_ID --title "Milk"
+go-skylight get list add-item --user-id USER_ID --token TOKEN --frame-id FRAME_ID --list-id LIST_ID --title "Milk"
 ```
 
 ### Rewards
 
 ```bash
 # List rewards
-go-skylight get reward list --frame-id FRAME_ID
+go-skylight get reward list --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 
 # Redeem a reward
-go-skylight get reward redeem --frame-id FRAME_ID --reward-id REWARD_ID
+go-skylight get reward redeem --user-id USER_ID --token TOKEN --frame-id FRAME_ID --reward-id REWARD_ID
 
 # Get points
-go-skylight get reward points --frame-id FRAME_ID
+go-skylight get reward points --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 ```
 
 ### Meals
 
 ```bash
 # List recipes
-go-skylight get meal recipes --frame-id FRAME_ID
+go-skylight get meal recipes --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 
 # List meal sittings
-go-skylight get meal sittings --frame-id FRAME_ID
+go-skylight get meal sittings --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 ```
 
 ### Frame & Device Info
 
 ```bash
 # Get frame info
-go-skylight get frame info --frame-id FRAME_ID
+go-skylight get frame info --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 
 # List devices
-go-skylight get frame devices --frame-id FRAME_ID
+go-skylight get frame devices --user-id USER_ID --token TOKEN --frame-id FRAME_ID
 
 # List avatars
-go-skylight get frame avatars
+go-skylight get frame avatars --user-id USER_ID --token TOKEN
 
 # List colors
-go-skylight get frame colors
+go-skylight get frame colors --user-id USER_ID --token TOKEN
 ```
 
 ## Library Usage

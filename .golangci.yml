@@ -22,6 +22,9 @@ linters:
       - linters:
           - errcheck
         path: _test.go
+      - linters:
+          - goconst
+        path: _test.go
     paths:
       - third_party$
       - builtin$

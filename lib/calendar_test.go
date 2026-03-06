@@ -127,6 +127,127 @@ func TestDeleteCalendarEvent(t *testing.T) {
 	}
 }
 
+func TestListCalendarEventsWithDateRange(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("start_date") != "2024-01-01" {
+			t.Errorf("Expected start_date query param '2024-01-01', got '%s'", r.URL.Query().Get("start_date"))
+		}
+		if r.URL.Query().Get("end_date") != "2024-01-31" {
+			t.Errorf("Expected end_date query param '2024-01-31', got '%s'", r.URL.Query().Get("end_date"))
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	_, err = client.ListCalendarEvents("frame1", "2024-01-01", "2024-01-31")
+	if err != nil {
+		t.Fatalf("ListCalendarEvents with date range failed: %v", err)
+	}
+}
+
+func TestUpdateCalendarEvent(t *testing.T) {
+	mockEvent := CalendarEvent{ID: "1", Title: "Updated Event"}
+
+	mockResponseJSON, _ := json.Marshal(mockEvent)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("Expected PUT request, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/calendar_events/evt1" {
+			t.Errorf("Expected path /api/frames/frame1/calendar_events/evt1, got %s", r.URL.Path)
+		}
+
+		var reqBody CalendarEventRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			t.Errorf("Failed to decode request body: %v", err)
+		}
+
+		if reqBody.CalendarEvent.Title != "Updated Event" {
+			t.Errorf("Expected title 'Updated Event', got '%s'", reqBody.CalendarEvent.Title)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mockResponseJSON)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	event, err := client.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Updated Event"})
+	if err != nil {
+		t.Fatalf("UpdateCalendarEvent failed: %v", err)
+	}
+
+	if event.Title != "Updated Event" {
+		t.Errorf("Expected title 'Updated Event', got '%s'", event.Title)
+	}
+}
+
+func TestListSourceCalendars(t *testing.T) {
+	mockCalendars := []SourceCalendar{
+		{ID: "1", Name: "Google Calendar", Enabled: true, Provider: "google"},
+	}
+
+	mockResponseJSON, _ := json.Marshal(mockCalendars)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			t.Errorf("Expected GET request, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/source_calendars" {
+			t.Errorf("Expected path /api/frames/frame1/source_calendars, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(mockResponseJSON)
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	calendars, err := client.ListSourceCalendars("frame1")
+	if err != nil {
+		t.Fatalf("ListSourceCalendars failed: %v", err)
+	}
+
+	if len(calendars) != 1 {
+		t.Errorf("Expected 1 calendar, got %d", len(calendars))
+	}
+
+	if calendars[0].Provider != "google" {
+		t.Errorf("Expected provider 'google', got '%s'", calendars[0].Provider)
+	}
+}
+
 func TestCalendarEventErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
