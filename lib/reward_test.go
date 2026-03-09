@@ -457,17 +457,16 @@ func TestRewardInvalidJSONResponse(t *testing.T) {
 
 func TestCreateRewardRequestBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var raw map[string]map[string]any
+		var raw map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 			t.Errorf("Failed to decode request body: %v", err)
 		}
 
-		reward := raw["reward"]
-		if reward["name"] != "Pizza Night" {
-			t.Errorf("Expected name 'Pizza Night', got '%v'", reward["name"])
+		if raw["name"] != "Pizza Night" {
+			t.Errorf("Expected name 'Pizza Night', got '%v'", raw["name"])
 		}
-		if reward["point_value"] != float64(50) {
-			t.Errorf("Expected point_value 50, got %v", reward["point_value"])
+		if raw["point_value"] != float64(50) {
+			t.Errorf("Expected point_value 50, got %v", raw["point_value"])
 		}
 
 		w.Header().Set("Content-Type", "application/json")

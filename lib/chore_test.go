@@ -338,23 +338,22 @@ func TestChoreInvalidJSONResponse(t *testing.T) {
 
 func TestCreateChoreRequestBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var raw map[string]map[string]any
+		var raw map[string]any
 		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 			t.Errorf("Failed to decode request body: %v", err)
 		}
 
-		chore := raw["chore"]
-		if chore["summary"] != "Walk the dog" {
-			t.Errorf("Expected summary 'Walk the dog', got '%v'", chore["summary"])
+		if raw["summary"] != "Walk the dog" {
+			t.Errorf("Expected summary 'Walk the dog', got '%v'", raw["summary"])
 		}
-		if chore["start"] != "2024-01-15" {
-			t.Errorf("Expected start '2024-01-15', got '%v'", chore["start"])
+		if raw["start"] != "2024-01-15" {
+			t.Errorf("Expected start '2024-01-15', got '%v'", raw["start"])
 		}
-		if chore["reward_points"] != float64(10) {
-			t.Errorf("Expected reward_points 10, got %v", chore["reward_points"])
+		if raw["reward_points"] != float64(10) {
+			t.Errorf("Expected reward_points 10, got %v", raw["reward_points"])
 		}
-		if chore["category_id"] != "cat1" {
-			t.Errorf("Expected category_id 'cat1', got '%v'", chore["category_id"])
+		if raw["category_id"] != "cat1" {
+			t.Errorf("Expected category_id 'cat1', got '%v'", raw["category_id"])
 		}
 
 		w.Header().Set("Content-Type", "application/json")

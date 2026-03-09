@@ -24,9 +24,7 @@ func (c *Client) ListRewards(frameID string) ([]Reward, error) {
 
 // CreateReward creates a new reward on a frame.
 func (c *Client) CreateReward(frameID string, reward RewardData) (*Reward, error) {
-	reqBody := RewardRequest{Reward: reward}
-
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/rewards", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/rewards", SkylightURL, frameID), reward)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reward request: %w", err)
 	}
@@ -42,9 +40,7 @@ func (c *Client) CreateReward(frameID string, reward RewardData) (*Reward, error
 
 // UpdateReward updates an existing reward.
 func (c *Client) UpdateReward(frameID, rewardID string, reward RewardData) (*Reward, error) {
-	reqBody := RewardRequest{Reward: reward}
-
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/rewards/%s", SkylightURL, frameID, rewardID), reqBody)
+	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/rewards/%s", SkylightURL, frameID, rewardID), reward)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update reward request: %w", err)
 	}

@@ -47,9 +47,7 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 
 // CreateChore creates a new chore on a frame.
 func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
-	reqBody := ChoreRequest{Chore: chore}
-
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores", SkylightURL, frameID), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chore request: %w", err)
 	}
@@ -65,9 +63,7 @@ func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
 
 // UpdateChore updates an existing chore.
 func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, error) {
-	reqBody := ChoreRequest{Chore: chore}
-
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/chores/%s", SkylightURL, frameID, choreID), reqBody)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/chores/%s", SkylightURL, frameID, choreID), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update chore request: %w", err)
 	}
