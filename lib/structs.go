@@ -117,11 +117,6 @@ func (e *choreAPIEntry) toChore() Chore {
 	return c
 }
 
-// ChoreRequest represents the API request body for creating/updating a chore.
-type ChoreRequest struct {
-	Chore ChoreData `json:"chore"`
-}
-
 // ChoreData holds the chore fields for create/update requests.
 // JSON tags match the Skylight API field names.
 type ChoreData struct {
@@ -245,11 +240,6 @@ func (e *rewardAPIEntry) toReward() Reward {
 		r.CategoryID = e.Relationships.Category.Data.ID
 	}
 	return r
-}
-
-// RewardRequest represents the request body for creating/updating a reward.
-type RewardRequest struct {
-	Reward RewardData `json:"reward"`
 }
 
 // RewardData holds the reward fields for create/update requests.
