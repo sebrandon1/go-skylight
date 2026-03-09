@@ -116,7 +116,7 @@ func TestRedeemReward(t *testing.T) {
 }
 
 func TestGetRewardPoints(t *testing.T) {
-	mockPoints := RewardPoints{Points: 42}
+	mockPoints := []RewardPointEntry{{CategoryID: 123, CurrentPointBalance: 42}}
 
 	mockResponseJSON, _ := json.Marshal(mockPoints)
 
@@ -148,8 +148,14 @@ func TestGetRewardPoints(t *testing.T) {
 		t.Fatalf("GetRewardPoints failed: %v", err)
 	}
 
-	if points.Points != 42 {
-		t.Errorf("Expected 42 points, got %d", points.Points)
+	if len(points) != 1 {
+		t.Fatalf("Expected 1 entry, got %d", len(points))
+	}
+	if points[0].CategoryID != 123 {
+		t.Errorf("Expected category_id 123, got %d", points[0].CategoryID)
+	}
+	if points[0].CurrentPointBalance != 42 {
+		t.Errorf("Expected 42 points, got %d", points[0].CurrentPointBalance)
 	}
 }
 

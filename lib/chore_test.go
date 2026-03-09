@@ -38,7 +38,7 @@ func TestListChores(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	chores, err := client.ListChores("frame1", "", "", "")
+	chores, err := client.ListChores("frame1", ChoreListOptions{})
 	if err != nil {
 		t.Fatalf("ListChores failed: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestListChoresWithFilters(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	_, err = client.ListChores("frame1", "2024-01-15", "pending", "cat1")
+	_, err = client.ListChores("frame1", ChoreListOptions{Date: "2024-01-15", Status: "pending", AssigneeID: "cat1"})
 	if err != nil {
 		t.Fatalf("ListChores with filters failed: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestChoreErrorHandling(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	_, err = client.ListChores("frame1", "", "", "")
+	_, err = client.ListChores("frame1", ChoreListOptions{})
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
@@ -288,7 +288,7 @@ func TestChoreInvalidJSONResponse(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	_, err = client.ListChores("frame1", "", "", "")
+	_, err = client.ListChores("frame1", ChoreListOptions{})
 	if err == nil {
 		t.Error("Expected error for invalid JSON, got nil")
 	}
@@ -367,7 +367,7 @@ func TestListChoresWithDateFilterOnly(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	_, err = client.ListChores("frame1", "2024-01-15", "", "")
+	_, err = client.ListChores("frame1", ChoreListOptions{Date: "2024-01-15"})
 	if err != nil {
 		t.Fatalf("ListChores with date filter only failed: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestListChoresWithStatusFilterOnly(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	_, err = client.ListChores("frame1", "", "completed", "")
+	_, err = client.ListChores("frame1", ChoreListOptions{Status: "completed"})
 	if err != nil {
 		t.Fatalf("ListChores with status filter only failed: %v", err)
 	}

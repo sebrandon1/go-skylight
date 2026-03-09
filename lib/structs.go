@@ -158,13 +158,27 @@ type RewardRequest struct {
 
 // RewardData holds the reward fields for create/update requests.
 type RewardData struct {
-	Title  string `json:"title,omitempty"`
-	Points int    `json:"points,omitempty"`
+	Title               string `json:"title,omitempty"`
+	Points              int    `json:"points,omitempty"`
+	EmojiIcon           string `json:"emoji_icon,omitempty"`
+	RespawnOnRedemption *bool  `json:"respawn_on_redemption,omitempty"`
+	CategoryIDs         []int  `json:"category_ids,omitempty"`
 }
 
-// RewardPoints represents reward points information.
-type RewardPoints struct {
-	Points int `json:"points,omitempty"`
+// ChoreListOptions holds optional filters for listing chores.
+type ChoreListOptions struct {
+	Date        string
+	Status      string
+	AssigneeID  string
+	After       string
+	Before      string
+	IncludeLate bool
+}
+
+// RewardPointEntry represents a per-category point balance.
+type RewardPointEntry struct {
+	CategoryID          int `json:"category_id"`
+	CurrentPointBalance int `json:"current_point_balance"`
 }
 
 // Recipe represents a meal recipe.

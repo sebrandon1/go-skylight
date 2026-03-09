@@ -250,6 +250,9 @@ func TestChoreListFlags(t *testing.T) {
 		{"date flag", "date"},
 		{"status flag", "status"},
 		{"assignee-id flag", "assignee-id"},
+		{"after flag", "after"},
+		{"before flag", "before"},
+		{"include-late flag", "include-late"},
 	}
 
 	for _, tt := range tests {
@@ -273,6 +276,7 @@ func TestChoreCreateFlags(t *testing.T) {
 		{"date flag", "date"},
 		{"assignee-id flag", "assignee-id"},
 		{"points flag", "points"},
+		{"recurring flag", "recurring"},
 	}
 
 	for _, tt := range tests {
@@ -450,6 +454,9 @@ func TestRewardCreateFlags(t *testing.T) {
 	}{
 		{"title flag", "title"},
 		{"points flag", "points"},
+		{"emoji-icon flag", "emoji-icon"},
+		{"no-respawn flag", "no-respawn"},
+		{"category-ids flag", "category-ids"},
 	}
 
 	for _, tt := range tests {

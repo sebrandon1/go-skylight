@@ -3,21 +3,30 @@ package lib
 import "fmt"
 
 // ListChores retrieves chores for a frame with optional filters.
-func (c *Client) ListChores(frameID, date, status, assigneeID string) ([]Chore, error) {
+func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", SkylightURL, frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list chores request: %w", err)
 	}
 
 	params := map[string]string{}
-	if date != "" {
-		params["date"] = date
+	if opts.Date != "" {
+		params["date"] = opts.Date
 	}
-	if status != "" {
-		params["status"] = status
+	if opts.Status != "" {
+		params["status"] = opts.Status
 	}
-	if assigneeID != "" {
-		params["assignee_id"] = assigneeID
+	if opts.AssigneeID != "" {
+		params["assignee_id"] = opts.AssigneeID
+	}
+	if opts.After != "" {
+		params["after"] = opts.After
+	}
+	if opts.Before != "" {
+		params["before"] = opts.Before
+	}
+	if opts.IncludeLate {
+		params["include_late"] = "true"
 	}
 	if len(params) > 0 {
 		addQueryParams(req, params)

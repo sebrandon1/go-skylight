@@ -94,16 +94,16 @@ func (c *Client) UnredeemReward(frameID, rewardID string) error {
 }
 
 // GetRewardPoints retrieves reward points for a frame.
-func (c *Client) GetRewardPoints(frameID string) (*RewardPoints, error) {
+func (c *Client) GetRewardPoints(frameID string) ([]RewardPointEntry, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/reward_points", SkylightURL, frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get reward points request: %w", err)
 	}
 
-	var points RewardPoints
+	var points []RewardPointEntry
 	if err := c.get(req, &points); err != nil {
 		return nil, fmt.Errorf("failed to get reward points: %w", err)
 	}
 
-	return &points, nil
+	return points, nil
 }

@@ -581,7 +581,7 @@ func TestNewRequestErrorPaths(t *testing.T) {
 		t.Error("Expected error for ListCategories with bad URL")
 	}
 
-	_, err = client.ListChores("frame1", "", "", "")
+	_, err = client.ListChores("frame1", ChoreListOptions{})
 	if err == nil {
 		t.Error("Expected error for ListChores with bad URL")
 	}

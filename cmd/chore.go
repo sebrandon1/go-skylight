@@ -9,12 +9,16 @@ import (
 )
 
 var (
-	choreDate       string
-	choreStatus     string
-	choreAssigneeID string
-	choreID         string
-	choreTitle      string
-	chorePoints     int
+	choreDate        string
+	choreStatus      string
+	choreAssigneeID  string
+	choreID          string
+	choreTitle       string
+	chorePoints      int
+	choreAfter       string
+	choreBefore      string
+	choreIncludeLate bool
+	choreRecurring   bool
 )
 
 var choreCmd = &cobra.Command{
@@ -28,13 +32,16 @@ var choreListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		chores, err := client.ListChores(frameID, choreDate, choreStatus, choreAssigneeID)
+		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
+			Date:        choreDate,
+			Status:      choreStatus,
+			AssigneeID:  choreAssigneeID,
+			After:       choreAfter,
+			Before:      choreBefore,
+			IncludeLate: choreIncludeLate,
+		})
 		if err != nil {
 			fmt.Printf("Error listing chores: %v\n", err)
 			os.Exit(1)
@@ -50,17 +57,14 @@ var choreCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		chore, err := client.CreateChore(frameID, lib.ChoreData{
 			Title:      choreTitle,
 			DueDate:    choreDate,
 			AssigneeID: choreAssigneeID,
 			Points:     chorePoints,
+			Recurring:  choreRecurring,
 		})
 		if err != nil {
 			fmt.Printf("Error creating chore: %v\n", err)
@@ -77,13 +81,9 @@ var choreDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.DeleteChore(frameID, choreID)
+		err := client.DeleteChore(frameID, choreID)
 		if err != nil {
 			fmt.Printf("Error deleting chore: %v\n", err)
 			os.Exit(1)
@@ -102,10 +102,15 @@ func init() {
 	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter")
 	choreListCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
 
+	choreListCmd.Flags().StringVar(&choreAfter, "after", "", "After date filter")
+	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "Before date filter")
+	choreListCmd.Flags().BoolVar(&choreIncludeLate, "include-late", false, "Include late chores")
+
 	choreCreateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
 	choreCreateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreCreateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
+	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
 }

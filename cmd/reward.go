@@ -9,9 +9,12 @@ import (
 )
 
 var (
-	rewardID     string
-	rewardTitle  string
-	rewardPoints int
+	rewardID          string
+	rewardTitle       string
+	rewardPoints      int
+	rewardEmojiIcon   string
+	rewardNoRespawn   bool
+	rewardCategoryIDs []int
 )
 
 var rewardCmd = &cobra.Command{
@@ -25,11 +28,7 @@ var rewardListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		rewards, err := client.ListRewards(frameID)
 		if err != nil {
@@ -47,16 +46,23 @@ var rewardCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		reward, err := client.CreateReward(frameID, lib.RewardData{
+		data := lib.RewardData{
 			Title:  rewardTitle,
 			Points: rewardPoints,
-		})
+		}
+		if rewardEmojiIcon != "" {
+			data.EmojiIcon = rewardEmojiIcon
+		}
+		if rewardNoRespawn {
+			noRespawn := false
+			data.RespawnOnRedemption = &noRespawn
+		}
+		if len(rewardCategoryIDs) > 0 {
+			data.CategoryIDs = rewardCategoryIDs
+		}
+		reward, err := client.CreateReward(frameID, data)
 		if err != nil {
 			fmt.Printf("Error creating reward: %v\n", err)
 			os.Exit(1)
@@ -72,13 +78,9 @@ var rewardDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.DeleteReward(frameID, rewardID)
+		err := client.DeleteReward(frameID, rewardID)
 		if err != nil {
 			fmt.Printf("Error deleting reward: %v\n", err)
 			os.Exit(1)
@@ -94,13 +96,9 @@ var rewardRedeemCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.RedeemReward(frameID, rewardID)
+		err := client.RedeemReward(frameID, rewardID)
 		if err != nil {
 			fmt.Printf("Error redeeming reward: %v\n", err)
 			os.Exit(1)
@@ -116,13 +114,9 @@ var rewardUnredeemCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.UnredeemReward(frameID, rewardID)
+		err := client.UnredeemReward(frameID, rewardID)
 		if err != nil {
 			fmt.Printf("Error unredeeming reward: %v\n", err)
 			os.Exit(1)
@@ -138,11 +132,7 @@ var rewardPointsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		points, err := client.GetRewardPoints(frameID)
 		if err != nil {
@@ -164,6 +154,9 @@ func init() {
 
 	rewardCreateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardCreateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
+	rewardCreateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
+	rewardCreateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
+	rewardCreateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
 	rewardRedeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
