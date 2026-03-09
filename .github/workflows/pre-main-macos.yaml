@@ -1,4 +1,4 @@
-name: Pre-Main Checks
+name: Pre-Main Checks (macOS)
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions: read-all
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -31,7 +31,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -47,16 +47,9 @@ jobs:
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        files: ./coverage.out
-        flags: unittests
-        name: codecov-umbrella
-
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
