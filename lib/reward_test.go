@@ -8,12 +8,32 @@ import (
 )
 
 func TestListRewards(t *testing.T) {
-	mockRewards := []Reward{
-		{ID: "1", Title: "Ice cream", Points: 10},
-		{ID: "2", Title: "Movie night", Points: 20},
+	mockResp := rewardAPIResponse{
+		Data: []rewardAPIEntry{
+			{
+				ID: "1",
+				Attributes: struct {
+					Name                string  `json:"name"`
+					EmojiIcon           string  `json:"emoji_icon"`
+					PointValue          int     `json:"point_value"`
+					RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+					RedeemedAt          *string `json:"redeemed_at"`
+				}{Name: "Ice cream", PointValue: 10},
+			},
+			{
+				ID: "2",
+				Attributes: struct {
+					Name                string  `json:"name"`
+					EmojiIcon           string  `json:"emoji_icon"`
+					PointValue          int     `json:"point_value"`
+					RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+					RedeemedAt          *string `json:"redeemed_at"`
+				}{Name: "Movie night", PointValue: 20},
+			},
+		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockRewards)
+	mockResponseJSON, _ := json.Marshal(mockResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "GET" {
@@ -53,9 +73,20 @@ func TestListRewards(t *testing.T) {
 }
 
 func TestCreateReward(t *testing.T) {
-	mockReward := Reward{ID: "3", Title: "Game time", Points: 15}
+	mockResp := rewardAPISingleResponse{
+		Data: rewardAPIEntry{
+			ID: "3",
+			Attributes: struct {
+				Name                string  `json:"name"`
+				EmojiIcon           string  `json:"emoji_icon"`
+				PointValue          int     `json:"point_value"`
+				RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+				RedeemedAt          *string `json:"redeemed_at"`
+			}{Name: "Game time", PointValue: 15},
+		},
+	}
 
-	mockResponseJSON, _ := json.Marshal(mockReward)
+	mockResponseJSON, _ := json.Marshal(mockResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
@@ -160,9 +191,20 @@ func TestGetRewardPoints(t *testing.T) {
 }
 
 func TestUpdateReward(t *testing.T) {
-	mockReward := Reward{ID: "1", Title: "Updated reward", Points: 25}
+	mockResp := rewardAPISingleResponse{
+		Data: rewardAPIEntry{
+			ID: "1",
+			Attributes: struct {
+				Name                string  `json:"name"`
+				EmojiIcon           string  `json:"emoji_icon"`
+				PointValue          int     `json:"point_value"`
+				RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+				RedeemedAt          *string `json:"redeemed_at"`
+			}{Name: "Updated reward", PointValue: 25},
+		},
+	}
 
-	mockResponseJSON, _ := json.Marshal(mockReward)
+	mockResponseJSON, _ := json.Marshal(mockResp)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PATCH" {
@@ -415,21 +457,22 @@ func TestRewardInvalidJSONResponse(t *testing.T) {
 
 func TestCreateRewardRequestBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var reqBody RewardRequest
-		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		var raw map[string]map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 			t.Errorf("Failed to decode request body: %v", err)
 		}
 
-		if reqBody.Reward.Title != "Pizza Night" {
-			t.Errorf("Expected title 'Pizza Night', got '%s'", reqBody.Reward.Title)
+		reward := raw["reward"]
+		if reward["name"] != "Pizza Night" {
+			t.Errorf("Expected name 'Pizza Night', got '%v'", reward["name"])
 		}
-		if reqBody.Reward.Points != 50 {
-			t.Errorf("Expected points 50, got %d", reqBody.Reward.Points)
+		if reward["point_value"] != float64(50) {
+			t.Errorf("Expected point_value 50, got %v", reward["point_value"])
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":"r1","title":"Pizza Night","points":50}`))
+		w.Write([]byte(`{"data":{"id":"r1","attributes":{"name":"Pizza Night","point_value":50}}}`))
 	}))
 	defer server.Close()
 
@@ -467,5 +510,40 @@ func TestRedeemRewardError(t *testing.T) {
 	err = client.RedeemReward("frame1", "r1")
 	if err == nil {
 		t.Error("Expected error, got nil")
+	}
+}
+
+func TestListRewardsWithCategoryRelationship(t *testing.T) {
+	mockJSON := `{"data":[{"id":"1","attributes":{"name":"Ice cream","point_value":10,"emoji_icon":"🍦"},"relationships":{"category":{"data":{"id":"cat456","type":"category"}}}}]}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(mockJSON))
+	}))
+	defer server.Close()
+
+	originalURL := SkylightURL
+	SkylightURL = server.URL + "/api"
+	defer func() { SkylightURL = originalURL }()
+
+	client, err := NewClientWithToken("user1", "token1")
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+
+	rewards, err := client.ListRewards("frame1")
+	if err != nil {
+		t.Fatalf("ListRewards failed: %v", err)
+	}
+
+	if len(rewards) != 1 {
+		t.Fatalf("Expected 1 reward, got %d", len(rewards))
+	}
+	if rewards[0].CategoryID != "cat456" {
+		t.Errorf("Expected category_id 'cat456', got '%s'", rewards[0].CategoryID)
+	}
+	if rewards[0].EmojiIcon != "🍦" {
+		t.Errorf("Expected emoji_icon '🍦', got '%s'", rewards[0].EmojiIcon)
 	}
 }

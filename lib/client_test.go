@@ -51,9 +51,6 @@ func TestNewClientEmptyPassword(t *testing.T) {
 }
 
 func TestNewClientLoginSuccess(t *testing.T) {
-	mockSession := Session{UserID: "user123", APIToken: "tok456"}
-	mockResponseJSON, _ := json.Marshal(mockSession)
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
 			t.Errorf("Expected POST request, got %s", r.Method)
@@ -73,7 +70,7 @@ func TestNewClientLoginSuccess(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
+		w.Write([]byte(`{"data":{"id":"user123","type":"authenticated_user","attributes":{"token":"tok456"}}}`))
 	}))
 	defer server.Close()
 
@@ -252,7 +249,7 @@ func TestPostInvalidJSONResponse(t *testing.T) {
 		t.Fatalf("Failed to create client: %v", err)
 	}
 
-	_, err = client.CreateReward("frame1", RewardData{Title: "Test", Points: 10})
+	_, err = client.CreateList("frame1", ListData{Title: "Test"})
 	if err == nil {
 		t.Error("Expected error for invalid JSON, got nil")
 	}
@@ -796,7 +793,7 @@ func TestLoginRequestBody(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"user_id":"u1","api_token":"t1"}`))
+		w.Write([]byte(`{"data":{"id":"u1","type":"authenticated_user","attributes":{"token":"t1"}}}`))
 	}))
 	defer server.Close()
 

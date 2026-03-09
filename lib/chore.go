@@ -32,9 +32,14 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 		addQueryParams(req, params)
 	}
 
-	var chores []Chore
-	if err := c.get(req, &chores); err != nil {
+	var apiResp choreAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to list chores: %w", err)
+	}
+
+	chores := make([]Chore, len(apiResp.Data))
+	for i := range apiResp.Data {
+		chores[i] = apiResp.Data[i].toChore()
 	}
 
 	return chores, nil
@@ -49,12 +54,13 @@ func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
 		return nil, fmt.Errorf("failed to create chore request: %w", err)
 	}
 
-	var created Chore
-	if err := c.post(req, &created); err != nil {
+	var apiResp choreAPISingleResponse
+	if err := c.post(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to create chore: %w", err)
 	}
 
-	return &created, nil
+	result := apiResp.Data.toChore()
+	return &result, nil
 }
 
 // UpdateChore updates an existing chore.
@@ -66,12 +72,13 @@ func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, 
 		return nil, fmt.Errorf("failed to create update chore request: %w", err)
 	}
 
-	var updated Chore
-	if err := c.put(req, &updated); err != nil {
+	var apiResp choreAPISingleResponse
+	if err := c.put(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to update chore: %w", err)
 	}
 
-	return &updated, nil
+	result := apiResp.Data.toChore()
+	return &result, nil
 }
 
 // DeleteChore deletes a chore.
