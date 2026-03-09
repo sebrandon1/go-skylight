@@ -14,10 +14,13 @@ func (c *Client) Login(email, password string) (*Session, error) {
 		return nil, fmt.Errorf("failed to create login request: %w", err)
 	}
 
-	var session Session
-	if err := c.post(req, &session); err != nil {
+	var resp sessionResponse
+	if err := c.post(req, &resp); err != nil {
 		return nil, fmt.Errorf("failed to login: %w", err)
 	}
 
-	return &session, nil
+	return &Session{
+		UserID:   resp.Data.ID,
+		APIToken: resp.Data.Attributes.Token,
+	}, nil
 }

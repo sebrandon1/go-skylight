@@ -9,9 +9,14 @@ func (c *Client) ListRewards(frameID string) ([]Reward, error) {
 		return nil, fmt.Errorf("failed to create list rewards request: %w", err)
 	}
 
-	var rewards []Reward
-	if err := c.get(req, &rewards); err != nil {
+	var apiResp rewardAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to list rewards: %w", err)
+	}
+
+	rewards := make([]Reward, len(apiResp.Data))
+	for i := range apiResp.Data {
+		rewards[i] = apiResp.Data[i].toReward()
 	}
 
 	return rewards, nil
@@ -26,12 +31,13 @@ func (c *Client) CreateReward(frameID string, reward RewardData) (*Reward, error
 		return nil, fmt.Errorf("failed to create reward request: %w", err)
 	}
 
-	var created Reward
-	if err := c.post(req, &created); err != nil {
+	var apiResp rewardAPISingleResponse
+	if err := c.post(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to create reward: %w", err)
 	}
 
-	return &created, nil
+	result := apiResp.Data.toReward()
+	return &result, nil
 }
 
 // UpdateReward updates an existing reward.
@@ -43,12 +49,13 @@ func (c *Client) UpdateReward(frameID, rewardID string, reward RewardData) (*Rew
 		return nil, fmt.Errorf("failed to create update reward request: %w", err)
 	}
 
-	var updated Reward
-	if err := c.patch(req, &updated); err != nil {
+	var apiResp rewardAPISingleResponse
+	if err := c.patch(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to update reward: %w", err)
 	}
 
-	return &updated, nil
+	result := apiResp.Data.toReward()
+	return &result, nil
 }
 
 // DeleteReward deletes a reward.

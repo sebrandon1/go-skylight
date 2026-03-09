@@ -1,9 +1,19 @@
 package lib
 
-// Session represents the response from POST /api/sessions.
+// Session holds the authenticated user credentials extracted from login.
 type Session struct {
-	UserID   string `json:"user_id,omitempty"`
-	APIToken string `json:"api_token,omitempty"`
+	UserID   string
+	APIToken string
+}
+
+// sessionResponse represents the JSON-API response from POST /api/sessions.
+type sessionResponse struct {
+	Data struct {
+		ID         string `json:"id"`
+		Attributes struct {
+			Token string `json:"token"`
+		} `json:"attributes"`
+	} `json:"data"`
 }
 
 // SessionRequest represents the login request body.
@@ -51,34 +61,76 @@ type SourceCalendar struct {
 	Provider string `json:"provider,omitempty"`
 }
 
-// Chore represents a chore/task.
+// Chore represents a chore/task (flattened from JSON-API response).
 type Chore struct {
-	ID          string `json:"id,omitempty"`
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	DueDate     string `json:"due_date,omitempty"`
-	Status      string `json:"status,omitempty"`
-	AssigneeID  string `json:"assignee_id,omitempty"`
-	Points      int    `json:"points,omitempty"`
-	Recurring   bool   `json:"recurring,omitempty"`
-	CreatedAt   string `json:"created_at,omitempty"`
-	UpdatedAt   string `json:"updated_at,omitempty"`
+	ID         string `json:"id,omitempty"`
+	Title      string `json:"title,omitempty"`
+	Status     string `json:"status,omitempty"`
+	DueDate    string `json:"due_date,omitempty"`
+	Points     int    `json:"points,omitempty"`
+	Recurring  bool   `json:"recurring,omitempty"`
+	AssigneeID string `json:"assignee_id,omitempty"`
 }
 
-// ChoreRequest represents the request body for creating/updating a chore.
+// choreAPIResponse wraps the JSON-API envelope for chore list responses.
+type choreAPIResponse struct {
+	Data []choreAPIEntry `json:"data"`
+}
+
+// choreAPIEntry represents a single chore in JSON-API format.
+type choreAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Summary      string `json:"summary"`
+		Status       string `json:"status"`
+		Start        string `json:"start"`
+		RewardPoints int    `json:"reward_points"`
+		Recurring    bool   `json:"recurring"`
+	} `json:"attributes"`
+	Relationships struct {
+		Category struct {
+			Data *struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"category"`
+	} `json:"relationships"`
+}
+
+// choreAPISingleResponse wraps the JSON-API envelope for single chore responses.
+type choreAPISingleResponse struct {
+	Data choreAPIEntry `json:"data"`
+}
+
+// toChore converts a JSON-API chore entry to a flat Chore struct.
+func (e *choreAPIEntry) toChore() Chore {
+	c := Chore{
+		ID:        e.ID,
+		Title:     e.Attributes.Summary,
+		Status:    e.Attributes.Status,
+		DueDate:   e.Attributes.Start,
+		Points:    e.Attributes.RewardPoints,
+		Recurring: e.Attributes.Recurring,
+	}
+	if e.Relationships.Category.Data != nil {
+		c.AssigneeID = e.Relationships.Category.Data.ID
+	}
+	return c
+}
+
+// ChoreRequest represents the API request body for creating/updating a chore.
 type ChoreRequest struct {
 	Chore ChoreData `json:"chore"`
 }
 
 // ChoreData holds the chore fields for create/update requests.
+// JSON tags match the Skylight API field names.
 type ChoreData struct {
-	Title       string `json:"title,omitempty"`
-	Description string `json:"description,omitempty"`
-	DueDate     string `json:"due_date,omitempty"`
-	Status      string `json:"status,omitempty"`
-	AssigneeID  string `json:"assignee_id,omitempty"`
-	Points      int    `json:"points,omitempty"`
-	Recurring   bool   `json:"recurring,omitempty"`
+	Title      string `json:"summary,omitempty"`
+	DueDate    string `json:"start,omitempty"`
+	Points     int    `json:"reward_points,omitempty"`
+	Status     string `json:"status,omitempty"`
+	AssigneeID string `json:"category_id,omitempty"`
+	Recurring  bool   `json:"recurring,omitempty"`
 }
 
 // List represents a list (e.g., grocery list, todo list).
@@ -141,14 +193,58 @@ type TaskBoxItemData struct {
 	Title string `json:"title,omitempty"`
 }
 
-// Reward represents a reward.
+// Reward represents a reward (flattened from JSON-API response).
 type Reward struct {
-	ID        string `json:"id,omitempty"`
-	Title     string `json:"title,omitempty"`
-	Points    int    `json:"points,omitempty"`
-	Redeemed  bool   `json:"redeemed,omitempty"`
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
+	ID         string `json:"id,omitempty"`
+	Title      string `json:"title,omitempty"`
+	Points     int    `json:"points,omitempty"`
+	EmojiIcon  string `json:"emoji_icon,omitempty"`
+	CategoryID string `json:"category_id,omitempty"`
+	Redeemed   bool   `json:"redeemed,omitempty"`
+}
+
+// rewardAPIResponse wraps the JSON-API envelope for reward list responses.
+type rewardAPIResponse struct {
+	Data []rewardAPIEntry `json:"data"`
+}
+
+// rewardAPIEntry represents a single reward in JSON-API format.
+type rewardAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Name                string  `json:"name"`
+		EmojiIcon           string  `json:"emoji_icon"`
+		PointValue          int     `json:"point_value"`
+		RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+		RedeemedAt          *string `json:"redeemed_at"`
+	} `json:"attributes"`
+	Relationships struct {
+		Category struct {
+			Data *struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"category"`
+	} `json:"relationships"`
+}
+
+// rewardAPISingleResponse wraps the JSON-API envelope for single reward responses.
+type rewardAPISingleResponse struct {
+	Data rewardAPIEntry `json:"data"`
+}
+
+// toReward converts a JSON-API reward entry to a flat Reward struct.
+func (e *rewardAPIEntry) toReward() Reward {
+	r := Reward{
+		ID:        e.ID,
+		Title:     e.Attributes.Name,
+		Points:    e.Attributes.PointValue,
+		EmojiIcon: e.Attributes.EmojiIcon,
+		Redeemed:  e.Attributes.RedeemedAt != nil,
+	}
+	if e.Relationships.Category.Data != nil {
+		r.CategoryID = e.Relationships.Category.Data.ID
+	}
+	return r
 }
 
 // RewardRequest represents the request body for creating/updating a reward.
@@ -157,9 +253,10 @@ type RewardRequest struct {
 }
 
 // RewardData holds the reward fields for create/update requests.
+// JSON tags match the Skylight API field names.
 type RewardData struct {
-	Title               string `json:"title,omitempty"`
-	Points              int    `json:"points,omitempty"`
+	Title               string `json:"name,omitempty"`
+	Points              int    `json:"point_value,omitempty"`
 	EmojiIcon           string `json:"emoji_icon,omitempty"`
 	RespawnOnRedemption *bool  `json:"respawn_on_redemption,omitempty"`
 	CategoryIDs         []int  `json:"category_ids,omitempty"`
