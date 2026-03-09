@@ -30,7 +30,7 @@ var getCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// Skip auto-login for login command itself and help
-		if cmd.Name() == "login" || cmd.Name() == "help" {
+		if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" {
 			return nil
 		}
 		// Auto-login if email/password set but no token/userID
