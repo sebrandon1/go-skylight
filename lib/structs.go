@@ -368,3 +368,44 @@ type Color struct {
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
 }
+
+// Dashboard aggregates today's data from multiple Skylight resources.
+type Dashboard struct {
+	Date         string             `json:"date"`
+	Events       []CalendarEvent    `json:"events"`
+	Chores       []Chore            `json:"chores"`
+	Points       []RewardPointEntry `json:"points"`
+	MealSittings []MealSitting      `json:"meal_sittings"`
+	Lists        []List             `json:"lists"`
+}
+
+// BountyData holds the input for creating a bounty (chore + paired reward).
+type BountyData struct {
+	Title       string `json:"title"`
+	Points      int    `json:"points"`
+	DueDate     string `json:"due_date,omitempty"`
+	AssigneeID  string `json:"assignee_id,omitempty"`
+	Recurring   bool   `json:"recurring,omitempty"`
+	RewardTitle string `json:"reward_title"`
+	EmojiIcon   string `json:"emoji_icon,omitempty"`
+}
+
+// Bounty represents a chore with a paired reward.
+type Bounty struct {
+	Chore  Chore  `json:"chore"`
+	Reward Reward `json:"reward"`
+}
+
+// RotationData holds the input for creating a chore rotation schedule.
+type RotationData struct {
+	Chores      []string `json:"chores"`
+	AssigneeIDs []string `json:"assignee_ids"`
+	StartDate   string   `json:"start_date"`
+	Weeks       int      `json:"weeks"`
+	Points      int      `json:"points,omitempty"`
+}
+
+// RotationResult holds the chores created by a rotation schedule.
+type RotationResult struct {
+	Chores []Chore `json:"chores"`
+}

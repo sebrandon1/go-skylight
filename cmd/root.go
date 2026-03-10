@@ -54,6 +54,9 @@ func init() {
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(dashboardCmd)
+	rootCmd.AddCommand(bountyCmd)
+	rootCmd.AddCommand(rotationCmd)
 
 	getCmd.AddCommand(calendarCmd)
 	getCmd.AddCommand(choreCmd)
