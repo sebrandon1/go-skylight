@@ -68,7 +68,7 @@ type Chore struct {
 	Status     string `json:"status,omitempty"`
 	DueDate    string `json:"due_date,omitempty"`
 	Points     int    `json:"points,omitempty"`
-	Recurring  bool   `json:"recurring,omitempty"`
+	Recurring  bool   `json:"recurring"`
 	AssigneeID string `json:"assignee_id,omitempty"`
 }
 
