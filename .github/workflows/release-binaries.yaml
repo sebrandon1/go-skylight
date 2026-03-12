@@ -33,7 +33,7 @@ jobs:
           mkdir -p dist
           BINARY_NAME=go-skylight
           OUTPUT="dist/${BINARY_NAME}"
-          go build -trimpath -ldflags "-s -w" -o "$OUTPUT" .
+          go build -trimpath -ldflags "-s -w -X main.Version=${GITHUB_REF_NAME}" -o "$OUTPUT" .
 
       - name: Package
         run: |
@@ -67,8 +67,15 @@ jobs:
       - name: Show downloaded files
         run: ls -laR dist | cat
 
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > checksums.txt
+          cat checksums.txt
+
       - name: Attach assets to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.tar.gz
+            dist/checksums.txt
