@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	listID        string
-	listTitle     string
-	listColor     string
-	listItemID    string
-	listItemTitle string
+	listID            string
+	listTitle         string
+	listColor         string
+	listItemID        string
+	listItemTitle     string
+	listItemCompleted bool
 )
 
 var listCmd = &cobra.Command{
@@ -158,12 +159,66 @@ var listDeleteItemCmd = &cobra.Command{
 	},
 }
 
+var listUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update a list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		data := lib.ListData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = listTitle
+		}
+		if cmd.Flags().Changed("color") {
+			data.Color = listColor
+		}
+
+		list, err := client.UpdateList(frameID, listID, data)
+		if err != nil {
+			fmt.Printf("Error updating list: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(list)
+	},
+}
+
+var listUpdateItemCmd = &cobra.Command{
+	Use:   "update-item",
+	Short: "Update a list item",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		data := lib.ListItemData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = listItemTitle
+		}
+		if cmd.Flags().Changed("completed") {
+			data.Completed = listItemCompleted
+		}
+
+		item, err := client.UpdateListItem(frameID, listID, listItemID, data)
+		if err != nil {
+			fmt.Printf("Error updating list item: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(item)
+	},
+}
+
 func init() {
 	listCmd.AddCommand(listListCmd)
 	listCmd.AddCommand(listGetCmd)
 	listCmd.AddCommand(listCreateCmd)
+	listCmd.AddCommand(listUpdateCmd)
 	listCmd.AddCommand(listDeleteCmd)
 	listCmd.AddCommand(listAddItemCmd)
+	listCmd.AddCommand(listUpdateItemCmd)
 	listCmd.AddCommand(listDeleteItemCmd)
 
 	listGetCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
@@ -171,8 +226,17 @@ func init() {
 	listCreateCmd.Flags().StringVar(&listColor, "color", "", "List color")
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 
+	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listUpdateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
+	listUpdateCmd.Flags().StringVar(&listColor, "color", "", "List color")
+
 	listAddItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listAddItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
+
+	listUpdateItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listUpdateItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
+	listUpdateItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
+	listUpdateItemCmd.Flags().BoolVar(&listItemCompleted, "completed", false, "Mark item as completed")
 
 	listDeleteItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
