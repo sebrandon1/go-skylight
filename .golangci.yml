@@ -1,16 +1,28 @@
 version: "2"
 linters:
   enable:
+    - errcheck
     - goconst
     - gocritic
     - gocyclo
+    - gosec
+    - ineffassign
     - misspell
+    - revive
+    - staticcheck
     - unparam
   settings:
     gocyclo:
       min-complexity: 15
     misspell:
       locale: US
+    gosec:
+      excludes:
+        - G704
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
   exclusions:
     generated: lax
     presets:
