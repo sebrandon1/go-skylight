@@ -222,11 +222,6 @@ type rewardAPIEntry struct {
 	} `json:"relationships"`
 }
 
-// rewardAPISingleResponse wraps the JSON-API envelope for single reward responses.
-type rewardAPISingleResponse struct {
-	Data rewardAPIEntry `json:"data"`
-}
-
 // toReward converts a JSON-API reward entry to a flat Reward struct.
 func (e *rewardAPIEntry) toReward() Reward {
 	r := Reward{

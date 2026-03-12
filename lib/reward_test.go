@@ -73,16 +73,18 @@ func TestListRewards(t *testing.T) {
 }
 
 func TestCreateReward(t *testing.T) {
-	mockResp := rewardAPISingleResponse{
-		Data: rewardAPIEntry{
-			ID: "3",
-			Attributes: struct {
-				Name                string  `json:"name"`
-				EmojiIcon           string  `json:"emoji_icon"`
-				PointValue          int     `json:"point_value"`
-				RespawnOnRedemption bool    `json:"respawn_on_redemption"`
-				RedeemedAt          *string `json:"redeemed_at"`
-			}{Name: "Game time", PointValue: 15},
+	mockResp := rewardAPIResponse{
+		Data: []rewardAPIEntry{
+			{
+				ID: "3",
+				Attributes: struct {
+					Name                string  `json:"name"`
+					EmojiIcon           string  `json:"emoji_icon"`
+					PointValue          int     `json:"point_value"`
+					RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+					RedeemedAt          *string `json:"redeemed_at"`
+				}{Name: "Game time", PointValue: 15},
+			},
 		},
 	}
 
@@ -191,16 +193,18 @@ func TestGetRewardPoints(t *testing.T) {
 }
 
 func TestUpdateReward(t *testing.T) {
-	mockResp := rewardAPISingleResponse{
-		Data: rewardAPIEntry{
-			ID: "1",
-			Attributes: struct {
-				Name                string  `json:"name"`
-				EmojiIcon           string  `json:"emoji_icon"`
-				PointValue          int     `json:"point_value"`
-				RespawnOnRedemption bool    `json:"respawn_on_redemption"`
-				RedeemedAt          *string `json:"redeemed_at"`
-			}{Name: "Updated reward", PointValue: 25},
+	mockResp := rewardAPIResponse{
+		Data: []rewardAPIEntry{
+			{
+				ID: "1",
+				Attributes: struct {
+					Name                string  `json:"name"`
+					EmojiIcon           string  `json:"emoji_icon"`
+					PointValue          int     `json:"point_value"`
+					RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+					RedeemedAt          *string `json:"redeemed_at"`
+				}{Name: "Updated reward", PointValue: 25},
+			},
 		},
 	}
 
@@ -471,7 +475,7 @@ func TestCreateRewardRequestBody(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"data":{"id":"r1","attributes":{"name":"Pizza Night","point_value":50}}}`))
+		w.Write([]byte(`{"data":[{"id":"r1","attributes":{"name":"Pizza Night","point_value":50}}]}`))
 	}))
 	defer server.Close()
 

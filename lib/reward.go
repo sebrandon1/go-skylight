@@ -29,12 +29,16 @@ func (c *Client) CreateReward(frameID string, reward RewardData) (*Reward, error
 		return nil, fmt.Errorf("failed to create reward request: %w", err)
 	}
 
-	var apiResp rewardAPISingleResponse
+	var apiResp rewardAPIResponse
 	if err := c.post(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to create reward: %w", err)
 	}
 
-	result := apiResp.Data.toReward()
+	if len(apiResp.Data) == 0 {
+		return nil, fmt.Errorf("failed to create reward: empty response")
+	}
+
+	result := apiResp.Data[0].toReward()
 	return &result, nil
 }
 
@@ -45,12 +49,16 @@ func (c *Client) UpdateReward(frameID, rewardID string, reward RewardData) (*Rew
 		return nil, fmt.Errorf("failed to create update reward request: %w", err)
 	}
 
-	var apiResp rewardAPISingleResponse
+	var apiResp rewardAPIResponse
 	if err := c.patch(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to update reward: %w", err)
 	}
 
-	result := apiResp.Data.toReward()
+	if len(apiResp.Data) == 0 {
+		return nil, nil
+	}
+
+	result := apiResp.Data[0].toReward()
 	return &result, nil
 }
 

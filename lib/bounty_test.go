@@ -29,16 +29,18 @@ func TestCreateBounty(t *testing.T) {
 			})
 		case r.Method == "POST" && r.URL.Path == "/api/frames/frame1/rewards":
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(rewardAPISingleResponse{
-				Data: rewardAPIEntry{
-					ID: "rw1",
-					Attributes: struct {
-						Name                string  `json:"name"`
-						EmojiIcon           string  `json:"emoji_icon"`
-						PointValue          int     `json:"point_value"`
-						RespawnOnRedemption bool    `json:"respawn_on_redemption"`
-						RedeemedAt          *string `json:"redeemed_at"`
-					}{Name: "Ice cream", PointValue: 10, EmojiIcon: "🍦"},
+			json.NewEncoder(w).Encode(rewardAPIResponse{
+				Data: []rewardAPIEntry{
+					{
+						ID: "rw1",
+						Attributes: struct {
+							Name                string  `json:"name"`
+							EmojiIcon           string  `json:"emoji_icon"`
+							PointValue          int     `json:"point_value"`
+							RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+							RedeemedAt          *string `json:"redeemed_at"`
+						}{Name: "Ice cream", PointValue: 10, EmojiIcon: "🍦"},
+					},
 				},
 			})
 		default:
