@@ -38,6 +38,9 @@ var getCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Load config file first (CLI flags take precedence since they're already set)
+		loadConfig()
+
 		// Skip auto-login for login command itself and help
 		if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" {
 			return nil
@@ -55,6 +58,7 @@ func init() {
 		return nil
 	}
 
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file path (default ~/.skylight/config)")
 	rootCmd.PersistentFlags().StringVar(&email, "email", "", "Skylight account email")
 	rootCmd.PersistentFlags().StringVar(&password, "password", "", "Skylight account password")
 	rootCmd.PersistentFlags().StringVar(&token, "token", "", "API token (alternative to email/password)")
