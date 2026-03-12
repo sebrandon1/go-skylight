@@ -193,6 +193,38 @@ go-skylight get meal add-to-grocery \
   --recipe-id RECIPE_ID
 ```
 
+### Dashboard
+
+```bash
+# Show today's dashboard (events, chores, points, meals, lists)
+go-skylight dashboard \
+  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
+```
+
+### Bounties (Chore + Reward Pairs)
+
+```bash
+# Create a bounty (creates a chore and a paired reward together)
+go-skylight bounty create \
+  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
+  --title "Clean the garage" --points 10 --assignee-id CATEGORY_ID \
+  --due-date 2024-01-15 --reward-title "Ice Cream" --emoji-icon "🍦"
+
+# List bounties (matched chore+reward pairs by point value)
+go-skylight bounty list \
+  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
+```
+
+### Chore Rotation
+
+```bash
+# Create rotating chore assignments across family members
+go-skylight rotation create \
+  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
+  --chores "Dishes,Trash,Vacuuming" --assignee-ids "ID1,ID2,ID3" \
+  --start-date 2024-01-15 --weeks 4 --points 3
+```
+
 ### Family Members (Categories)
 
 ```bash
@@ -452,6 +484,56 @@ sittings, _ := client.ListMealSittings("frame-id")
 recipes, _ := client.ListRecipes("frame-id")
 ```
 
+### Dashboard
+
+```go
+// Get today's dashboard (events, chores, points, meals, lists)
+dash, err := client.GetDashboard("frame-id")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Date: %s, Events: %d, Chores: %d\n",
+    dash.Date, len(dash.Events), len(dash.Chores))
+```
+
+### Bounties
+
+```go
+// Create a bounty (chore + paired reward)
+bounty, err := client.CreateBounty("frame-id", lib.BountyData{
+    Title:       "Clean the garage",
+    Points:      10,
+    DueDate:     "2024-01-15",
+    AssigneeID:  "category-id",
+    RewardTitle: "Ice Cream",
+    EmojiIcon:   "🍦",
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Chore: %s, Reward: %s\n", bounty.Chore.Title, bounty.Reward.Title)
+
+// List bounties (matched by point value)
+bounties, err := client.ListBounties("frame-id")
+```
+
+### Chore Rotation
+
+```go
+// Create rotating chore assignments across family members
+result, err := client.CreateChoreRotation("frame-id", lib.RotationData{
+    Chores:      []string{"Dishes", "Trash", "Vacuuming"},
+    AssigneeIDs: []string{"id1", "id2", "id3"},
+    StartDate:   "2024-01-15",
+    Weeks:       4,
+    Points:      3,
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Created %d chores\n", len(result.Chores))
+```
+
 ### Family Members, Frame & Utilities
 
 ```go
@@ -496,6 +578,9 @@ colors, _ := client.GetColors()
 | Devices | List |
 | Avatars | List |
 | Colors | List |
+| Dashboard | Get (aggregates today's events, chores, points, meals, lists) |
+| Bounties | Create, List (chore + reward pairs) |
+| Chore Rotation | Create (rotating assignments across members) |
 
 ## Development
 

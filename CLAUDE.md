@@ -4,7 +4,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 
 ## Go Version
 
-Go 1.24 (see `go.mod`)
+Go 1.26.1 (see `go.mod`)
 
 ## Dependencies
 
@@ -36,6 +36,9 @@ cmd/                    # Cobra command definitions
   list.go               # list all, info, create, delete, add-item, delete-item
   meal.go               # meal categories, recipes, sittings, grocery list
   category.go           # list family member categories
+  dashboard.go          # today command (aggregates events, chores, points, meals, lists)
+  bounty.go             # bounty create/list (chore + reward pairs)
+  rotation.go           # chore rotation create (rotating assignments across members)
   helpers.go            # printJSON utility
 lib/                    # API client library
   client.go             # HTTP client, auth, request helpers (get/post/put/patch/delete)
@@ -48,6 +51,9 @@ lib/                    # API client library
   list.go               # List CRUD, list item CRUD, task box items
   meal.go               # Recipes, meal sittings, meal categories, grocery list
   reward.go             # Reward CRUD, redeem/unredeem, points (JSON-API format)
+  bounty.go             # Bounty (chore + reward pair) create and list
+  dashboard.go          # Dashboard aggregator (today's events, chores, points, meals, lists)
+  rotation.go           # Chore rotation generator (rotating assignments across members)
   *_test.go             # Unit tests using httptest mock servers
 ```
 
