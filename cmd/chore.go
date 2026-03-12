@@ -93,9 +93,45 @@ var choreDeleteCmd = &cobra.Command{
 	},
 }
 
+var choreUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update a chore",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		data := lib.ChoreData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = choreTitle
+		}
+		if cmd.Flags().Changed("status") {
+			data.Status = choreStatus
+		}
+		if cmd.Flags().Changed("points") {
+			data.Points = chorePoints
+		}
+		if cmd.Flags().Changed("assignee-id") {
+			data.AssigneeID = choreAssigneeID
+		}
+		if cmd.Flags().Changed("date") {
+			data.DueDate = choreDate
+		}
+
+		chore, err := client.UpdateChore(frameID, choreID, data)
+		if err != nil {
+			fmt.Printf("Error updating chore: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(chore)
+	},
+}
+
 func init() {
 	choreCmd.AddCommand(choreListCmd)
 	choreCmd.AddCommand(choreCreateCmd)
+	choreCmd.AddCommand(choreUpdateCmd)
 	choreCmd.AddCommand(choreDeleteCmd)
 
 	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Date filter")
@@ -111,6 +147,13 @@ func init() {
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreCreateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
 	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
+
+	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
+	choreUpdateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
+	choreUpdateCmd.Flags().StringVar(&choreStatus, "status", "", "Chore status")
+	choreUpdateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
+	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
+	choreUpdateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
 }

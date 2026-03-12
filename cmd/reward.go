@@ -144,9 +144,39 @@ var rewardPointsCmd = &cobra.Command{
 	},
 }
 
+var rewardUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update a reward",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		data := lib.RewardData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = rewardTitle
+		}
+		if cmd.Flags().Changed("points") {
+			data.Points = rewardPoints
+		}
+		if cmd.Flags().Changed("emoji-icon") {
+			data.EmojiIcon = rewardEmojiIcon
+		}
+
+		reward, err := client.UpdateReward(frameID, rewardID, data)
+		if err != nil {
+			fmt.Printf("Error updating reward: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(reward)
+	},
+}
+
 func init() {
 	rewardCmd.AddCommand(rewardListCmd)
 	rewardCmd.AddCommand(rewardCreateCmd)
+	rewardCmd.AddCommand(rewardUpdateCmd)
 	rewardCmd.AddCommand(rewardDeleteCmd)
 	rewardCmd.AddCommand(rewardRedeemCmd)
 	rewardCmd.AddCommand(rewardUnredeemCmd)
@@ -157,6 +187,11 @@ func init() {
 	rewardCreateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
 	rewardCreateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
 	rewardCreateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
+
+	rewardUpdateCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID to update")
+	rewardUpdateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
+	rewardUpdateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
+	rewardUpdateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
 	rewardRedeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")

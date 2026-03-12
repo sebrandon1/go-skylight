@@ -9,10 +9,13 @@ import (
 )
 
 var (
-	recipeID    string
-	recipeTitle string
-	sittingDate string
-	mealType    string
+	recipeID          string
+	recipeTitle       string
+	recipeDescription string
+	recipeIngredients []string
+	recipeURL         string
+	sittingDate       string
+	mealType          string
 )
 
 var mealCmd = &cobra.Command{
@@ -99,7 +102,10 @@ var mealCreateRecipeCmd = &cobra.Command{
 		}
 
 		recipe, err := client.CreateRecipe(frameID, lib.RecipeData{
-			Title: recipeTitle,
+			Title:       recipeTitle,
+			Description: recipeDescription,
+			Ingredients: recipeIngredients,
+			URL:         recipeURL,
 		})
 		if err != nil {
 			fmt.Printf("Error creating recipe: %v\n", err)
@@ -202,18 +208,62 @@ var mealAddToGroceryCmd = &cobra.Command{
 	},
 }
 
+var mealUpdateRecipeCmd = &cobra.Command{
+	Use:   "update-recipe",
+	Short: "Update a recipe",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		data := lib.RecipeData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = recipeTitle
+		}
+		if cmd.Flags().Changed("description") {
+			data.Description = recipeDescription
+		}
+		if cmd.Flags().Changed("ingredients") {
+			data.Ingredients = recipeIngredients
+		}
+		if cmd.Flags().Changed("url") {
+			data.URL = recipeURL
+		}
+
+		recipe, err := client.UpdateRecipe(frameID, recipeID, data)
+		if err != nil {
+			fmt.Printf("Error updating recipe: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(recipe)
+	},
+}
+
 func init() {
 	mealCmd.AddCommand(mealCategoriesCmd)
 	mealCmd.AddCommand(mealRecipesCmd)
 	mealCmd.AddCommand(mealRecipeInfoCmd)
 	mealCmd.AddCommand(mealCreateRecipeCmd)
+	mealCmd.AddCommand(mealUpdateRecipeCmd)
 	mealCmd.AddCommand(mealDeleteRecipeCmd)
 	mealCmd.AddCommand(mealSittingsCmd)
 	mealCmd.AddCommand(mealCreateSittingCmd)
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+
 	mealCreateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
+	mealCreateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
+	mealCreateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
+	mealCreateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
+
+	mealUpdateRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID to update")
+	mealUpdateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
+	mealUpdateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
+	mealUpdateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
+	mealUpdateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
+
 	mealDeleteRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 
 	mealCreateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")

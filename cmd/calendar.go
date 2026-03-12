@@ -116,9 +116,42 @@ var sourceCalendarsCmd = &cobra.Command{
 	},
 }
 
+var calendarUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update a calendar event",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		data := lib.CalendarEventData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = calendarTitle
+		}
+		if cmd.Flags().Changed("start-at") {
+			data.StartAt = calendarStartAt
+		}
+		if cmd.Flags().Changed("end-at") {
+			data.EndAt = calendarEndAt
+		}
+		if cmd.Flags().Changed("all-day") {
+			data.AllDay = calendarAllDay
+		}
+
+		event, err := client.UpdateCalendarEvent(frameID, calendarEventID, data)
+		if err != nil {
+			fmt.Printf("Error updating calendar event: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(event)
+	},
+}
+
 func init() {
 	calendarCmd.AddCommand(calendarListCmd)
 	calendarCmd.AddCommand(calendarCreateCmd)
+	calendarCmd.AddCommand(calendarUpdateCmd)
 	calendarCmd.AddCommand(calendarDeleteCmd)
 	calendarCmd.AddCommand(sourceCalendarsCmd)
 
@@ -129,6 +162,12 @@ func init() {
 	calendarCreateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarCreateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarCreateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
+
+	calendarUpdateCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to update")
+	calendarUpdateCmd.Flags().StringVar(&calendarTitle, "title", "", "Event title")
+	calendarUpdateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
+	calendarUpdateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
+	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
 }
