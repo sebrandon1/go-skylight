@@ -17,9 +17,18 @@ var (
 	autoClient *lib.Client
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "skylight",
-	Short: "Skylight CLI interacts with the Skylight Calendar API",
+	Use:     "skylight",
+	Short:   "Skylight CLI interacts with the Skylight Calendar API",
+	Version: version,
+}
+
+// SetVersion sets the version string for the root command.
+func SetVersion(v string) {
+	version = v
+	rootCmd.Version = v
 }
 
 var getCmd = &cobra.Command{
