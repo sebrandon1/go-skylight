@@ -2,25 +2,38 @@ package lib
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 var (
+	// SkylightURL is the default base URL for all API calls.
+	// Override via WithBaseURL or by assigning directly in tests.
 	SkylightURL = "https://app.ourskylight.com/api"
 )
 
+// Client is a Skylight API client. Create one with NewClient or
+// NewClientWithToken; use With* functional options for advanced configuration.
 type Client struct {
 	UserID     string
 	APIToken   string
 	HTTPClient *http.Client
 	authCache  string
+
+	baseURL string
+	logger  *slog.Logger
+	limiter *rate.Limiter
+	retry   retryConfig
 }
 
 func newHTTPClient() *http.Client {
@@ -35,14 +48,24 @@ func newHTTPClient() *http.Client {
 	}
 }
 
-// NewClient authenticates via email/password and returns an authenticated client.
-func NewClient(email, password string) (*Client, error) {
+// NewClient authenticates via email/password and returns a ready-to-use client.
+// Optional ClientOption values customize HTTP client, logging, retry, etc.
+func NewClient(email, password string, opts ...ClientOption) (*Client, error) {
 	if email == "" || password == "" {
 		return nil, errors.New("email and password are required")
 	}
 
+	cfg := defaultClientConfig()
+	for _, o := range opts {
+		o(&cfg)
+	}
+
 	c := &Client{
-		HTTPClient: newHTTPClient(),
+		HTTPClient: cfg.httpClient,
+		baseURL:    cfg.baseURL,
+		logger:     cfg.logger,
+		limiter:    cfg.limiter,
+		retry:      cfg.retry,
 	}
 
 	session, err := c.Login(email, password)
@@ -57,17 +80,27 @@ func NewClient(email, password string) (*Client, error) {
 	return c, nil
 }
 
-// NewClientWithToken creates a client using a pre-existing userId and token.
-func NewClientWithToken(userID, token string) (*Client, error) {
+// NewClientWithToken creates a client from a pre-existing user ID and API token,
+// skipping the login round-trip. Optional ClientOption values apply as usual.
+func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, error) {
 	if userID == "" || token == "" {
 		return nil, errors.New("user ID and token are required")
+	}
+
+	cfg := defaultClientConfig()
+	for _, o := range opts {
+		o(&cfg)
 	}
 
 	return &Client{
 		UserID:     userID,
 		APIToken:   token,
 		authCache:  "Basic " + base64.StdEncoding.EncodeToString([]byte(userID+":"+token)),
-		HTTPClient: newHTTPClient(),
+		HTTPClient: cfg.httpClient,
+		baseURL:    cfg.baseURL,
+		logger:     cfg.logger,
+		limiter:    cfg.limiter,
+		retry:      cfg.retry,
 	}, nil
 }
 
@@ -76,110 +109,131 @@ func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 }
 
-func (c *Client) get(req *http.Request, v any) error {
+// effectiveURL returns the client's base URL, falling back to the package-level
+// SkylightURL so existing code that swaps SkylightURL in tests still works.
+func (c *Client) effectiveURL() string {
+	if c.baseURL != "" {
+		return c.baseURL
+	}
+	return SkylightURL
+}
+
+func (c *Client) do(req *http.Request) (*http.Response, error) {
 	c.setHeaders(req)
 
-	resp, err := c.HTTPClient.Do(req)
+	if c.logger != nil {
+		c.logger.Debug("skylight request",
+			slog.String("method", req.Method),
+			slog.String("url", req.URL.String()),
+			slog.String("auth", "Basic [REDACTED]"),
+		)
+	}
+
+	var lim limiterIface
+	if c.limiter != nil {
+		lim = c.limiter
+	}
+	resp, err := doWithRetry(context.Background(), c.HTTPClient, lim, c.retry, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.logger != nil {
+		c.logger.Debug("skylight response",
+			slog.String("method", req.Method),
+			slog.String("url", req.URL.String()),
+			slog.Int("status", resp.StatusCode),
+		)
+	}
+
+	return resp, nil
+}
+
+func (c *Client) get(req *http.Request, v any) error {
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+	body, _ := io.ReadAll(resp.Body)
+	if err := checkStatus(resp, body); err != nil {
+		return err
 	}
-
-	return decodeJSON(resp.Body, v)
+	return json.Unmarshal(body, v)
 }
 
 func (c *Client) post(req *http.Request, v any) error {
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
+	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+		return checkStatus(resp, body)
 	}
-
 	if v != nil {
-		return decodeJSON(resp.Body, v)
+		return json.Unmarshal(body, v)
 	}
-
 	return nil
 }
 
 func (c *Client) put(req *http.Request, v any) error {
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
-	if v != nil && resp.StatusCode != http.StatusNoContent {
-		return decodeJSON(resp.Body, v)
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return checkStatus(resp, body)
 	}
-
+	if v != nil {
+		return json.Unmarshal(body, v)
+	}
 	return nil
 }
 
 func (c *Client) patch(req *http.Request, v any) error {
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
 	}
 
-	if v != nil && resp.StatusCode != http.StatusNoContent {
-		return decodeJSON(resp.Body, v)
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return checkStatus(resp, body)
 	}
-
+	if v != nil {
+		return json.Unmarshal(body, v)
+	}
 	return nil
 }
 
 func (c *Client) doDelete(req *http.Request) error {
-	c.setHeaders(req)
-
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := c.do(req)
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
+		return nil
 	}
-
-	return nil
-}
-
-func decodeJSON(r io.Reader, v any) error {
-	return json.NewDecoder(r).Decode(v)
+	body, _ := io.ReadAll(resp.Body)
+	return checkStatus(resp, body)
 }
 
 func addQueryParams(req *http.Request, params map[string]string) {

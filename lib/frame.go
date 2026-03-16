@@ -4,7 +4,7 @@ import "fmt"
 
 // GetFrame retrieves frame information.
 func (c *Client) GetFrame(frameID string) (*Frame, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get frame request: %w", err)
 	}
@@ -19,7 +19,7 @@ func (c *Client) GetFrame(frameID string) (*Frame, error) {
 
 // ListDevices retrieves devices for a frame.
 func (c *Client) ListDevices(frameID string) ([]Device, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/devices", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/devices", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list devices request: %w", err)
 	}
@@ -34,7 +34,7 @@ func (c *Client) ListDevices(frameID string) ([]Device, error) {
 
 // GetAvatars retrieves available avatars.
 func (c *Client) GetAvatars() ([]Avatar, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/avatars", SkylightURL), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/avatars", c.effectiveURL()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get avatars request: %w", err)
 	}
@@ -49,7 +49,7 @@ func (c *Client) GetAvatars() ([]Avatar, error) {
 
 // GetColors retrieves available colors.
 func (c *Client) GetColors() ([]Color, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/colors", SkylightURL), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/colors", c.effectiveURL()), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get colors request: %w", err)
 	}

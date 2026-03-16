@@ -14,7 +14,10 @@ lint:
 test:
 	go test ./... -v
 
-clean:
-	rm -f $(APP_NAME)
+build-trigger:
+	go build -o alpaca-trigger ./cmd/alpaca-trigger/
 
-.PHONY: vet build lint test clean
+clean:
+	rm -f $(APP_NAME) alpaca-trigger
+
+.PHONY: vet build build-trigger lint test clean

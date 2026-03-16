@@ -8,805 +8,500 @@ import (
 )
 
 func TestNewClientWithToken(t *testing.T) {
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("NewClientWithToken failed: %v", err)
+	tests := []struct {
+		name    string
+		userID  string
+		token   string
+		wantErr bool
+	}{
+		{"valid credentials", "user1", "token1", false},
+		{"empty user ID", "", "token1", true},
+		{"empty token", "user1", "", true},
 	}
 
-	if client.UserID != "user1" {
-		t.Errorf("Expected UserID 'user1', got '%s'", client.UserID)
-	}
-
-	if client.APIToken != "token1" {
-		t.Errorf("Expected APIToken 'token1', got '%s'", client.APIToken)
-	}
-}
-
-func TestNewClientWithTokenEmptyUserID(t *testing.T) {
-	_, err := NewClientWithToken("", "token1")
-	if err == nil {
-		t.Error("Expected error for empty user ID, got nil")
-	}
-}
-
-func TestNewClientWithTokenEmptyToken(t *testing.T) {
-	_, err := NewClientWithToken("user1", "")
-	if err == nil {
-		t.Error("Expected error for empty token, got nil")
-	}
-}
-
-func TestNewClientEmptyEmail(t *testing.T) {
-	_, err := NewClient("", "password")
-	if err == nil {
-		t.Error("Expected error for empty email, got nil")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client, err := NewClientWithToken(tc.userID, tc.token)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr {
+				if client.UserID != tc.userID {
+					t.Errorf("UserID: want %q got %q", tc.userID, client.UserID)
+				}
+				if client.APIToken != tc.token {
+					t.Errorf("APIToken: want %q got %q", tc.token, client.APIToken)
+				}
+			}
+		})
 	}
 }
 
-func TestNewClientEmptyPassword(t *testing.T) {
-	_, err := NewClient("email@example.com", "")
-	if err == nil {
-		t.Error("Expected error for empty password, got nil")
+func TestNewClient(t *testing.T) {
+	tests := []struct {
+		name     string
+		email    string
+		password string
+		handler  http.HandlerFunc
+		wantUID  string
+		wantTok  string
+		wantErr  bool
+	}{
+		{
+			name:     "empty email",
+			email:    "",
+			password: "pw",
+			wantErr:  true,
+		},
+		{
+			name:     "empty password",
+			email:    "e@example.com",
+			password: "",
+			wantErr:  true,
+		},
+		{
+			name:     "login success",
+			email:    "test@example.com",
+			password: "password123",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/sessions" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				var body SessionRequest
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Errorf("decode: %v", err)
+				}
+				if body.Email != "test@example.com" {
+					t.Errorf("email: want test@example.com got %q", body.Email)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write([]byte(`{"data":{"id":"user123","type":"authenticated_user","attributes":{"token":"tok456"}}}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			},
+			wantUID: "user123",
+			wantTok: "tok456",
+		},
+		{
+			name:     "login failure/unauthorized",
+			email:    "bad@example.com",
+			password: "wrong",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+				if _, err := w.Write([]byte(`{"error":"Invalid credentials"}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name:     "invalid JSON response",
+			email:    "test@example.com",
+			password: "password123",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write([]byte(`not valid json`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// For cases without a handler, use nil (no server needed)
+			if tc.handler == nil {
+				_, err := NewClient(tc.email, tc.password)
+				if (err != nil) != tc.wantErr {
+					t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+				}
+				return
+			}
+
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, err := NewClient(tc.email, tc.password)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr {
+				if client.UserID != tc.wantUID {
+					t.Errorf("UserID: want %q got %q", tc.wantUID, client.UserID)
+				}
+				if client.APIToken != tc.wantTok {
+					t.Errorf("APIToken: want %q got %q", tc.wantTok, client.APIToken)
+				}
+			}
+		})
 	}
 }
 
-func TestNewClientLoginSuccess(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("Expected POST request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/sessions" {
-			t.Errorf("Expected path /api/sessions, got %s", r.URL.Path)
-		}
-
-		var reqBody SessionRequest
-		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-			t.Errorf("Failed to decode request body: %v", err)
-		}
-
-		if reqBody.Email != "test@example.com" {
-			t.Errorf("Expected email 'test@example.com', got '%s'", reqBody.Email)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":{"id":"user123","type":"authenticated_user","attributes":{"token":"tok456"}}}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClient("test@example.com", "password123")
-	if err != nil {
-		t.Fatalf("NewClient failed: %v", err)
-	}
-
-	if client.UserID != "user123" {
-		t.Errorf("Expected UserID 'user123', got '%s'", client.UserID)
-	}
-
-	if client.APIToken != "tok456" {
-		t.Errorf("Expected APIToken 'tok456', got '%s'", client.APIToken)
-	}
-}
-
-func TestNewClientLoginFailure(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": "Invalid credentials"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	_, err := NewClient("bad@example.com", "wrongpassword")
-	if err == nil {
-		t.Error("Expected error for failed login, got nil")
-	}
-}
-
-func TestAuthHeader(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			t.Error("Expected Authorization header to be set")
-		}
-
+func TestAuthorizationHeader(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
 		// Basic base64("user1:token1") = "dXNlcjE6dG9rZW4x"
-		expected := "Basic dXNlcjE6dG9rZW4x"
-		if authHeader != expected {
-			t.Errorf("Expected Authorization '%s', got '%s'", expected, authHeader)
+		if auth != "Basic dXNlcjE6dG9rZW4x" {
+			t.Errorf("Authorization: want Basic dXNlcjE6dG9rZW4x, got %q", auth)
 		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[]`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListCategories("frame1")
-	if err != nil {
-		t.Fatalf("Request with auth header failed: %v", err)
-	}
-}
-
-func TestPutMethodErrorHandling(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Bad request"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for bad request, got nil")
-	}
-}
-
-func TestPatchMethodErrorHandling(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error": "Bad request"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for bad request, got nil")
-	}
-}
-
-func TestPutNoContent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	// UpdateList with 204 No Content - should succeed without trying to decode
-	_, err = client.UpdateList("frame1", "1", ListData{Title: "Test"})
-	if err != nil {
-		t.Fatalf("UpdateList with 204 failed: %v", err)
-	}
-}
-
-func TestGetInvalidJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{invalid json`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.GetRewardPoints("frame1")
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestPostInvalidJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{invalid json`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.CreateList("frame1", ListData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestPutInvalidJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{invalid json`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestPatchInvalidJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{invalid json`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestDeleteWithOKStatus(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	err = client.DeleteCalendarEvent("frame1", "evt1")
-	if err != nil {
-		t.Fatalf("DeleteCalendarEvent with 200 OK failed: %v", err)
-	}
-}
-
-func TestPatchNoContent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
-	if err != nil {
-		t.Fatalf("UpdateReward with 204 failed: %v", err)
-	}
-}
-
-func TestPutWithCreatedStatus(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":"1","title":"New List"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	list, err := client.UpdateList("frame1", "1", ListData{Title: "New List"})
-	if err != nil {
-		t.Fatalf("UpdateList with 201 Created failed: %v", err)
-	}
-
-	if list.Title != "New List" {
-		t.Errorf("Expected title 'New List', got '%s'", list.Title)
-	}
-}
-
-func TestDecodeJSONError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`not json at all`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListCategories("frame1")
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestAddQueryParamsEmpty(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.RawQuery != "" {
-			t.Errorf("Expected no query params, got '%s'", r.URL.RawQuery)
+		if _, err := w.Write([]byte(`[]`)); err != nil {
+			t.Errorf("write: %v", err)
 		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[]`))
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
 
-	client, err := NewClientWithToken("user1", "token1")
+	client, _ := NewClientWithToken("user1", "token1")
+	_, err := client.ListCategories("frame1")
 	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	// ListCalendarEvents with no params - addQueryParams should not be called
-	_, err = client.ListCalendarEvents("frame1", "", "")
-	if err != nil {
-		t.Fatalf("ListCalendarEvents with empty params failed: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestLoginInvalidJSON(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`not valid json`))
-	}))
-	defer server.Close()
+func TestHTTPMethodErrorStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*Client) error
+	}{
+		{
+			name: "PUT 400 returns error",
+			fn: func(c *Client) error {
+				_, err := c.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
+				return err
+			},
+		},
+		{
+			name: "PATCH 400 returns error",
+			fn: func(c *Client) error {
+				_, err := c.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
+				return err
+			},
+		},
+	}
 
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+				if _, err := w.Write([]byte(`{"error":"Bad request"}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			}))
+			defer srv.Close()
 
-	_, err := NewClient("test@example.com", "password123")
-	if err == nil {
-		t.Error("Expected error for invalid JSON login response, got nil")
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			if err := tc.fn(client); err == nil {
+				t.Error("expected error, got nil")
+			}
+		})
 	}
 }
 
-func TestGetWithHTTPClientError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "http://localhost:1/api" // port 1 will refuse connection
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
+func TestStatusCodeHandling(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		body    string
+		fn      func(*Client) error
+		wantErr bool
+	}{
+		{
+			name:   "PUT 204 no content succeeds",
+			status: http.StatusNoContent,
+			fn: func(c *Client) error {
+				_, err := c.UpdateList("frame1", "1", ListData{Title: "Test"})
+				return err
+			},
+		},
+		{
+			name:   "PUT 201 created with body succeeds",
+			status: http.StatusCreated,
+			body:   `{"id":"1","title":"New List"}`,
+			fn: func(c *Client) error {
+				list, err := c.UpdateList("frame1", "1", ListData{Title: "New List"})
+				if err == nil && list.Title != "New List" {
+					t.Errorf("Title: want 'New List' got %q", list.Title)
+				}
+				return err
+			},
+		},
+		{
+			name:   "PATCH 204 no content succeeds",
+			status: http.StatusNoContent,
+			fn: func(c *Client) error {
+				_, err := c.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
+				return err
+			},
+		},
+		{
+			name:   "DELETE 200 OK succeeds",
+			status: http.StatusOK,
+			fn: func(c *Client) error {
+				return c.DeleteCalendarEvent("frame1", "evt1")
+			},
+		},
+		{
+			name:   "POST with nil response target succeeds",
+			status: http.StatusOK,
+			fn: func(c *Client) error {
+				return c.RedeemReward("frame1", "r1")
+			},
+		},
 	}
 
-	_, err = client.GetFrame("frame1")
-	if err == nil {
-		t.Error("Expected error for connection refused, got nil")
-	}
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.body != "" {
+					if _, err := w.Write([]byte(tc.body)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-func TestPostWithHTTPClientError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "http://localhost:1/api"
-	defer func() { SkylightURL = originalURL }()
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.CreateReward("frame1", RewardData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for connection refused, got nil")
-	}
-}
-
-func TestPutWithHTTPClientError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "http://localhost:1/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for connection refused, got nil")
-	}
-}
-
-func TestPatchWithHTTPClientError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "http://localhost:1/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for connection refused, got nil")
-	}
-}
-
-func TestDeleteWithHTTPClientError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "http://localhost:1/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	err = client.DeleteCalendarEvent("frame1", "evt1")
-	if err == nil {
-		t.Error("Expected error for connection refused, got nil")
+			client, _ := NewClientWithToken("u", "t")
+			err := tc.fn(client)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
 	}
 }
 
-func TestLoginWithHTTPClientError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "http://localhost:1/api"
-	defer func() { SkylightURL = originalURL }()
+func TestInvalidJSONResponse(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*Client) error
+	}{
+		{
+			name: "GET invalid JSON",
+			fn: func(c *Client) error {
+				_, err := c.GetRewardPoints("frame1")
+				return err
+			},
+		},
+		{
+			name: "POST invalid JSON",
+			fn: func(c *Client) error {
+				_, err := c.CreateList("frame1", ListData{Title: "Test"})
+				return err
+			},
+		},
+		{
+			name: "PUT invalid JSON",
+			fn: func(c *Client) error {
+				_, err := c.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
+				return err
+			},
+		},
+		{
+			name: "PATCH invalid JSON",
+			fn: func(c *Client) error {
+				_, err := c.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
+				return err
+			},
+		},
+		{
+			name: "GET not-JSON string",
+			fn: func(c *Client) error {
+				_, err := c.ListCategories("frame1")
+				return err
+			},
+		},
+	}
 
-	_, err := NewClient("test@example.com", "password123")
-	if err == nil {
-		t.Error("Expected error for connection refused, got nil")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write([]byte(`{invalid json`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			if err := tc.fn(client); err == nil {
+				t.Error("expected error for invalid JSON, got nil")
+			}
+		})
 	}
 }
 
-func TestPostWithNilResponseTarget(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
+func TestConnectionRefusedErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*Client) error
+	}{
+		{"GET", func(c *Client) error { _, err := c.GetFrame("frame1"); return err }},
+		{"POST", func(c *Client) error { _, err := c.CreateReward("frame1", RewardData{Title: "T"}); return err }},
+		{"PUT", func(c *Client) error {
+			_, err := c.UpdateCalendarEvent("frame1", "e1", CalendarEventData{Title: "T"})
+			return err
+		}},
+		{"PATCH", func(c *Client) error { _, err := c.UpdateReward("frame1", "r1", RewardData{Title: "T"}); return err }},
+		{"DELETE", func(c *Client) error { return c.DeleteCalendarEvent("frame1", "evt1") }},
+		{"Login", func(*Client) error { _, err := NewClient("test@example.com", "pw"); return err }},
 	}
 
-	// RedeemReward passes nil as v to post()
-	err = client.RedeemReward("frame1", "r1")
-	if err != nil {
-		t.Fatalf("RedeemReward failed: %v", err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			old := SkylightURL
+			SkylightURL = "http://localhost:1/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			if err := tc.fn(client); err == nil {
+				t.Error("expected error for connection refused, got nil")
+			}
+		})
 	}
 }
 
-func TestNewRequestErrorPaths(t *testing.T) {
-	originalURL := SkylightURL
+func TestBadURLNewRequestErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   func(*Client) error
+	}{
+		// GET-based
+		{"ListCalendarEvents", func(c *Client) error { _, err := c.ListCalendarEvents("f", "", ""); return err }},
+		{"ListSourceCalendars", func(c *Client) error { _, err := c.ListSourceCalendars("f"); return err }},
+		{"ListCategories", func(c *Client) error { _, err := c.ListCategories("f"); return err }},
+		{"ListChores", func(c *Client) error { _, err := c.ListChores("f", ChoreListOptions{}); return err }},
+		{"GetFrame", func(c *Client) error { _, err := c.GetFrame("f"); return err }},
+		{"ListDevices", func(c *Client) error { _, err := c.ListDevices("f"); return err }},
+		{"GetAvatars", func(c *Client) error { _, err := c.GetAvatars(); return err }},
+		{"GetColors", func(c *Client) error { _, err := c.GetColors(); return err }},
+		{"ListLists", func(c *Client) error { _, err := c.ListLists("f"); return err }},
+		{"GetList", func(c *Client) error { _, err := c.GetList("f", "1"); return err }},
+		{"ListRewards", func(c *Client) error { _, err := c.ListRewards("f"); return err }},
+		{"GetRewardPoints", func(c *Client) error { _, err := c.GetRewardPoints("f"); return err }},
+		{"ListRecipes", func(c *Client) error { _, err := c.ListRecipes("f"); return err }},
+		{"GetRecipe", func(c *Client) error { _, err := c.GetRecipe("f", "1"); return err }},
+		{"ListMealCategories", func(c *Client) error { _, err := c.ListMealCategories("f"); return err }},
+		{"ListMealSittings", func(c *Client) error { _, err := c.ListMealSittings("f"); return err }},
+		// DELETE-based
+		{"DeleteCalendarEvent", func(c *Client) error { return c.DeleteCalendarEvent("f", "e1") }},
+		{"DeleteChore", func(c *Client) error { return c.DeleteChore("f", "c1") }},
+		{"DeleteList", func(c *Client) error { return c.DeleteList("f", "1") }},
+		{"DeleteListItem", func(c *Client) error { return c.DeleteListItem("f", "1", "i1") }},
+		{"DeleteReward", func(c *Client) error { return c.DeleteReward("f", "r1") }},
+		{"DeleteRecipe", func(c *Client) error { return c.DeleteRecipe("f", "1") }},
+		// POST-based (nil response)
+		{"RedeemReward", func(c *Client) error { return c.RedeemReward("f", "r1") }},
+		{"UnredeemReward", func(c *Client) error { return c.UnredeemReward("f", "r1") }},
+		{"AddRecipeToGroceryList", func(c *Client) error { return c.AddRecipeToGroceryList("f", "r1") }},
+		// POST/PUT/PATCH with body
+		{"CreateCalendarEvent", func(c *Client) error { _, err := c.CreateCalendarEvent("f", CalendarEventData{Title: "T"}); return err }},
+		{"UpdateCalendarEvent", func(c *Client) error {
+			_, err := c.UpdateCalendarEvent("f", "e1", CalendarEventData{Title: "T"})
+			return err
+		}},
+		{"CreateChore", func(c *Client) error { _, err := c.CreateChore("f", ChoreData{Title: "T"}); return err }},
+		{"UpdateChore", func(c *Client) error { _, err := c.UpdateChore("f", "c1", ChoreData{Title: "T"}); return err }},
+		{"CreateList", func(c *Client) error { _, err := c.CreateList("f", ListData{Title: "T"}); return err }},
+		{"UpdateList", func(c *Client) error { _, err := c.UpdateList("f", "1", ListData{Title: "T"}); return err }},
+		{"AddListItem", func(c *Client) error { _, err := c.AddListItem("f", "1", ListItemData{Title: "T"}); return err }},
+		{"UpdateListItem", func(c *Client) error {
+			_, err := c.UpdateListItem("f", "1", "i1", ListItemData{Title: "T"})
+			return err
+		}},
+		{"CreateTaskBoxItem", func(c *Client) error { _, err := c.CreateTaskBoxItem("f", TaskBoxItemData{Title: "T"}); return err }},
+		{"CreateReward", func(c *Client) error { _, err := c.CreateReward("f", RewardData{Title: "T"}); return err }},
+		{"UpdateReward", func(c *Client) error { _, err := c.UpdateReward("f", "r1", RewardData{Title: "T"}); return err }},
+		{"CreateRecipe", func(c *Client) error { _, err := c.CreateRecipe("f", RecipeData{Title: "T"}); return err }},
+		{"UpdateRecipe", func(c *Client) error { _, err := c.UpdateRecipe("f", "1", RecipeData{Title: "T"}); return err }},
+		{"CreateMealSitting", func(c *Client) error { _, err := c.CreateMealSitting("f", MealSittingData{RecipeID: "r1"}); return err }},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			old := SkylightURL
+			SkylightURL = "://bad"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			if err := tc.fn(client); err == nil {
+				t.Errorf("expected error with bad URL, got nil")
+			}
+		})
+	}
+}
+
+func TestLoginBadURL(t *testing.T) {
+	old := SkylightURL
 	SkylightURL = "://bad"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	// GET-based functions
-	_, err = client.ListCalendarEvents("frame1", "", "")
-	if err == nil {
-		t.Error("Expected error for ListCalendarEvents with bad URL")
-	}
-
-	_, err = client.ListSourceCalendars("frame1")
-	if err == nil {
-		t.Error("Expected error for ListSourceCalendars with bad URL")
-	}
-
-	_, err = client.ListCategories("frame1")
-	if err == nil {
-		t.Error("Expected error for ListCategories with bad URL")
-	}
-
-	_, err = client.ListChores("frame1", ChoreListOptions{})
-	if err == nil {
-		t.Error("Expected error for ListChores with bad URL")
-	}
-
-	_, err = client.GetFrame("frame1")
-	if err == nil {
-		t.Error("Expected error for GetFrame with bad URL")
-	}
-
-	_, err = client.ListDevices("frame1")
-	if err == nil {
-		t.Error("Expected error for ListDevices with bad URL")
-	}
-
-	_, err = client.GetAvatars()
-	if err == nil {
-		t.Error("Expected error for GetAvatars with bad URL")
-	}
-
-	_, err = client.GetColors()
-	if err == nil {
-		t.Error("Expected error for GetColors with bad URL")
-	}
-
-	_, err = client.ListLists("frame1")
-	if err == nil {
-		t.Error("Expected error for ListLists with bad URL")
-	}
-
-	_, err = client.GetList("frame1", "1")
-	if err == nil {
-		t.Error("Expected error for GetList with bad URL")
-	}
-
-	_, err = client.ListRewards("frame1")
-	if err == nil {
-		t.Error("Expected error for ListRewards with bad URL")
-	}
-
-	_, err = client.GetRewardPoints("frame1")
-	if err == nil {
-		t.Error("Expected error for GetRewardPoints with bad URL")
-	}
-
-	_, err = client.ListRecipes("frame1")
-	if err == nil {
-		t.Error("Expected error for ListRecipes with bad URL")
-	}
-
-	_, err = client.GetRecipe("frame1", "1")
-	if err == nil {
-		t.Error("Expected error for GetRecipe with bad URL")
-	}
-
-	_, err = client.ListMealCategories("frame1")
-	if err == nil {
-		t.Error("Expected error for ListMealCategories with bad URL")
-	}
-
-	_, err = client.ListMealSittings("frame1")
-	if err == nil {
-		t.Error("Expected error for ListMealSittings with bad URL")
-	}
-
-	// DELETE-based functions
-	err = client.DeleteCalendarEvent("frame1", "evt1")
-	if err == nil {
-		t.Error("Expected error for DeleteCalendarEvent with bad URL")
-	}
-
-	err = client.DeleteChore("frame1", "chore1")
-	if err == nil {
-		t.Error("Expected error for DeleteChore with bad URL")
-	}
-
-	err = client.DeleteList("frame1", "1")
-	if err == nil {
-		t.Error("Expected error for DeleteList with bad URL")
-	}
-
-	err = client.DeleteListItem("frame1", "1", "item1")
-	if err == nil {
-		t.Error("Expected error for DeleteListItem with bad URL")
-	}
-
-	err = client.DeleteReward("frame1", "r1")
-	if err == nil {
-		t.Error("Expected error for DeleteReward with bad URL")
-	}
-
-	err = client.DeleteRecipe("frame1", "1")
-	if err == nil {
-		t.Error("Expected error for DeleteRecipe with bad URL")
-	}
-
-	// POST-based functions with nil response (using newRequest, not newRequestWithBody)
-	err = client.RedeemReward("frame1", "r1")
-	if err == nil {
-		t.Error("Expected error for RedeemReward with bad URL")
-	}
-
-	err = client.UnredeemReward("frame1", "r1")
-	if err == nil {
-		t.Error("Expected error for UnredeemReward with bad URL")
-	}
-
-	err = client.AddRecipeToGroceryList("frame1", "recipe1")
-	if err == nil {
-		t.Error("Expected error for AddRecipeToGroceryList with bad URL")
-	}
-
-	// POST/PUT/PATCH functions using newRequestWithBody
-	_, err = client.CreateCalendarEvent("frame1", CalendarEventData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for CreateCalendarEvent with bad URL")
-	}
-
-	_, err = client.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for UpdateCalendarEvent with bad URL")
-	}
-
-	_, err = client.CreateChore("frame1", ChoreData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for CreateChore with bad URL")
-	}
-
-	_, err = client.UpdateChore("frame1", "chore1", ChoreData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for UpdateChore with bad URL")
-	}
-
-	_, err = client.CreateList("frame1", ListData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for CreateList with bad URL")
-	}
-
-	_, err = client.UpdateList("frame1", "1", ListData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for UpdateList with bad URL")
-	}
-
-	_, err = client.AddListItem("frame1", "1", ListItemData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for AddListItem with bad URL")
-	}
-
-	_, err = client.UpdateListItem("frame1", "1", "item1", ListItemData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for UpdateListItem with bad URL")
-	}
-
-	_, err = client.CreateTaskBoxItem("frame1", TaskBoxItemData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for CreateTaskBoxItem with bad URL")
-	}
-
-	_, err = client.CreateReward("frame1", RewardData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for CreateReward with bad URL")
-	}
-
-	_, err = client.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for UpdateReward with bad URL")
-	}
-
-	_, err = client.CreateRecipe("frame1", RecipeData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for CreateRecipe with bad URL")
-	}
-
-	_, err = client.UpdateRecipe("frame1", "1", RecipeData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error for UpdateRecipe with bad URL")
-	}
-
-	_, err = client.CreateMealSitting("frame1", MealSittingData{RecipeID: "r1"})
-	if err == nil {
-		t.Error("Expected error for CreateMealSitting with bad URL")
-	}
-}
-
-func TestLoginNewRequestError(t *testing.T) {
-	originalURL := SkylightURL
-	SkylightURL = "://bad"
-	defer func() { SkylightURL = originalURL }()
+	defer func() { SkylightURL = old }()
 
 	_, err := NewClient("test@example.com", "password123")
 	if err == nil {
-		t.Error("Expected error for Login with bad URL")
+		t.Error("expected error for Login with bad URL, got nil")
 	}
 }
 
 func TestLoginRequestBody(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("Expected POST request, got %s", r.Method)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
 		}
-
-		var reqBody SessionRequest
-		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-			t.Errorf("Failed to decode request body: %v", err)
+		var body SessionRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
 		}
-
-		if reqBody.Email != "user@test.com" {
-			t.Errorf("Expected email 'user@test.com', got '%s'", reqBody.Email)
+		if body.Email != "user@test.com" {
+			t.Errorf("email: want user@test.com got %q", body.Email)
 		}
-		if reqBody.Password != "mypassword" {
-			t.Errorf("Expected password 'mypassword', got '%s'", reqBody.Password)
+		if body.Password != "mypassword" {
+			t.Errorf("password: want mypassword got %q", body.Password)
 		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":{"id":"u1","type":"authenticated_user","attributes":{"token":"t1"}}}`))
+		if _, err := w.Write([]byte(`{"data":{"id":"u1","type":"authenticated_user","attributes":{"token":"t1"}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
 
 	client, err := NewClient("user@test.com", "mypassword")
 	if err != nil {
 		t.Fatalf("NewClient failed: %v", err)
 	}
-
 	if client.UserID != "u1" {
-		t.Errorf("Expected UserID 'u1', got '%s'", client.UserID)
+		t.Errorf("UserID: want u1 got %q", client.UserID)
 	}
 }

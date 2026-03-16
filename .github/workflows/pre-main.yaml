@@ -33,11 +33,12 @@ jobs:
         args: --timeout=5m
 
   test:
-    name: Test (${{ matrix.os }})
+    name: Test (${{ matrix.os }}, Go ${{ matrix.go-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        go-version: ['1.26.x']
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
@@ -45,7 +46,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version-file: 'go.mod'
+        go-version: ${{ matrix.go-version }}
 
     - name: Download dependencies
       run: go mod download
@@ -54,7 +55,7 @@ jobs:
       run: go test -v -race -coverprofile=coverage.out ./...
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26.x'
       uses: codecov/codecov-action@v5
       with:
         files: ./coverage.out

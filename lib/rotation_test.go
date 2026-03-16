@@ -12,19 +12,18 @@ import (
 func TestCreateChoreRotation(t *testing.T) {
 	var callCount atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("Expected POST, got %s", r.Method)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
 		}
-
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
-
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
 		idx := callCount.Add(1)
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(choreAPISingleResponse{
+		if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 			Data: choreAPIEntry{
 				ID: fmt.Sprintf("ch%d", idx),
 				Attributes: struct {
@@ -38,19 +37,17 @@ func TestCreateChoreRotation(t *testing.T) {
 					Start:   body["start"].(string),
 				},
 			},
-		})
+		}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
 
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
+	client, _ := NewClientWithToken("u", "t")
 	result, err := client.CreateChoreRotation("frame1", RotationData{
 		Chores:      []string{"Dishes", "Vacuum"},
 		AssigneeIDs: []string{"a1", "a2"},
@@ -64,19 +61,15 @@ func TestCreateChoreRotation(t *testing.T) {
 
 	// 2 chores * 2 weeks = 4 total
 	if len(result.Chores) != 4 {
-		t.Errorf("Expected 4 chores, got %d", len(result.Chores))
+		t.Errorf("want 4 chores, got %d", len(result.Chores))
 	}
-
 	if callCount.Load() != 4 {
-		t.Errorf("Expected 4 API calls, got %d", callCount.Load())
+		t.Errorf("want 4 API calls, got %d", callCount.Load())
 	}
 }
 
 func TestCreateChoreRotationValidation(t *testing.T) {
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	client, _ := NewClientWithToken("u", "t")
 
 	tests := []struct {
 		name string
@@ -88,11 +81,11 @@ func TestCreateChoreRotationValidation(t *testing.T) {
 		{"bad date", RotationData{Chores: []string{"Task"}, AssigneeIDs: []string{"a1"}, StartDate: "not-a-date", Weeks: 1}},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := client.CreateChoreRotation("frame1", tt.data)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := client.CreateChoreRotation("frame1", tc.data)
 			if err == nil {
-				t.Error("Expected error, got nil")
+				t.Error("expected validation error, got nil")
 			}
 		})
 	}
@@ -101,18 +94,18 @@ func TestCreateChoreRotationValidation(t *testing.T) {
 func TestCreateChoreRotationPartialFailure(t *testing.T) {
 	var callCount atomic.Int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idx := callCount.Add(1)
 		w.Header().Set("Content-Type", "application/json")
-
 		if idx >= 3 {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"error":"fail"}`))
+			if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
 			return
 		}
-
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(choreAPISingleResponse{
+		if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 			Data: choreAPIEntry{
 				ID: "ch1",
 				Attributes: struct {
@@ -123,19 +116,17 @@ func TestCreateChoreRotationPartialFailure(t *testing.T) {
 					Recurring    bool   `json:"recurring"`
 				}{Summary: "Task"},
 			},
-		})
+		}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
 
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
+	client, _ := NewClientWithToken("u", "t")
 	result, err := client.CreateChoreRotation("frame1", RotationData{
 		Chores:      []string{"Dishes", "Vacuum"},
 		AssigneeIDs: []string{"a1", "a2"},
@@ -143,13 +134,12 @@ func TestCreateChoreRotationPartialFailure(t *testing.T) {
 		Weeks:       2,
 	})
 	if err == nil {
-		t.Fatal("Expected error for partial failure, got nil")
+		t.Fatal("expected error for partial failure, got nil")
 	}
-
 	if result == nil {
-		t.Fatal("Expected partial result, got nil")
+		t.Fatal("expected partial result, got nil")
 	}
 	if len(result.Chores) != 2 {
-		t.Errorf("Expected 2 chores created before failure, got %d", len(result.Chores))
+		t.Errorf("want 2 partial chores, got %d", len(result.Chores))
 	}
 }

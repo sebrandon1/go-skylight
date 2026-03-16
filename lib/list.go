@@ -4,7 +4,7 @@ import "fmt"
 
 // ListLists retrieves all lists for a frame.
 func (c *Client) ListLists(frameID string) ([]List, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list lists request: %w", err)
 	}
@@ -19,7 +19,7 @@ func (c *Client) ListLists(frameID string) ([]List, error) {
 
 // GetList retrieves a single list by ID.
 func (c *Client) GetList(frameID, listID string) (*List, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists/%s", SkylightURL, frameID, listID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get list request: %w", err)
 	}
@@ -36,7 +36,7 @@ func (c *Client) GetList(frameID, listID string) (*List, error) {
 func (c *Client) CreateList(frameID string, list ListData) (*List, error) {
 	reqBody := ListRequest{List: list}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list request: %w", err)
 	}
@@ -53,7 +53,7 @@ func (c *Client) CreateList(frameID string, list ListData) (*List, error) {
 func (c *Client) UpdateList(frameID, listID string, list ListData) (*List, error) {
 	reqBody := ListRequest{List: list}
 
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s", SkylightURL, frameID, listID), reqBody)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update list request: %w", err)
 	}
@@ -68,7 +68,7 @@ func (c *Client) UpdateList(frameID, listID string, list ListData) (*List, error
 
 // DeleteList deletes a list.
 func (c *Client) DeleteList(frameID, listID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s", SkylightURL, frameID, listID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete list request: %w", err)
 	}
@@ -84,7 +84,7 @@ func (c *Client) DeleteList(frameID, listID string) error {
 func (c *Client) AddListItem(frameID, listID string, item ListItemData) (*ListItem, error) {
 	reqBody := ListItemRequest{ListItem: item}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/list_items", SkylightURL, frameID, listID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/list_items", c.effectiveURL(), frameID, listID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create add list item request: %w", err)
 	}
@@ -101,7 +101,7 @@ func (c *Client) AddListItem(frameID, listID string, item ListItemData) (*ListIt
 func (c *Client) UpdateListItem(frameID, listID, itemID string, item ListItemData) (*ListItem, error) {
 	reqBody := ListItemRequest{ListItem: item}
 
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", SkylightURL, frameID, listID, itemID), reqBody)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), frameID, listID, itemID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update list item request: %w", err)
 	}
@@ -116,7 +116,7 @@ func (c *Client) UpdateListItem(frameID, listID, itemID string, item ListItemDat
 
 // DeleteListItem deletes an item from a list.
 func (c *Client) DeleteListItem(frameID, listID, itemID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", SkylightURL, frameID, listID, itemID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), frameID, listID, itemID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete list item request: %w", err)
 	}
@@ -132,7 +132,7 @@ func (c *Client) DeleteListItem(frameID, listID, itemID string) error {
 func (c *Client) CreateTaskBoxItem(frameID string, item TaskBoxItemData) (*TaskBoxItem, error) {
 	reqBody := TaskBoxItemRequest{TaskBoxItem: item}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/task_box_items", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/task_box_items", c.effectiveURL(), frameID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task box item request: %w", err)
 	}

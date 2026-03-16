@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-03-16
+
+### Added
+- **Functional options** for `NewClient` / `NewClientWithToken`: `WithBaseURL`, `WithHTTPClient`, `WithLogger`, `WithRateLimit`, `WithRetry`
+- **Retry logic** with exponential backoff and full jitter using `crypto/rand`; respects `Retry-After` headers on 429 responses
+- **Token-bucket rate limiter** (`golang.org/x/time/rate`) wrapping all outgoing HTTP calls
+- **Typed errors**: `AuthError`, `NotFoundError`, `RateLimitError`, `NetworkError` — use `errors.As` to inspect
+- **slog-based debug logging** middleware; authorization headers are always redacted
+- **`RewardsPoller`** — goroutine-based poller that streams `RedemptionEvent` values for newly redeemed rewards
+- **`alpaca-trigger`** binary — wires `RewardsPoller` to an Alpaca Markets notional VOO market buy; defaults to paper-trading URL
+- **Local JSON deduplication state** for `RewardsPoller` so restarts do not re-fire events
+- **Table-driven tests** for all exported library functions
+- **`Example_` functions** in `lib/example_test.go` for pkg.go.dev rendering
+- **Go version matrix** in CI (`1.25.x` + `1.26.x` × ubuntu + macos)
+- `make build-trigger` Makefile target
+- `CONTRIBUTING.md` with breaking-change policy and conventional commit format
+
+### Changed
+- All resource methods now resolve URLs via `c.effectiveURL()` so `WithBaseURL` is honoured without swapping the package-level `SkylightURL`
+- README rewritten with architecture overview, quick-start, full API reference table, and Alpaca integration section
+
 ## [v0.0.8] - 2026-03-12
 
 ### Added

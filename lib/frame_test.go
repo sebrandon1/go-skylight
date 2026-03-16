@@ -1,297 +1,260 @@
 package lib
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestGetFrame(t *testing.T) {
-	mockFrame := Frame{ID: "frame1", Name: "Family Frame", TimeZone: "America/Chicago"}
-
-	mockResponseJSON, _ := json.Marshal(mockFrame)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/frames/frame1" {
-			t.Errorf("Expected path /api/frames/frame1, got %s", r.URL.Path)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
+	tests := []struct {
+		name     string
+		status   int
+		response string
+		wantName string
+		wantTZ   string
+		wantErr  bool
+	}{
+		{
+			name:     "returns frame info",
+			status:   http.StatusOK,
+			response: `{"id":"frame1","name":"Family Frame","time_zone":"America/Chicago"}`,
+			wantName: "Family Frame",
+			wantTZ:   "America/Chicago",
+		},
+		{
+			name:    "not found returns error",
+			status:  http.StatusNotFound,
+			wantErr: true,
+		},
+		{
+			name:     "invalid JSON returns error",
+			status:   http.StatusOK,
+			response: `not valid json`,
+			wantErr:  true,
+		},
 	}
 
-	frame, err := client.GetFrame("frame1")
-	if err != nil {
-		t.Fatalf("GetFrame failed: %v", err)
-	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	if frame.Name != "Family Frame" {
-		t.Errorf("Expected name 'Family Frame', got '%s'", frame.Name)
-	}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-	if frame.TimeZone != "America/Chicago" {
-		t.Errorf("Expected timezone 'America/Chicago', got '%s'", frame.TimeZone)
+			client, _ := NewClientWithToken("u", "t")
+			frame, err := client.GetFrame("frame1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if frame.Name != tc.wantName {
+				t.Errorf("Name: want %q got %q", tc.wantName, frame.Name)
+			}
+			if frame.TimeZone != tc.wantTZ {
+				t.Errorf("TimeZone: want %q got %q", tc.wantTZ, frame.TimeZone)
+			}
+		})
 	}
 }
 
 func TestListDevices(t *testing.T) {
-	mockDevices := []Device{
-		{ID: "dev1", Name: "Kitchen", Online: true},
-		{ID: "dev2", Name: "Living Room", Online: false},
+	tests := []struct {
+		name       string
+		status     int
+		response   string
+		wantLen    int
+		wantOnline bool
+		wantErr    bool
+	}{
+		{
+			name:       "returns devices",
+			status:     http.StatusOK,
+			response:   `[{"id":"dev1","name":"Kitchen","online":true},{"id":"dev2","name":"Living Room","online":false}]`,
+			wantLen:    2,
+			wantOnline: true,
+		},
+		{
+			name:    "not found returns error",
+			status:  http.StatusNotFound,
+			wantErr: true,
+		},
+		{
+			name:    "server error returns error",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockDevices)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/devices" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/frames/frame1/devices" {
-			t.Errorf("Expected path /api/frames/frame1/devices, got %s", r.URL.Path)
-		}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	devices, err := client.ListDevices("frame1")
-	if err != nil {
-		t.Fatalf("ListDevices failed: %v", err)
-	}
-
-	if len(devices) != 2 {
-		t.Errorf("Expected 2 devices, got %d", len(devices))
-	}
-
-	if !devices[0].Online {
-		t.Error("Expected first device to be online")
+			client, _ := NewClientWithToken("u", "t")
+			devices, err := client.ListDevices("frame1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(devices) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(devices))
+			}
+			if len(devices) > 0 && devices[0].Online != tc.wantOnline {
+				t.Errorf("devices[0].Online: want %v got %v", tc.wantOnline, devices[0].Online)
+			}
+		})
 	}
 }
 
 func TestGetAvatars(t *testing.T) {
-	mockAvatars := []Avatar{
-		{ID: "1", Name: "Cat"},
-		{ID: "2", Name: "Dog"},
+	tests := []struct {
+		name     string
+		status   int
+		response string
+		wantLen  int
+		wantErr  bool
+	}{
+		{
+			name:     "returns avatars",
+			status:   http.StatusOK,
+			response: `[{"id":"1","name":"Cat"},{"id":"2","name":"Dog"}]`,
+			wantLen:  2,
+		},
+		{
+			name:    "server error returns error",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockAvatars)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/api/avatars" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/avatars" {
-			t.Errorf("Expected path /api/avatars, got %s", r.URL.Path)
-		}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	avatars, err := client.GetAvatars()
-	if err != nil {
-		t.Fatalf("GetAvatars failed: %v", err)
-	}
-
-	if len(avatars) != 2 {
-		t.Errorf("Expected 2 avatars, got %d", len(avatars))
+			client, _ := NewClientWithToken("u", "t")
+			avatars, err := client.GetAvatars()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && len(avatars) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(avatars))
+			}
+		})
 	}
 }
 
 func TestGetColors(t *testing.T) {
-	mockColors := []Color{
-		{ID: "1", Name: "Red", Value: "#FF0000"},
-		{ID: "2", Name: "Blue", Value: "#0000FF"},
+	tests := []struct {
+		name      string
+		status    int
+		response  string
+		wantLen   int
+		wantValue string
+		wantErr   bool
+	}{
+		{
+			name:      "returns colors",
+			status:    http.StatusOK,
+			response:  `[{"id":"1","name":"Red","value":"#FF0000"},{"id":"2","name":"Blue","value":"#0000FF"}]`,
+			wantLen:   2,
+			wantValue: "#FF0000",
+		},
+		{
+			name:    "server error returns error",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockColors)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/api/colors" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/colors" {
-			t.Errorf("Expected path /api/colors, got %s", r.URL.Path)
-		}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	colors, err := client.GetColors()
-	if err != nil {
-		t.Fatalf("GetColors failed: %v", err)
-	}
-
-	if len(colors) != 2 {
-		t.Errorf("Expected 2 colors, got %d", len(colors))
-	}
-
-	if colors[0].Value != "#FF0000" {
-		t.Errorf("Expected value '#FF0000', got '%s'", colors[0].Value)
-	}
-}
-
-func TestFrameErrorHandling(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error": "Not found"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.GetFrame("nonexistent")
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-
-	_, err = client.ListDevices("nonexistent")
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
-
-func TestGetAvatarsError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.GetAvatars()
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
-
-func TestGetColorsError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.GetColors()
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
-
-func TestFrameInvalidJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`not valid json`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.GetFrame("frame1")
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestListDevicesError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListDevices("frame1")
-	if err == nil {
-		t.Error("Expected error, got nil")
+			client, _ := NewClientWithToken("u", "t")
+			colors, err := client.GetColors()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(colors) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(colors))
+			}
+			if tc.wantValue != "" && len(colors) > 0 && colors[0].Value != tc.wantValue {
+				t.Errorf("colors[0].Value: want %q got %q", tc.wantValue, colors[0].Value)
+			}
+		})
 	}
 }
