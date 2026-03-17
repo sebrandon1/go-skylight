@@ -147,6 +147,7 @@ func init() {
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreCreateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
 	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
+	choreCreateCmd.MarkFlagRequired("title") //nolint:errcheck
 
 	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
 	choreUpdateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
 
@@ -19,11 +18,7 @@ var frameInfoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {
@@ -41,11 +36,7 @@ var frameDevicesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		devices, err := client.ListDevices(frameID)
 		if err != nil {
@@ -61,11 +52,7 @@ var frameAvatarsCmd = &cobra.Command{
 	Use:   "avatars",
 	Short: "List available avatars",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		avatars, err := client.GetAvatars()
 		if err != nil {
@@ -81,11 +68,7 @@ var frameColorsCmd = &cobra.Command{
 	Use:   "colors",
 	Short: "List available colors",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		colors, err := client.GetColors()
 		if err != nil {

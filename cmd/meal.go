@@ -29,11 +29,7 @@ var mealCategoriesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		categories, err := client.ListMealCategories(frameID)
 		if err != nil {
@@ -51,11 +47,7 @@ var mealRecipesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		recipes, err := client.ListRecipes(frameID)
 		if err != nil {
@@ -73,11 +65,7 @@ var mealRecipeInfoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		recipe, err := client.GetRecipe(frameID, recipeID)
 		if err != nil {
@@ -95,11 +83,7 @@ var mealCreateRecipeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		recipe, err := client.CreateRecipe(frameID, lib.RecipeData{
 			Title:       recipeTitle,
@@ -122,13 +106,9 @@ var mealDeleteRecipeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.DeleteRecipe(frameID, recipeID)
+		err := client.DeleteRecipe(frameID, recipeID)
 		if err != nil {
 			fmt.Printf("Error deleting recipe: %v\n", err)
 			os.Exit(1)
@@ -144,11 +124,7 @@ var mealSittingsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		sittings, err := client.ListMealSittings(frameID)
 		if err != nil {
@@ -166,11 +142,7 @@ var mealCreateSittingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		sitting, err := client.CreateMealSitting(frameID, lib.MealSittingData{
 			RecipeID: recipeID,
@@ -192,13 +164,9 @@ var mealAddToGroceryCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.AddRecipeToGroceryList(frameID, recipeID)
+		err := client.AddRecipeToGroceryList(frameID, recipeID)
 		if err != nil {
 			fmt.Printf("Error adding to grocery list: %v\n", err)
 			os.Exit(1)
@@ -252,11 +220,13 @@ func init() {
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+	mealRecipeInfoCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
 
 	mealCreateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealCreateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
+	mealCreateRecipeCmd.MarkFlagRequired("title") //nolint:errcheck
 
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID to update")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
@@ -265,6 +235,7 @@ func init() {
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
 
 	mealDeleteRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+	mealDeleteRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
 
 	mealCreateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealCreateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date")

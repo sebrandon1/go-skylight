@@ -78,4 +78,7 @@ func init() {
 	bountyCreateCmd.Flags().StringVar(&bountyRewardTitle, "reward-title", "", "Reward title")
 	bountyCreateCmd.Flags().StringVar(&bountyEmojiIcon, "emoji-icon", "", "Reward emoji icon")
 	bountyCreateCmd.Flags().BoolVar(&bountyRecurring, "recurring", false, "Make chore recurring")
+	bountyCreateCmd.MarkFlagRequired("title")        //nolint:errcheck
+	bountyCreateCmd.MarkFlagRequired("points")       //nolint:errcheck
+	bountyCreateCmd.MarkFlagRequired("reward-title") //nolint:errcheck
 }
