@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestCreateBounty(t *testing.T) {
@@ -19,6 +20,107 @@ func TestCreateBounty(t *testing.T) {
 		wantDeleteN int32
 		wantErr     bool
 	}{
+		{
+			name:  "derives category_ids from AssigneeID",
+			input: BountyData{Title: "Task", Points: 5, RewardTitle: "Prize", AssigneeID: "6750947"},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/chores":
+					w.WriteHeader(http.StatusCreated)
+					if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
+						Data: choreAPIEntry{ID: "ch1", Attributes: struct {
+							Summary      string `json:"summary"`
+							Status       string `json:"status"`
+							Start        string `json:"start"`
+							RewardPoints int    `json:"reward_points"`
+							Recurring    bool   `json:"recurring"`
+						}{Summary: "Task", RewardPoints: 5}},
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+					}
+				case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/rewards":
+					var body map[string]any
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					catIDs, ok := body["category_ids"]
+					if !ok {
+						t.Error("reward request body missing category_ids")
+					} else {
+						ids, _ := catIDs.([]any)
+						if len(ids) != 1 || ids[0] != float64(6750947) {
+							t.Errorf("category_ids: want [6750947], got %v", catIDs)
+						}
+					}
+					w.WriteHeader(http.StatusCreated)
+					if err := json.NewEncoder(w).Encode(rewardAPIResponse{
+						Data: []rewardAPIEntry{{ID: "rw1", Attributes: struct {
+							Name                string  `json:"name"`
+							EmojiIcon           string  `json:"emoji_icon"`
+							PointValue          int     `json:"point_value"`
+							RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+							RedeemedAt          *string `json:"redeemed_at"`
+						}{Name: "Prize", PointValue: 5}}},
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+					}
+				}
+			},
+			wantChore:  "Task",
+			wantReward: "Prize",
+			wantPoints: 5,
+		},
+		{
+			name:  "no category_ids when AssigneeID empty",
+			input: BountyData{Title: "Task", Points: 5, RewardTitle: "Prize"},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/chores":
+					w.WriteHeader(http.StatusCreated)
+					if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
+						Data: choreAPIEntry{ID: "ch1", Attributes: struct {
+							Summary      string `json:"summary"`
+							Status       string `json:"status"`
+							Start        string `json:"start"`
+							RewardPoints int    `json:"reward_points"`
+							Recurring    bool   `json:"recurring"`
+						}{Summary: "Task", RewardPoints: 5}},
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+					}
+				case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/rewards":
+					var body map[string]any
+					if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					if catIDs, ok := body["category_ids"]; ok {
+						ids, _ := catIDs.([]any)
+						if len(ids) > 0 {
+							t.Errorf("expected no category_ids, got %v", catIDs)
+						}
+					}
+					w.WriteHeader(http.StatusCreated)
+					if err := json.NewEncoder(w).Encode(rewardAPIResponse{
+						Data: []rewardAPIEntry{{ID: "rw1", Attributes: struct {
+							Name                string  `json:"name"`
+							EmojiIcon           string  `json:"emoji_icon"`
+							PointValue          int     `json:"point_value"`
+							RespawnOnRedemption bool    `json:"respawn_on_redemption"`
+							RedeemedAt          *string `json:"redeemed_at"`
+						}{Name: "Prize", PointValue: 5}}},
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+					}
+				}
+			},
+			wantChore:  "Task",
+			wantReward: "Prize",
+			wantPoints: 5,
+		},
 		{
 			name:  "creates chore and reward",
 			input: BountyData{Title: "Do dishes", Points: 10, RewardTitle: "Ice cream", EmojiIcon: "🍦"},
@@ -231,5 +333,55 @@ func TestListBounties(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestListBountiesDateRange(t *testing.T) {
+	var gotAfter, gotBefore string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/frames/frame1/chores":
+			gotAfter = r.URL.Query().Get("after")
+			gotBefore = r.URL.Query().Get("before")
+			if err := json.NewEncoder(w).Encode(choreAPIResponse{}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		case "/api/frames/frame1/rewards":
+			if err := json.NewEncoder(w).Encode(rewardAPIResponse{}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.ListBounties("frame1"); err != nil {
+		t.Fatalf("ListBounties: %v", err)
+	}
+
+	if gotAfter == "" {
+		t.Error("expected non-empty after query param")
+	}
+	if gotBefore == "" {
+		t.Error("expected non-empty before query param")
+	}
+	afterT, err := time.Parse(DateFormat, gotAfter)
+	if err != nil {
+		t.Errorf("after=%q is not a valid date: %v", gotAfter, err)
+	}
+	beforeT, err := time.Parse(DateFormat, gotBefore)
+	if err != nil {
+		t.Errorf("before=%q is not a valid date: %v", gotBefore, err)
+	}
+	if !beforeT.After(afterT) {
+		t.Errorf("expected before (%s) > after (%s)", gotBefore, gotAfter)
 	}
 }

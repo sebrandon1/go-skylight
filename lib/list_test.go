@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -446,6 +447,35 @@ func TestDeleteListItem(t *testing.T) {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestUpdateListFlatJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		if _, hasWrapper := body["list"]; hasWrapper {
+			t.Error(`request body must not have a "list" wrapper key`)
+		}
+		if _, hasLabel := body["label"]; !hasLabel {
+			t.Error(`request body must have a top-level "label" key`)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.UpdateList("frame1", "1", ListData{Title: "Renamed"}); err != nil {
+		t.Fatalf("UpdateList: %v", err)
 	}
 }
 
