@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -487,6 +488,100 @@ func TestAddRecipeToGroceryList(t *testing.T) {
 			err := client.AddRecipeToGroceryList("frame1", tc.recipeID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestCreateMealSittingFieldNames(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if _, ok := body["meal_recipe_id"]; !ok {
+			t.Error(`request body must have "meal_recipe_id" key`)
+		}
+		if _, ok := body["recipe_id"]; ok {
+			t.Error(`request body must not have "recipe_id" key`)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if _, err := w.Write([]byte(`{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":""},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}]}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.CreateMealSitting("frame1", MealSittingData{RecipeID: "recipe1", Date: "2024-01-15"}); err != nil {
+		t.Fatalf("CreateMealSitting: %v", err)
+	}
+}
+
+func TestCreateMealSittingSummary(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       MealSittingData
+		wantSummary string
+		wantAbsent  bool
+	}{
+		{
+			name:        "sends summary when provided",
+			input:       MealSittingData{Summary: "Pasta Night", Date: "2024-01-15"},
+			wantSummary: "Pasta Night",
+		},
+		{
+			name:       "omits summary when empty",
+			input:      MealSittingData{Date: "2024-01-15"},
+			wantAbsent: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Errorf("decode body: %v", err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				val, present := body["summary"]
+				if tc.wantAbsent && present {
+					t.Errorf("expected summary to be absent, got %v", val)
+				}
+				if !tc.wantAbsent {
+					if !present {
+						t.Error("expected summary to be present")
+					} else if val != tc.wantSummary {
+						t.Errorf("summary: want %q got %v", tc.wantSummary, val)
+					}
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				if _, err := w.Write([]byte(`{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":""},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}]}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			if _, err := client.CreateMealSitting("frame1", tc.input); err != nil {
+				t.Fatalf("CreateMealSitting: %v", err)
 			}
 		})
 	}
