@@ -156,7 +156,7 @@ func TestAuthorizationHeader(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`[]`)); err != nil {
+		if _, err := w.Write([]byte(`{"data":[]}`)); err != nil {
 			t.Errorf("write: %v", err)
 		}
 	}))
@@ -235,7 +235,7 @@ func TestStatusCodeHandling(t *testing.T) {
 		{
 			name:   "PUT 201 created with body succeeds",
 			status: http.StatusCreated,
-			body:   `{"id":"1","title":"New List"}`,
+			body:   `{"data":{"id":"1","attributes":{"label":"New List","color":"","kind":""}}}`,
 			fn: func(c *Client) error {
 				list, err := c.UpdateList("frame1", "1", ListData{Title: "New List"})
 				if err == nil && list.Title != "New List" {
@@ -410,7 +410,7 @@ func TestBadURLNewRequestErrors(t *testing.T) {
 		{"ListRecipes", func(c *Client) error { _, err := c.ListRecipes("f"); return err }},
 		{"GetRecipe", func(c *Client) error { _, err := c.GetRecipe("f", "1"); return err }},
 		{"ListMealCategories", func(c *Client) error { _, err := c.ListMealCategories("f"); return err }},
-		{"ListMealSittings", func(c *Client) error { _, err := c.ListMealSittings("f"); return err }},
+		{"ListMealSittings", func(c *Client) error { _, err := c.ListMealSittings("f", MealSittingListOptions{}); return err }},
 		// DELETE-based
 		{"DeleteCalendarEvent", func(c *Client) error { return c.DeleteCalendarEvent("f", "e1") }},
 		{"DeleteChore", func(c *Client) error { return c.DeleteChore("f", "c1") }},

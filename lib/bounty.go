@@ -1,6 +1,10 @@
 package lib
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 // CreateBounty creates a chore and a paired reward as a single bounty.
 // If reward creation fails, a best-effort cleanup deletes the chore.
@@ -16,10 +20,17 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 		return nil, fmt.Errorf("failed to create bounty chore: %w", err)
 	}
 
+	categoryIDs := data.CategoryIDs
+	if len(categoryIDs) == 0 && data.AssigneeID != "" {
+		if id, err := strconv.Atoi(data.AssigneeID); err == nil {
+			categoryIDs = []int{id}
+		}
+	}
 	reward, err := c.CreateReward(frameID, RewardData{
-		Title:     data.RewardTitle,
-		Points:    data.Points,
-		EmojiIcon: data.EmojiIcon,
+		Title:       data.RewardTitle,
+		Points:      data.Points,
+		EmojiIcon:   data.EmojiIcon,
+		CategoryIDs: categoryIDs,
 	})
 	if err != nil {
 		// Best-effort cleanup
@@ -36,7 +47,12 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 // ListBounties lists pending chores with points and unredeemed rewards,
 // matching them by point value as a heuristic.
 func (c *Client) ListBounties(frameID string) ([]Bounty, error) {
-	chores, err := c.ListChores(frameID, ChoreListOptions{Status: "pending"})
+	today := time.Now()
+	chores, err := c.ListChores(frameID, ChoreListOptions{
+		Status: "pending",
+		After:  today.AddDate(0, 0, -1).Format(DateFormat),
+		Before: today.AddDate(0, 1, 0).Format(DateFormat),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list bounty chores: %w", err)
 	}

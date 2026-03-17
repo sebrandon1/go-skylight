@@ -25,10 +25,10 @@ type SessionRequest struct {
 // CalendarEvent represents a calendar event.
 type CalendarEvent struct {
 	ID          string `json:"id,omitempty"`
-	Title       string `json:"title,omitempty"`
+	Title       string `json:"summary,omitempty"`
 	Description string `json:"description,omitempty"`
-	StartAt     string `json:"start_at,omitempty"`
-	EndAt       string `json:"end_at,omitempty"`
+	StartAt     string `json:"starts_at,omitempty"`
+	EndAt       string `json:"ends_at,omitempty"`
 	AllDay      bool   `json:"all_day,omitempty"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
@@ -36,29 +36,94 @@ type CalendarEvent struct {
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
-// CalendarEventRequest represents the request body for creating/updating a calendar event.
-type CalendarEventRequest struct {
-	CalendarEvent CalendarEventData `json:"calendar_event"`
-}
-
 // CalendarEventData holds the event fields for create/update requests.
+// Field names match the Skylight API JSON field names.
 type CalendarEventData struct {
-	Title       string `json:"title,omitempty"`
+	Title       string `json:"summary,omitempty"`
 	Description string `json:"description,omitempty"`
-	StartAt     string `json:"start_at,omitempty"`
-	EndAt       string `json:"end_at,omitempty"`
+	StartAt     string `json:"starts_at,omitempty"`
+	EndAt       string `json:"ends_at,omitempty"`
 	AllDay      bool   `json:"all_day,omitempty"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
 }
 
+// calendarAPIResponse wraps the JSON-API envelope for calendar event list responses.
+type calendarAPIResponse struct {
+	Data []calendarAPIEntry `json:"data"`
+}
+
+// calendarAPISingleResponse wraps the JSON-API envelope for single calendar event responses.
+type calendarAPISingleResponse struct {
+	Data calendarAPIEntry `json:"data"`
+}
+
+// calendarAPIEntry represents a single calendar event in JSON-API format.
+type calendarAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Summary     string `json:"summary"`
+		Description string `json:"description"`
+		StartsAt    string `json:"starts_at"`
+		EndsAt      string `json:"ends_at"`
+		AllDay      bool   `json:"all_day"`
+		Color       string `json:"color"`
+	} `json:"attributes"`
+	Relationships struct {
+		Category struct {
+			Data *struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"category"`
+	} `json:"relationships"`
+}
+
+func (e *calendarAPIEntry) toCalendarEvent() CalendarEvent {
+	ev := CalendarEvent{
+		ID:          e.ID,
+		Title:       e.Attributes.Summary,
+		Description: e.Attributes.Description,
+		StartAt:     e.Attributes.StartsAt,
+		EndAt:       e.Attributes.EndsAt,
+		AllDay:      e.Attributes.AllDay,
+		Color:       e.Attributes.Color,
+	}
+	if e.Relationships.Category.Data != nil {
+		ev.CategoryID = e.Relationships.Category.Data.ID
+	}
+	return ev
+}
+
 // SourceCalendar represents a source calendar linked to a frame.
 type SourceCalendar struct {
 	ID       string `json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
+	Name     string `json:"label,omitempty"`
 	Color    string `json:"color,omitempty"`
 	Enabled  bool   `json:"enabled,omitempty"`
-	Provider string `json:"provider,omitempty"`
+	Provider string `json:"kind,omitempty"`
+}
+
+// sourceCalendarAPIResponse wraps the JSON-API envelope for source calendar list responses.
+type sourceCalendarAPIResponse struct {
+	Data []sourceCalendarAPIEntry `json:"data"`
+}
+
+// sourceCalendarAPIEntry represents a single source calendar in JSON-API format.
+type sourceCalendarAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Label   string `json:"label"`
+		Kind    string `json:"kind"`
+		Enabled bool   `json:"editable"`
+	} `json:"attributes"`
+}
+
+func (e *sourceCalendarAPIEntry) toSourceCalendar() SourceCalendar {
+	return SourceCalendar{
+		ID:       e.ID,
+		Name:     e.Attributes.Label,
+		Provider: e.Attributes.Kind,
+	}
 }
 
 // Chore represents a chore/task (flattened from JSON-API response).
@@ -131,8 +196,9 @@ type ChoreData struct {
 // List represents a list (e.g., grocery list, todo list).
 type List struct {
 	ID        string     `json:"id,omitempty"`
-	Title     string     `json:"title,omitempty"`
+	Title     string     `json:"label,omitempty"`
 	Color     string     `json:"color,omitempty"`
+	Kind      string     `json:"kind,omitempty"`
 	Items     []ListItem `json:"list_items,omitempty"`
 	CreatedAt string     `json:"created_at,omitempty"`
 	UpdatedAt string     `json:"updated_at,omitempty"`
@@ -141,34 +207,89 @@ type List struct {
 // ListItem represents an item within a list.
 type ListItem struct {
 	ID        string `json:"id,omitempty"`
-	Title     string `json:"title,omitempty"`
+	Title     string `json:"label,omitempty"`
 	Completed bool   `json:"completed,omitempty"`
+	Status    string `json:"status,omitempty"`
 	Position  int    `json:"position,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 }
 
-// ListRequest represents the request body for creating/updating a list.
-type ListRequest struct {
-	List ListData `json:"list"`
-}
-
 // ListData holds the list fields for create/update requests.
 type ListData struct {
-	Title string `json:"title,omitempty"`
+	Title string `json:"label,omitempty"`
 	Color string `json:"color,omitempty"`
-}
-
-// ListItemRequest represents the request body for creating/updating a list item.
-type ListItemRequest struct {
-	ListItem ListItemData `json:"list_item"`
+	Kind  string `json:"kind,omitempty"`
 }
 
 // ListItemData holds the list item fields for create/update requests.
 type ListItemData struct {
-	Title     string `json:"title,omitempty"`
-	Completed bool   `json:"completed,omitempty"`
+	Title     string `json:"label,omitempty"`
+	Completed bool   `json:"-"`
 	Position  int    `json:"position,omitempty"`
+}
+
+// listItemSendData is the internal struct used when sending list item requests to the API.
+type listItemSendData struct {
+	Label    string `json:"label,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Position int    `json:"position,omitempty"`
+}
+
+// listAPIResponse wraps the JSON-API envelope for list responses.
+type listAPIResponse struct {
+	Data []listAPIEntry `json:"data"`
+}
+
+// listAPISingleResponse wraps the JSON-API envelope for single list responses.
+type listAPISingleResponse struct {
+	Data     listAPIEntry       `json:"data"`
+	Included []listItemAPIEntry `json:"included"`
+}
+
+// listAPIEntry represents a single list in JSON-API format.
+type listAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Label string `json:"label"`
+		Color string `json:"color"`
+		Kind  string `json:"kind"`
+	} `json:"attributes"`
+}
+
+func (e *listAPIEntry) toList() List {
+	return List{
+		ID:    e.ID,
+		Title: e.Attributes.Label,
+		Color: e.Attributes.Color,
+		Kind:  e.Attributes.Kind,
+	}
+}
+
+// listItemAPIEntry represents a single list item in JSON-API format.
+type listItemAPIEntry struct {
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	Attributes struct {
+		Label    string `json:"label"`
+		Status   string `json:"status"`
+		Position int    `json:"position"`
+	} `json:"attributes"`
+}
+
+// listItemAPISingleResponse wraps the JSON-API envelope for single list item responses.
+type listItemAPISingleResponse struct {
+	Data listItemAPIEntry `json:"data"`
+}
+
+func (e *listItemAPIEntry) toListItem() ListItem {
+	return ListItem{
+		ID:        e.ID,
+		Title:     e.Attributes.Label,
+		Status:    e.Attributes.Status,
+		Completed: e.Attributes.Status == "completed",
+		Position:  e.Attributes.Position,
+	}
 }
 
 // TaskBoxItem represents a task box item.
@@ -201,6 +322,11 @@ type Reward struct {
 // rewardAPIResponse wraps the JSON-API envelope for reward list responses.
 type rewardAPIResponse struct {
 	Data []rewardAPIEntry `json:"data"`
+}
+
+// rewardAPISingleResponse wraps the JSON-API envelope for single reward responses.
+type rewardAPISingleResponse struct {
+	Data rewardAPIEntry `json:"data"`
 }
 
 // rewardAPIEntry represents a single reward in JSON-API format.
@@ -265,77 +391,229 @@ type RewardPointEntry struct {
 
 // Recipe represents a meal recipe.
 type Recipe struct {
-	ID          string   `json:"id,omitempty"`
-	Title       string   `json:"title,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Ingredients []string `json:"ingredients,omitempty"`
-	URL         string   `json:"url,omitempty"`
-	ImageURL    string   `json:"image_url,omitempty"`
-	CategoryID  string   `json:"category_id,omitempty"`
-	CreatedAt   string   `json:"created_at,omitempty"`
-	UpdatedAt   string   `json:"updated_at,omitempty"`
-}
-
-// RecipeRequest represents the request body for creating/updating a recipe.
-type RecipeRequest struct {
-	Recipe RecipeData `json:"recipe"`
+	ID             string   `json:"id,omitempty"`
+	Title          string   `json:"summary,omitempty"`
+	Description    string   `json:"description,omitempty"`
+	Ingredients    []string `json:"ingredients,omitempty"`
+	URL            string   `json:"url,omitempty"`
+	ImageURL       string   `json:"image_url,omitempty"`
+	MealCategoryID string   `json:"meal_category_id,omitempty"`
+	CreatedAt      string   `json:"created_at,omitempty"`
+	UpdatedAt      string   `json:"updated_at,omitempty"`
 }
 
 // RecipeData holds the recipe fields for create/update requests.
 type RecipeData struct {
-	Title       string   `json:"title,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Ingredients []string `json:"ingredients,omitempty"`
-	URL         string   `json:"url,omitempty"`
-	ImageURL    string   `json:"image_url,omitempty"`
-	CategoryID  string   `json:"category_id,omitempty"`
+	Title          string   `json:"summary,omitempty"`
+	Description    string   `json:"description,omitempty"`
+	Ingredients    []string `json:"ingredients,omitempty"`
+	URL            string   `json:"url,omitempty"`
+	MealCategoryID string   `json:"meal_category_id,omitempty"`
+}
+
+// recipeAPIResponse wraps the JSON-API envelope for recipe list responses.
+type recipeAPIResponse struct {
+	Data []recipeAPIEntry `json:"data"`
+}
+
+// recipeAPISingleResponse wraps the JSON-API envelope for single recipe responses.
+type recipeAPISingleResponse struct {
+	Data recipeAPIEntry `json:"data"`
+}
+
+// recipeAPIEntry represents a single recipe in JSON-API format.
+type recipeAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Summary     string   `json:"summary"`
+		Description string   `json:"description"`
+		Ingredients []string `json:"ingredients"`
+		URL         string   `json:"url"`
+		ImageURL    string   `json:"image_url"`
+	} `json:"attributes"`
+	Relationships struct {
+		MealCategory struct {
+			Data *struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"meal_category"`
+	} `json:"relationships"`
+}
+
+func (e *recipeAPIEntry) toRecipe() Recipe {
+	r := Recipe{
+		ID:          e.ID,
+		Title:       e.Attributes.Summary,
+		Description: e.Attributes.Description,
+		Ingredients: e.Attributes.Ingredients,
+		URL:         e.Attributes.URL,
+		ImageURL:    e.Attributes.ImageURL,
+	}
+	if e.Relationships.MealCategory.Data != nil {
+		r.MealCategoryID = e.Relationships.MealCategory.Data.ID
+	}
+	return r
 }
 
 // MealSitting represents a meal sitting (scheduled meal).
 type MealSitting struct {
-	ID        string `json:"id,omitempty"`
-	RecipeID  string `json:"recipe_id,omitempty"`
-	Date      string `json:"date,omitempty"`
-	MealType  string `json:"meal_type,omitempty"`
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
-}
-
-// MealSittingRequest represents the request body for creating a meal sitting.
-type MealSittingRequest struct {
-	MealSitting MealSittingData `json:"meal_sitting"`
+	ID             string `json:"id,omitempty"`
+	Summary        string `json:"summary,omitempty"`
+	RecipeID       string `json:"recipe_id,omitempty"`
+	MealCategoryID string `json:"meal_category_id,omitempty"`
+	Date           string `json:"date,omitempty"`
+	CreatedAt      string `json:"created_at,omitempty"`
+	UpdatedAt      string `json:"updated_at,omitempty"`
 }
 
 // MealSittingData holds the meal sitting fields for create requests.
 type MealSittingData struct {
-	RecipeID string `json:"recipe_id,omitempty"`
-	Date     string `json:"date,omitempty"`
-	MealType string `json:"meal_type,omitempty"`
+	Summary        string `json:"summary,omitempty"`
+	RecipeID       string `json:"meal_recipe_id,omitempty"`
+	MealCategoryID string `json:"meal_category_id,omitempty"`
+	Date           string `json:"date,omitempty"`
+}
+
+// MealSittingListOptions holds filters for listing meal sittings.
+type MealSittingListOptions struct {
+	DateMin string
+	DateMax string
+}
+
+// mealSittingAPIResponse wraps the JSON-API envelope for meal sitting list/create responses.
+type mealSittingAPIResponse struct {
+	Data []mealSittingAPIEntry `json:"data"`
+}
+
+// mealSittingAPIEntry represents a single meal sitting in JSON-API format.
+type mealSittingAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Summary string `json:"summary"`
+	} `json:"attributes"`
+	Relationships struct {
+		MealCategory struct {
+			Data *struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"meal_category"`
+		MealRecipe struct {
+			Data *struct {
+				ID string `json:"id"`
+			} `json:"data"`
+		} `json:"meal_recipe"`
+	} `json:"relationships"`
+}
+
+func (e *mealSittingAPIEntry) toMealSitting() MealSitting {
+	s := MealSitting{
+		ID:      e.ID,
+		Summary: e.Attributes.Summary,
+	}
+	if e.Relationships.MealCategory.Data != nil {
+		s.MealCategoryID = e.Relationships.MealCategory.Data.ID
+	}
+	if e.Relationships.MealRecipe.Data != nil {
+		s.RecipeID = e.Relationships.MealRecipe.Data.ID
+	}
+	return s
 }
 
 // MealCategory represents a meal category.
 type MealCategory struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"label,omitempty"`
+	Color string `json:"color,omitempty"`
+}
+
+// mealCategoryAPIResponse wraps the JSON-API envelope for meal category list responses.
+type mealCategoryAPIResponse struct {
+	Data []mealCategoryAPIEntry `json:"data"`
+}
+
+// mealCategoryAPIEntry represents a single meal category in JSON-API format.
+type mealCategoryAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Label string `json:"label"`
+		Color string `json:"color"`
+	} `json:"attributes"`
+}
+
+func (e *mealCategoryAPIEntry) toMealCategory() MealCategory {
+	return MealCategory{
+		ID:    e.ID,
+		Name:  e.Attributes.Label,
+		Color: e.Attributes.Color,
+	}
 }
 
 // Category represents a family member/category.
 type Category struct {
 	ID        string `json:"id,omitempty"`
-	Name      string `json:"name,omitempty"`
+	Name      string `json:"label,omitempty"`
 	Color     string `json:"color,omitempty"`
-	AvatarURL string `json:"avatar_url,omitempty"`
+	AvatarURL string `json:"profile_pic_url,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
+}
+
+// categoryAPIResponse wraps the JSON-API envelope for category list responses.
+type categoryAPIResponse struct {
+	Data []categoryAPIEntry `json:"data"`
+}
+
+// categoryAPIEntry represents a single category in JSON-API format.
+type categoryAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Label         string  `json:"label"`
+		Color         string  `json:"color"`
+		ProfilePicURL *string `json:"profile_pic_url"`
+	} `json:"attributes"`
+}
+
+func (e *categoryAPIEntry) toCategory() Category {
+	c := Category{
+		ID:    e.ID,
+		Name:  e.Attributes.Label,
+		Color: e.Attributes.Color,
+	}
+	if e.Attributes.ProfilePicURL != nil {
+		c.AvatarURL = *e.Attributes.ProfilePicURL
+	}
+	return c
 }
 
 // Frame represents a Skylight frame/device group.
 type Frame struct {
 	ID        string `json:"id,omitempty"`
 	Name      string `json:"name,omitempty"`
-	TimeZone  string `json:"time_zone,omitempty"`
+	TimeZone  string `json:"timezone,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
+}
+
+// frameAPIResponse wraps the JSON-API envelope for single frame responses.
+type frameAPIResponse struct {
+	Data frameAPIEntry `json:"data"`
+}
+
+// frameAPIEntry represents a frame in JSON-API format.
+type frameAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Name     string `json:"name"`
+		TimeZone string `json:"timezone"`
+	} `json:"attributes"`
+}
+
+func (e *frameAPIEntry) toFrame() Frame {
+	return Frame{
+		ID:       e.ID,
+		Name:     e.Attributes.Name,
+		TimeZone: e.Attributes.TimeZone,
+	}
 }
 
 // Device represents a physical Skylight device.
@@ -350,6 +628,28 @@ type Device struct {
 	UpdatedAt    string `json:"updated_at,omitempty"`
 }
 
+// deviceAPIResponse wraps the JSON-API envelope for device list responses.
+type deviceAPIResponse struct {
+	Data []deviceAPIEntry `json:"data"`
+}
+
+// deviceAPIEntry represents a single device in JSON-API format.
+type deviceAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Name      string `json:"name"`
+		Activated bool   `json:"activated"`
+	} `json:"attributes"`
+}
+
+func (e *deviceAPIEntry) toDevice() Device {
+	return Device{
+		ID:     e.ID,
+		Name:   e.Attributes.Name,
+		Online: e.Attributes.Activated,
+	}
+}
+
 // Avatar represents an available avatar option.
 type Avatar struct {
 	ID       string `json:"id,omitempty"`
@@ -357,11 +657,37 @@ type Avatar struct {
 	ImageURL string `json:"image_url,omitempty"`
 }
 
+// avatarAPIResponse wraps the JSON-API envelope for avatar list responses.
+type avatarAPIResponse struct {
+	Data []avatarAPIEntry `json:"data"`
+}
+
+// avatarAPIEntry represents a single avatar in JSON-API format.
+type avatarAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Name     string `json:"name"`
+		ImageURL string `json:"image_url"`
+	} `json:"attributes"`
+}
+
+func (e *avatarAPIEntry) toAvatar() Avatar {
+	return Avatar{
+		ID:       e.ID,
+		Name:     e.Attributes.Name,
+		ImageURL: e.Attributes.ImageURL,
+	}
+}
+
 // Color represents an available color option.
 type Color struct {
-	ID    string `json:"id,omitempty"`
-	Name  string `json:"name,omitempty"`
-	Value string `json:"value,omitempty"`
+	Name string `json:"name,omitempty"`
+	Hex  string `json:"hex,omitempty"`
+}
+
+// colorAPIResponse wraps the data envelope for color list responses.
+type colorAPIResponse struct {
+	Data []Color `json:"data"`
 }
 
 // Dashboard aggregates today's data from multiple Skylight resources.
@@ -380,6 +706,7 @@ type BountyData struct {
 	Points      int    `json:"points"`
 	DueDate     string `json:"due_date,omitempty"`
 	AssigneeID  string `json:"assignee_id,omitempty"`
+	CategoryIDs []int  `json:"category_ids,omitempty"`
 	Recurring   bool   `json:"recurring,omitempty"`
 	RewardTitle string `json:"reward_title"`
 	EmojiIcon   string `json:"emoji_icon,omitempty"`

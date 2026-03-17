@@ -12,7 +12,7 @@ import (
 
 func TestWithBaseURL(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewEncoder(w).Encode([]CalendarEvent{{ID: "1", Title: "Test"}}); err != nil {
+		if err := json.NewEncoder(w).Encode(calendarAPIResponse{Data: []calendarAPIEntry{{ID: "1"}}}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))
@@ -72,7 +72,7 @@ func TestWithLogger(t *testing.T) {
 	// Verify WithLogger stores the logger and that requests proceed normally
 	// with logging enabled (the logger discards to /dev/null via a nil handler).
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewEncoder(w).Encode([]CalendarEvent{{ID: "1", Title: "T"}}); err != nil {
+		if err := json.NewEncoder(w).Encode(calendarAPIResponse{Data: []calendarAPIEntry{{ID: "1"}}}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))

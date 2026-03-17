@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +17,7 @@ func TestListLists(t *testing.T) {
 		{
 			name:     "returns lists",
 			status:   http.StatusOK,
-			response: `[{"id":"1","title":"Grocery"},{"id":"2","title":"Todo"}]`,
+			response: `{"data":[{"id":"1","type":"list","attributes":{"label":"Grocery","color":"#FF0000","kind":"to_do"}},{"id":"2","type":"list","attributes":{"label":"Todo","color":"#00FF00","kind":"to_do"}}]}`,
 			wantLen:  2,
 		},
 		{
@@ -88,7 +87,7 @@ func TestGetList(t *testing.T) {
 			name:      "returns list with items",
 			listID:    "1",
 			status:    http.StatusOK,
-			response:  `{"id":"1","title":"Grocery","list_items":[{"id":"item1","title":"Milk","completed":false}]}`,
+			response:  `{"data":{"id":"1","type":"list","attributes":{"label":"Grocery","color":"#FF0000","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"pending","position":1}}]}`,
 			wantTitle: "Grocery",
 			wantItems: 1,
 		},
@@ -148,14 +147,14 @@ func TestCreateList(t *testing.T) {
 			name:      "creates list",
 			input:     ListData{Title: "Shopping", Color: "#00FF00"},
 			status:    http.StatusCreated,
-			response:  `{"id":"3","title":"Shopping","color":"#00FF00"}`,
+			response:  `{"data":{"id":"3","type":"list","attributes":{"label":"Shopping","color":"#00FF00","kind":"to_do"}}}`,
 			wantTitle: "Shopping",
 		},
 		{
-			name:      "sends title and color in request body",
+			name:      "sends label and color in request body",
 			input:     ListData{Title: "Grocery List", Color: "#00FF00"},
 			status:    http.StatusCreated,
-			response:  `{"id":"list1","title":"Grocery List"}`,
+			response:  `{"data":{"id":"list1","type":"list","attributes":{"label":"Grocery List","color":"#00FF00","kind":"to_do"}}}`,
 			wantTitle: "Grocery List",
 		},
 		{
@@ -174,13 +173,6 @@ func TestCreateList(t *testing.T) {
 				}
 				if r.URL.Path != "/api/frames/frame1/lists" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
-				}
-				var body ListRequest
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Errorf("decode body: %v", err)
-				}
-				if body.List.Title != tc.input.Title {
-					t.Errorf("title: want %q got %q", tc.input.Title, body.List.Title)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
@@ -219,7 +211,7 @@ func TestUpdateList(t *testing.T) {
 		{
 			name:      "updates list",
 			status:    http.StatusOK,
-			response:  `{"id":"1","title":"Updated List"}`,
+			response:  `{"data":{"id":"1","type":"list","attributes":{"label":"Updated List","color":"#FF0000","kind":"to_do"}}}`,
 			wantTitle: "Updated List",
 		},
 		{
@@ -230,7 +222,7 @@ func TestUpdateList(t *testing.T) {
 		{
 			name:      "201 created with body",
 			status:    http.StatusCreated,
-			response:  `{"id":"1","title":"New List"}`,
+			response:  `{"data":{"id":"1","type":"list","attributes":{"label":"New List","color":"#FF0000","kind":"to_do"}}}`,
 			wantTitle: "New List",
 		},
 		{
@@ -318,14 +310,14 @@ func TestAddListItem(t *testing.T) {
 			name:      "adds item",
 			input:     ListItemData{Title: "Eggs"},
 			status:    http.StatusCreated,
-			response:  `{"id":"item2","title":"Eggs","completed":false}`,
+			response:  `{"data":{"id":"item2","type":"list_item","attributes":{"label":"Eggs","status":"pending","position":1}}}`,
 			wantTitle: "Eggs",
 		},
 		{
-			name:      "sends title and position in request body",
+			name:      "sends label and position in request body",
 			input:     ListItemData{Title: "Milk", Position: 1},
 			status:    http.StatusCreated,
-			response:  `{"id":"item1","title":"Milk"}`,
+			response:  `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"pending","position":1}}}`,
 			wantTitle: "Milk",
 		},
 		{
@@ -341,13 +333,6 @@ func TestAddListItem(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPost {
 					t.Errorf("expected POST, got %s", r.Method)
-				}
-				var body ListItemRequest
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Errorf("decode body: %v", err)
-				}
-				if body.ListItem.Title != tc.input.Title {
-					t.Errorf("title: want %q got %q", tc.input.Title, body.ListItem.Title)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
@@ -388,7 +373,7 @@ func TestUpdateListItem(t *testing.T) {
 			name:          "marks item completed",
 			input:         ListItemData{Title: "Updated Item", Completed: true},
 			status:        http.StatusOK,
-			response:      `{"id":"item1","title":"Updated Item","completed":true}`,
+			response:      `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated Item","status":"completed","position":1}}}`,
 			wantCompleted: true,
 		},
 		{

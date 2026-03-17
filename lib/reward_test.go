@@ -180,7 +180,7 @@ func TestUpdateReward(t *testing.T) {
 			rewardID:   "reward1",
 			input:      RewardData{Title: "Updated reward", Points: 25},
 			status:     http.StatusOK,
-			response:   `{"data":[{"id":"1","attributes":{"name":"Updated reward","point_value":25}}]}`,
+			response:   `{"data":{"id":"1","attributes":{"name":"Updated reward","point_value":25}}}`,
 			wantPoints: 25,
 		},
 		{

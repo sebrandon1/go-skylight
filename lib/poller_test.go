@@ -48,7 +48,15 @@ func makePollerServer(t *testing.T, rewards []Reward, categories []Category) *ht
 				t.Errorf("encode rewards: %v", err)
 			}
 		case "/api/frames/f1/categories":
-			if err := json.NewEncoder(w).Encode(categories); err != nil {
+			entries := make([]categoryAPIEntry, len(categories))
+			for i, cat := range categories {
+				entries[i] = categoryAPIEntry{ID: cat.ID, Attributes: struct {
+					Label         string  `json:"label"`
+					Color         string  `json:"color"`
+					ProfilePicURL *string `json:"profile_pic_url"`
+				}{Label: cat.Name, Color: cat.Color}}
+			}
+			if err := json.NewEncoder(w).Encode(categoryAPIResponse{Data: entries}); err != nil {
 				t.Errorf("encode categories: %v", err)
 			}
 		default:

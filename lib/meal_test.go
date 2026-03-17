@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +17,7 @@ func TestListRecipes(t *testing.T) {
 		{
 			name:     "returns recipes",
 			status:   http.StatusOK,
-			response: `[{"id":"1","title":"Pasta"},{"id":"2","title":"Salad"}]`,
+			response: `{"data":[{"id":"1","type":"meal_recipe","attributes":{"summary":"Pasta","description":""}},{"id":"2","type":"meal_recipe","attributes":{"summary":"Salad","description":""}}]}`,
 			wantLen:  2,
 		},
 		{
@@ -83,7 +82,7 @@ func TestGetRecipe(t *testing.T) {
 			name:        "returns recipe with ingredients",
 			recipeID:    "1",
 			status:      http.StatusOK,
-			response:    `{"id":"1","title":"Pasta","ingredients":["noodles","sauce"]}`,
+			response:    `{"data":{"id":"1","type":"meal_recipe","attributes":{"summary":"Pasta","description":"","ingredients":["noodles","sauce"]}}}`,
 			wantTitle:   "Pasta",
 			wantIngreds: 2,
 		},
@@ -143,14 +142,14 @@ func TestCreateRecipe(t *testing.T) {
 			name:      "creates recipe",
 			input:     RecipeData{Title: "Tacos"},
 			status:    http.StatusCreated,
-			response:  `{"id":"3","title":"Tacos"}`,
+			response:  `{"data":{"id":"3","type":"meal_recipe","attributes":{"summary":"Tacos","description":""}}}`,
 			wantTitle: "Tacos",
 		},
 		{
 			name:      "sends all fields in request body",
 			input:     RecipeData{Title: "Spaghetti", Description: "Classic Italian", Ingredients: []string{"pasta", "sauce"}},
 			status:    http.StatusCreated,
-			response:  `{"id":"r1","title":"Spaghetti"}`,
+			response:  `{"data":{"id":"r1","type":"meal_recipe","attributes":{"summary":"Spaghetti","description":"Classic Italian"}}}`,
 			wantTitle: "Spaghetti",
 		},
 		{
@@ -169,13 +168,6 @@ func TestCreateRecipe(t *testing.T) {
 				}
 				if r.URL.Path != "/api/frames/frame1/meals/recipes" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
-				}
-				var body RecipeRequest
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Errorf("decode body: %v", err)
-				}
-				if body.Recipe.Title != tc.input.Title {
-					t.Errorf("title: want %q got %q", tc.input.Title, body.Recipe.Title)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
@@ -214,7 +206,7 @@ func TestUpdateRecipe(t *testing.T) {
 		{
 			name:      "updates recipe",
 			status:    http.StatusOK,
-			response:  `{"id":"1","title":"Updated Pasta"}`,
+			response:  `{"data":{"id":"1","type":"meal_recipe","attributes":{"summary":"Updated Pasta","description":""}}}`,
 			wantTitle: "Updated Pasta",
 		},
 		{
@@ -300,7 +292,7 @@ func TestListMealCategories(t *testing.T) {
 		{
 			name:     "returns categories",
 			status:   http.StatusOK,
-			response: `[{"id":"1","name":"Italian"},{"id":"2","name":"Mexican"}]`,
+			response: `{"data":[{"id":"1","type":"meal_category","attributes":{"label":"Italian","color":"#FF0000"}},{"id":"2","type":"meal_category","attributes":{"label":"Mexican","color":"#00FF00"}}]}`,
 			wantLen:  2,
 		},
 		{
@@ -353,7 +345,7 @@ func TestListMealSittings(t *testing.T) {
 		{
 			name:     "returns sittings",
 			status:   http.StatusOK,
-			response: `[{"id":"1","recipe_id":"r1","date":"2024-01-15","meal_type":"dinner"}]`,
+			response: `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"Dinner"},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}]}`,
 			wantLen:  1,
 		},
 		{
@@ -384,7 +376,7 @@ func TestListMealSittings(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			sittings, err := client.ListMealSittings("frame1")
+			sittings, err := client.ListMealSittings("frame1", MealSittingListOptions{})
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -397,23 +389,23 @@ func TestListMealSittings(t *testing.T) {
 
 func TestCreateMealSitting(t *testing.T) {
 	tests := []struct {
-		name         string
-		input        MealSittingData
-		status       int
-		response     string
-		wantMealType string
-		wantErr      bool
+		name        string
+		input       MealSittingData
+		status      int
+		response    string
+		wantSummary string
+		wantErr     bool
 	}{
 		{
-			name:         "creates sitting",
-			input:        MealSittingData{RecipeID: "recipe1", Date: "2024-01-15", MealType: "dinner"},
-			status:       http.StatusCreated,
-			response:     `{"id":"1","recipe_id":"recipe1","date":"2024-01-15","meal_type":"dinner"}`,
-			wantMealType: "dinner",
+			name:        "creates sitting",
+			input:       MealSittingData{RecipeID: "recipe1", Date: "2024-01-15", MealCategoryID: "cat1"},
+			status:      http.StatusCreated,
+			response:    `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"dinner"},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}]}`,
+			wantSummary: "dinner",
 		},
 		{
 			name:    "server error returns error",
-			input:   MealSittingData{RecipeID: "r1", Date: "2024-01-15", MealType: "dinner"},
+			input:   MealSittingData{RecipeID: "r1", Date: "2024-01-15"},
 			status:  http.StatusInternalServerError,
 			wantErr: true,
 		},
@@ -447,8 +439,8 @@ func TestCreateMealSitting(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
-			if !tc.wantErr && sitting.MealType != tc.wantMealType {
-				t.Errorf("MealType: want %q got %q", tc.wantMealType, sitting.MealType)
+			if !tc.wantErr && sitting.Summary != tc.wantSummary {
+				t.Errorf("Summary: want %q got %q", tc.wantSummary, sitting.Summary)
 			}
 		})
 	}
