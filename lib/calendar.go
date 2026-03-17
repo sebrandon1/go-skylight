@@ -20,46 +20,48 @@ func (c *Client) ListCalendarEvents(frameID, startDate, endDate string) ([]Calen
 		addQueryParams(req, params)
 	}
 
-	var events []CalendarEvent
-	if err := c.get(req, &events); err != nil {
+	var apiResp calendarAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to list calendar events: %w", err)
 	}
 
+	events := make([]CalendarEvent, len(apiResp.Data))
+	for i := range apiResp.Data {
+		events[i] = apiResp.Data[i].toCalendarEvent()
+	}
 	return events, nil
 }
 
 // CreateCalendarEvent creates a new calendar event on a frame.
 func (c *Client) CreateCalendarEvent(frameID string, event CalendarEventData) (*CalendarEvent, error) {
-	reqBody := CalendarEventRequest{CalendarEvent: event}
-
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), frameID), event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create calendar event request: %w", err)
 	}
 
-	var created CalendarEvent
-	if err := c.post(req, &created); err != nil {
+	var apiResp calendarAPISingleResponse
+	if err := c.post(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to create calendar event: %w", err)
 	}
 
-	return &created, nil
+	result := apiResp.Data.toCalendarEvent()
+	return &result, nil
 }
 
 // UpdateCalendarEvent updates an existing calendar event.
 func (c *Client) UpdateCalendarEvent(frameID, eventID string, event CalendarEventData) (*CalendarEvent, error) {
-	reqBody := CalendarEventRequest{CalendarEvent: event}
-
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), frameID, eventID), reqBody)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), frameID, eventID), event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update calendar event request: %w", err)
 	}
 
-	var updated CalendarEvent
-	if err := c.put(req, &updated); err != nil {
+	var apiResp calendarAPISingleResponse
+	if err := c.put(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to update calendar event: %w", err)
 	}
 
-	return &updated, nil
+	result := apiResp.Data.toCalendarEvent()
+	return &result, nil
 }
 
 // DeleteCalendarEvent deletes a calendar event.
@@ -83,10 +85,14 @@ func (c *Client) ListSourceCalendars(frameID string) ([]SourceCalendar, error) {
 		return nil, fmt.Errorf("failed to create list source calendars request: %w", err)
 	}
 
-	var calendars []SourceCalendar
-	if err := c.get(req, &calendars); err != nil {
+	var apiResp sourceCalendarAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to list source calendars: %w", err)
 	}
 
+	calendars := make([]SourceCalendar, len(apiResp.Data))
+	for i := range apiResp.Data {
+		calendars[i] = apiResp.Data[i].toSourceCalendar()
+	}
 	return calendars, nil
 }

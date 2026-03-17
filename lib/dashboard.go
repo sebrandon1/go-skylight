@@ -30,17 +30,15 @@ func (c *Client) GetDashboard(frameID string) (*Dashboard, error) {
 		return nil, err
 	}
 
-	allSittings, err := c.ListMealSittings(frameID)
+	allSittings, err := c.ListMealSittings(frameID, MealSittingListOptions{
+		DateMin: today,
+		DateMax: today,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	var todaySittings []MealSitting
-	for _, s := range allSittings {
-		if s.Date == today {
-			todaySittings = append(todaySittings, s)
-		}
-	}
+	todaySittings := allSittings
 
 	lists, err := c.ListLists(frameID)
 	if err != nil {

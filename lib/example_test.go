@@ -28,10 +28,8 @@ func ExampleNewClientWithToken() {
 
 func ExampleClient_ListCalendarEvents() {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		events := []lib.CalendarEvent{
-			{ID: "1", Title: "Team meeting"},
-		}
-		if err := json.NewEncoder(w).Encode(events); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":[{"id":"1","type":"calendar_event","attributes":{"summary":"Team meeting","starts_at":"","ends_at":"","all_day":false}}]}`)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}))
@@ -58,7 +56,7 @@ func ExampleClient_GetDashboard() {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/frames/f1/calendar_events":
-			if err := json.NewEncoder(w).Encode([]lib.CalendarEvent{{ID: "ev1", Title: "Stand-up"}}); err != nil {
+			if _, err := w.Write([]byte(`{"data":[{"id":"ev1","type":"calendar_event","attributes":{"summary":"Stand-up","starts_at":"","ends_at":"","all_day":false}}]}`)); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		case "/api/frames/f1/chores":
@@ -89,11 +87,11 @@ func ExampleClient_GetDashboard() {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		case "/api/frames/f1/meals/sittings":
-			if err := json.NewEncoder(w).Encode([]lib.MealSitting{}); err != nil {
+			if _, err := w.Write([]byte(`{"data":[]}`)); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		case "/api/frames/f1/lists":
-			if err := json.NewEncoder(w).Encode([]lib.List{{ID: "l1", Title: "Groceries"}}); err != nil {
+			if _, err := w.Write([]byte(`{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries","color":"","kind":""}}]}`)); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		default:

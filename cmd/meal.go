@@ -14,8 +14,12 @@ var (
 	recipeDescription string
 	recipeIngredients []string
 	recipeURL         string
+	recipeCategoryID  string
 	sittingDate       string
-	mealType          string
+	sittingSummary    string
+	sittingDateMin    string
+	sittingDateMax    string
+	mealCategoryID    string
 )
 
 var mealCmd = &cobra.Command{
@@ -86,10 +90,11 @@ var mealCreateRecipeCmd = &cobra.Command{
 		client := getClient()
 
 		recipe, err := client.CreateRecipe(frameID, lib.RecipeData{
-			Title:       recipeTitle,
-			Description: recipeDescription,
-			Ingredients: recipeIngredients,
-			URL:         recipeURL,
+			Title:          recipeTitle,
+			Description:    recipeDescription,
+			Ingredients:    recipeIngredients,
+			URL:            recipeURL,
+			MealCategoryID: recipeCategoryID,
 		})
 		if err != nil {
 			fmt.Printf("Error creating recipe: %v\n", err)
@@ -126,7 +131,10 @@ var mealSittingsCmd = &cobra.Command{
 
 		client := getClient()
 
-		sittings, err := client.ListMealSittings(frameID)
+		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
+			DateMin: sittingDateMin,
+			DateMax: sittingDateMax,
+		})
 		if err != nil {
 			fmt.Printf("Error listing meal sittings: %v\n", err)
 			os.Exit(1)
@@ -145,9 +153,10 @@ var mealCreateSittingCmd = &cobra.Command{
 		client := getClient()
 
 		sitting, err := client.CreateMealSitting(frameID, lib.MealSittingData{
-			RecipeID: recipeID,
-			Date:     sittingDate,
-			MealType: mealType,
+			Summary:        sittingSummary,
+			RecipeID:       recipeID,
+			Date:           sittingDate,
+			MealCategoryID: mealCategoryID,
 		})
 		if err != nil {
 			fmt.Printf("Error creating meal sitting: %v\n", err)
@@ -226,6 +235,7 @@ func init() {
 	mealCreateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealCreateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
+	mealCreateRecipeCmd.Flags().StringVar(&recipeCategoryID, "meal-category-id", "", "Meal category ID")
 	mealCreateRecipeCmd.MarkFlagRequired("title") //nolint:errcheck
 
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID to update")
@@ -237,9 +247,13 @@ func init() {
 	mealDeleteRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealDeleteRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
 
+	mealSittingsCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date filter (YYYY-MM-DD)")
+	mealSittingsCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Maximum date filter (YYYY-MM-DD)")
+
 	mealCreateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
 	mealCreateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date")
-	mealCreateSittingCmd.Flags().StringVar(&mealType, "meal-type", "", "Meal type (breakfast, lunch, dinner)")
+	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 }

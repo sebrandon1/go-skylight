@@ -558,7 +558,7 @@ func TestMealCreateSittingFlags(t *testing.T) {
 	}{
 		{"recipe-id flag", "recipe-id"},
 		{"date flag", "date"},
-		{"meal-type flag", "meal-type"},
+		{"meal-category-id flag", "meal-category-id"},
 	}
 
 	for _, tt := range tests {

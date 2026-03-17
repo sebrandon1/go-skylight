@@ -19,14 +19,14 @@ func TestListCategories(t *testing.T) {
 		{
 			name:     "returns family members",
 			status:   http.StatusOK,
-			response: `[{"id":"1","name":"Mom","color":"#FF0000"},{"id":"2","name":"Dad","color":"#0000FF"}]`,
+			response: `{"data":[{"id":"1","attributes":{"label":"Mom","color":"#FF0000"}},{"id":"2","attributes":{"label":"Dad","color":"#0000FF"}}]}`,
 			wantLen:  2,
 			wantName: "Mom",
 		},
 		{
 			name:     "empty list",
 			status:   http.StatusOK,
-			response: `[]`,
+			response: `{"data":[]}`,
 			wantLen:  0,
 		},
 		{
@@ -84,11 +84,20 @@ func TestListCategories(t *testing.T) {
 }
 
 func TestListCategoriesRequestBody(t *testing.T) {
-	mockCategories := []Category{
-		{ID: "1", Name: "Mom", Color: "#FF0000"},
-		{ID: "2", Name: "Dad", Color: "#0000FF"},
-	}
-	data, _ := json.Marshal(mockCategories)
+	data, _ := json.Marshal(categoryAPIResponse{
+		Data: []categoryAPIEntry{
+			{ID: "1", Attributes: struct {
+				Label         string  `json:"label"`
+				Color         string  `json:"color"`
+				ProfilePicURL *string `json:"profile_pic_url"`
+			}{Label: "Mom", Color: "#FF0000"}},
+			{ID: "2", Attributes: struct {
+				Label         string  `json:"label"`
+				Color         string  `json:"color"`
+				ProfilePicURL *string `json:"profile_pic_url"`
+			}{Label: "Dad", Color: "#0000FF"}},
+		},
+	})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

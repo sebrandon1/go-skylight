@@ -9,10 +9,14 @@ func (c *Client) ListCategories(frameID string) ([]Category, error) {
 		return nil, fmt.Errorf("failed to create list categories request: %w", err)
 	}
 
-	var categories []Category
-	if err := c.get(req, &categories); err != nil {
+	var apiResp categoryAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to list categories: %w", err)
 	}
 
+	categories := make([]Category, len(apiResp.Data))
+	for i := range apiResp.Data {
+		categories[i] = apiResp.Data[i].toCategory()
+	}
 	return categories, nil
 }

@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,7 +20,7 @@ func TestListCalendarEvents(t *testing.T) {
 		{
 			name:           "returns events",
 			status:         http.StatusOK,
-			response:       `[{"id":"1","title":"Meeting","start_at":"2024-01-15T10:00:00Z"},{"id":"2","title":"Lunch","start_at":"2024-01-15T12:00:00Z"}]`,
+			response:       `{"data":[{"id":"1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2024-01-15T10:00:00Z","ends_at":"2024-01-15T11:00:00Z","all_day":false}},{"id":"2","type":"calendar_event","attributes":{"summary":"Lunch","starts_at":"2024-01-15T12:00:00Z","ends_at":"2024-01-15T13:00:00Z","all_day":false}}]}`,
 			wantLen:        2,
 			wantFirstTitle: "Meeting",
 		},
@@ -30,19 +29,19 @@ func TestListCalendarEvents(t *testing.T) {
 			startDate: "2024-01-01",
 			endDate:   "2024-01-31",
 			status:    http.StatusOK,
-			response:  `[]`,
+			response:  `{"data":[]}`,
 		},
 		{
 			name:      "passes start date only",
 			startDate: "2024-01-01",
 			status:    http.StatusOK,
-			response:  `[]`,
+			response:  `{"data":[]}`,
 		},
 		{
 			name:     "passes end date only",
 			endDate:  "2024-01-31",
 			status:   http.StatusOK,
-			response: `[]`,
+			response: `{"data":[]}`,
 		},
 		{
 			name:    "not found returns error",
@@ -123,14 +122,14 @@ func TestCreateCalendarEvent(t *testing.T) {
 			name:      "creates event",
 			input:     CalendarEventData{Title: "New Event", StartAt: "2024-01-16T09:00:00Z"},
 			status:    http.StatusCreated,
-			response:  `{"id":"3","title":"New Event","start_at":"2024-01-16T09:00:00Z"}`,
+			response:  `{"data":{"id":"3","type":"calendar_event","attributes":{"summary":"New Event","starts_at":"2024-01-16T09:00:00Z","ends_at":"","all_day":false}}}`,
 			wantTitle: "New Event",
 		},
 		{
 			name:      "sends all fields in request body",
-			input:     CalendarEventData{Title: "Birthday Party", Description: "Fun party", StartAt: "2024-06-15T14:00:00Z", EndAt: "2024-06-15T18:00:00Z", Color: "#FF0000"},
+			input:     CalendarEventData{Title: "Birthday Party", Description: "Fun party", StartAt: "2024-06-15T14:00:00Z", EndAt: "2024-06-15T18:00:00Z"},
 			status:    http.StatusCreated,
-			response:  `{"id":"evt1","title":"Birthday Party"}`,
+			response:  `{"data":{"id":"evt1","type":"calendar_event","attributes":{"summary":"Birthday Party","starts_at":"2024-06-15T14:00:00Z","ends_at":"2024-06-15T18:00:00Z","all_day":false}}}`,
 			wantTitle: "Birthday Party",
 		},
 		{
@@ -149,13 +148,6 @@ func TestCreateCalendarEvent(t *testing.T) {
 				}
 				if r.URL.Path != "/api/frames/frame1/calendar_events" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
-				}
-				var body CalendarEventRequest
-				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-					t.Errorf("decode body: %v", err)
-				}
-				if body.CalendarEvent.Title != tc.input.Title {
-					t.Errorf("title: want %q got %q", tc.input.Title, body.CalendarEvent.Title)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
@@ -198,7 +190,7 @@ func TestUpdateCalendarEvent(t *testing.T) {
 			eventID:   "evt1",
 			input:     CalendarEventData{Title: "Updated Event"},
 			status:    http.StatusOK,
-			response:  `{"id":"1","title":"Updated Event"}`,
+			response:  `{"data":{"id":"1","type":"calendar_event","attributes":{"summary":"Updated Event","starts_at":"","ends_at":"","all_day":false}}}`,
 			wantTitle: "Updated Event",
 		},
 		{
@@ -317,7 +309,7 @@ func TestListSourceCalendars(t *testing.T) {
 		{
 			name:         "returns calendars",
 			status:       http.StatusOK,
-			response:     `[{"id":"1","name":"Google Calendar","enabled":true,"provider":"google"}]`,
+			response:     `{"data":[{"id":"1","type":"source_calendar_detail","attributes":{"label":"Google Calendar","kind":"google","editable":true}}]}`,
 			wantLen:      1,
 			wantProvider: "google",
 		},

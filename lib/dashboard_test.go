@@ -27,7 +27,16 @@ func TestGetDashboard(t *testing.T) {
 					if r.URL.Query().Get("start_date") != today {
 						t.Errorf("expected start_date=%s, got %s", today, r.URL.Query().Get("start_date"))
 					}
-					if err := json.NewEncoder(w).Encode([]CalendarEvent{{ID: "ev1", Title: "Meeting"}}); err != nil {
+					if err := json.NewEncoder(w).Encode(calendarAPIResponse{
+						Data: []calendarAPIEntry{{ID: "ev1", Attributes: struct {
+							Summary     string `json:"summary"`
+							Description string `json:"description"`
+							StartsAt    string `json:"starts_at"`
+							EndsAt      string `json:"ends_at"`
+							AllDay      bool   `json:"all_day"`
+							Color       string `json:"color"`
+						}{Summary: "Meeting"}}},
+					}); err != nil {
 						t.Errorf("encode events: %v", err)
 					}
 				case "/api/frames/frame1/chores":
@@ -52,15 +61,23 @@ func TestGetDashboard(t *testing.T) {
 						t.Errorf("encode points: %v", err)
 					}
 				case "/api/frames/frame1/meals/sittings":
-					// Return one today and one from the past (only today's should appear)
-					if err := json.NewEncoder(w).Encode([]MealSitting{
-						{ID: "ms1", Date: today, MealType: "dinner"},
-						{ID: "ms2", Date: "2020-01-01", MealType: "lunch"},
+					if err := json.NewEncoder(w).Encode(mealSittingAPIResponse{
+						Data: []mealSittingAPIEntry{
+							{ID: "ms1", Attributes: struct {
+								Summary string `json:"summary"`
+							}{Summary: "dinner"}},
+						},
 					}); err != nil {
 						t.Errorf("encode sittings: %v", err)
 					}
 				case "/api/frames/frame1/lists":
-					if err := json.NewEncoder(w).Encode([]List{{ID: "l1", Title: "Groceries"}}); err != nil {
+					if err := json.NewEncoder(w).Encode(listAPIResponse{
+						Data: []listAPIEntry{{ID: "l1", Attributes: struct {
+							Label string `json:"label"`
+							Color string `json:"color"`
+							Kind  string `json:"kind"`
+						}{Label: "Groceries"}}},
+					}); err != nil {
 						t.Errorf("encode lists: %v", err)
 					}
 				default:
@@ -82,7 +99,7 @@ func TestGetDashboard(t *testing.T) {
 					t.Errorf("want 1 point entry, got %d", len(d.Points))
 				}
 				if len(d.MealSittings) != 1 {
-					t.Errorf("want 1 meal sitting (today only), got %d", len(d.MealSittings))
+					t.Errorf("want 1 meal sitting, got %d", len(d.MealSittings))
 				}
 				if len(d.Lists) != 1 {
 					t.Errorf("want 1 list, got %d", len(d.Lists))

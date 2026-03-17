@@ -18,7 +18,7 @@ func TestGetFrame(t *testing.T) {
 		{
 			name:     "returns frame info",
 			status:   http.StatusOK,
-			response: `{"id":"frame1","name":"Family Frame","time_zone":"America/Chicago"}`,
+			response: `{"data":{"id":"frame1","type":"frame_show","attributes":{"name":"Family Frame","timezone":"America/Chicago"}}}`,
 			wantName: "Family Frame",
 			wantTZ:   "America/Chicago",
 		},
@@ -88,7 +88,7 @@ func TestListDevices(t *testing.T) {
 		{
 			name:       "returns devices",
 			status:     http.StatusOK,
-			response:   `[{"id":"dev1","name":"Kitchen","online":true},{"id":"dev2","name":"Living Room","online":false}]`,
+			response:   `{"data":[{"id":"dev1","type":"device","attributes":{"name":"Kitchen","activated":true}},{"id":"dev2","type":"device","attributes":{"name":"Living Room","activated":false}}]}`,
 			wantLen:    2,
 			wantOnline: true,
 		},
@@ -156,7 +156,7 @@ func TestGetAvatars(t *testing.T) {
 		{
 			name:     "returns avatars",
 			status:   http.StatusOK,
-			response: `[{"id":"1","name":"Cat"},{"id":"2","name":"Dog"}]`,
+			response: `{"data":[{"id":"1","type":"avatar","attributes":{"name":"Cat","image_url":"https://example.com/cat.png"}},{"id":"2","type":"avatar","attributes":{"name":"Dog","image_url":"https://example.com/dog.png"}}]}`,
 			wantLen:  2,
 		},
 		{
@@ -200,19 +200,19 @@ func TestGetAvatars(t *testing.T) {
 
 func TestGetColors(t *testing.T) {
 	tests := []struct {
-		name      string
-		status    int
-		response  string
-		wantLen   int
-		wantValue string
-		wantErr   bool
+		name     string
+		status   int
+		response string
+		wantLen  int
+		wantHex  string
+		wantErr  bool
 	}{
 		{
-			name:      "returns colors",
-			status:    http.StatusOK,
-			response:  `[{"id":"1","name":"Red","value":"#FF0000"},{"id":"2","name":"Blue","value":"#0000FF"}]`,
-			wantLen:   2,
-			wantValue: "#FF0000",
+			name:     "returns colors",
+			status:   http.StatusOK,
+			response: `{"data":[{"name":"Red","hex":"#FF0000"},{"name":"Blue","hex":"#0000FF"}]}`,
+			wantLen:  2,
+			wantHex:  "#FF0000",
 		},
 		{
 			name:    "server error returns error",
@@ -252,8 +252,8 @@ func TestGetColors(t *testing.T) {
 			if len(colors) != tc.wantLen {
 				t.Errorf("wantLen=%d got %d", tc.wantLen, len(colors))
 			}
-			if tc.wantValue != "" && len(colors) > 0 && colors[0].Value != tc.wantValue {
-				t.Errorf("colors[0].Value: want %q got %q", tc.wantValue, colors[0].Value)
+			if tc.wantHex != "" && len(colors) > 0 && colors[0].Hex != tc.wantHex {
+				t.Errorf("colors[0].Hex: want %q got %q", tc.wantHex, colors[0].Hex)
 			}
 		})
 	}
