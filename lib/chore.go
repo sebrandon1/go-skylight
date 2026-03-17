@@ -2,6 +2,8 @@ package lib
 
 import "fmt"
 
+const choreStatusPending = "pending"
+
 // ListChores retrieves chores for a frame with optional filters.
 func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID), nil)

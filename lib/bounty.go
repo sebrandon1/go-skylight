@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -22,9 +23,12 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 
 	categoryIDs := data.CategoryIDs
 	if len(categoryIDs) == 0 && data.AssigneeID != "" {
-		if id, err := strconv.Atoi(data.AssigneeID); err == nil {
-			categoryIDs = []int{id}
+		id, err := strconv.Atoi(data.AssigneeID)
+		if err != nil {
+			_ = c.DeleteChore(frameID, chore.ID)
+			return nil, fmt.Errorf("assignee_id %q is not a valid numeric category ID: %w", data.AssigneeID, err)
 		}
+		categoryIDs = []int{id}
 	}
 	reward, err := c.CreateReward(frameID, RewardData{
 		Title:       data.RewardTitle,
@@ -48,18 +52,35 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 // matching them by point value as a heuristic.
 func (c *Client) ListBounties(frameID string) ([]Bounty, error) {
 	today := time.Now()
-	chores, err := c.ListChores(frameID, ChoreListOptions{
-		Status: "pending",
-		After:  today.AddDate(0, 0, -1).Format(DateFormat),
-		Before: today.AddDate(0, 1, 0).Format(DateFormat),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list bounty chores: %w", err)
-	}
 
-	rewards, err := c.ListRewards(frameID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list bounty rewards: %w", err)
+	var (
+		chores    []Chore
+		rewards   []Reward
+		choreErr  error
+		rewardErr error
+		wg        sync.WaitGroup
+	)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		chores, choreErr = c.ListChores(frameID, ChoreListOptions{
+			Status: choreStatusPending,
+			After:  today.AddDate(0, 0, -1).Format(DateFormat),
+			Before: today.AddDate(0, 1, 0).Format(DateFormat),
+		})
+	}()
+	go func() {
+		defer wg.Done()
+		rewards, rewardErr = c.ListRewards(frameID)
+	}()
+	wg.Wait()
+
+	if choreErr != nil {
+		return nil, fmt.Errorf("failed to list bounty chores: %w", choreErr)
+	}
+	if rewardErr != nil {
+		return nil, fmt.Errorf("failed to list bounty rewards: %w", rewardErr)
 	}
 
 	// Index unredeemed rewards by point value

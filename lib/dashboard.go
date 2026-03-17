@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"sync"
 	"time"
 )
 
@@ -11,38 +12,50 @@ const DateFormat = "2006-01-02"
 func (c *Client) GetDashboard(frameID string) (*Dashboard, error) {
 	today := time.Now().Format(DateFormat)
 
-	events, err := c.ListCalendarEvents(frameID, today, today)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		events   []CalendarEvent
+		chores   []Chore
+		points   []RewardPointEntry
+		sittings []MealSitting
+		lists    []List
+		errs     [5]error
+		wg       sync.WaitGroup
+	)
 
-	chores, err := c.ListChores(frameID, ChoreListOptions{
-		Date:        today,
-		Status:      "pending",
-		IncludeLate: true,
-	})
-	if err != nil {
-		return nil, err
-	}
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		events, errs[0] = c.ListCalendarEvents(frameID, today, today)
+	}()
+	go func() {
+		defer wg.Done()
+		chores, errs[1] = c.ListChores(frameID, ChoreListOptions{
+			Date:        today,
+			Status:      choreStatusPending,
+			IncludeLate: true,
+		})
+	}()
+	go func() {
+		defer wg.Done()
+		points, errs[2] = c.GetRewardPoints(frameID)
+	}()
+	go func() {
+		defer wg.Done()
+		sittings, errs[3] = c.ListMealSittings(frameID, MealSittingListOptions{
+			DateMin: today,
+			DateMax: today,
+		})
+	}()
+	go func() {
+		defer wg.Done()
+		lists, errs[4] = c.ListLists(frameID)
+	}()
+	wg.Wait()
 
-	points, err := c.GetRewardPoints(frameID)
-	if err != nil {
-		return nil, err
-	}
-
-	allSittings, err := c.ListMealSittings(frameID, MealSittingListOptions{
-		DateMin: today,
-		DateMax: today,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	todaySittings := allSittings
-
-	lists, err := c.ListLists(frameID)
-	if err != nil {
-		return nil, err
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Dashboard{
@@ -50,7 +63,7 @@ func (c *Client) GetDashboard(frameID string) (*Dashboard, error) {
 		Events:       events,
 		Chores:       chores,
 		Points:       points,
-		MealSittings: todaySittings,
+		MealSittings: sittings,
 		Lists:        lists,
 	}, nil
 }
