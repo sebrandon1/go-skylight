@@ -4,7 +4,7 @@ import "fmt"
 
 // ListCalendarEvents retrieves calendar events for a frame within a date range.
 func (c *Client) ListCalendarEvents(frameID, startDate, endDate string) ([]CalendarEvent, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/calendar_events", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list calendar events request: %w", err)
 	}
@@ -32,7 +32,7 @@ func (c *Client) ListCalendarEvents(frameID, startDate, endDate string) ([]Calen
 func (c *Client) CreateCalendarEvent(frameID string, event CalendarEventData) (*CalendarEvent, error) {
 	reqBody := CalendarEventRequest{CalendarEvent: event}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/calendar_events", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), frameID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create calendar event request: %w", err)
 	}
@@ -49,7 +49,7 @@ func (c *Client) CreateCalendarEvent(frameID string, event CalendarEventData) (*
 func (c *Client) UpdateCalendarEvent(frameID, eventID string, event CalendarEventData) (*CalendarEvent, error) {
 	reqBody := CalendarEventRequest{CalendarEvent: event}
 
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/calendar_events/%s", SkylightURL, frameID, eventID), reqBody)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), frameID, eventID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update calendar event request: %w", err)
 	}
@@ -64,7 +64,7 @@ func (c *Client) UpdateCalendarEvent(frameID, eventID string, event CalendarEven
 
 // DeleteCalendarEvent deletes a calendar event.
 func (c *Client) DeleteCalendarEvent(frameID, eventID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/calendar_events/%s", SkylightURL, frameID, eventID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), frameID, eventID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete calendar event request: %w", err)
 	}
@@ -78,7 +78,7 @@ func (c *Client) DeleteCalendarEvent(frameID, eventID string) error {
 
 // ListSourceCalendars retrieves source calendars for a frame.
 func (c *Client) ListSourceCalendars(frameID string) ([]SourceCalendar, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/source_calendars", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/source_calendars", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list source calendars request: %w", err)
 	}

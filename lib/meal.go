@@ -4,7 +4,7 @@ import "fmt"
 
 // ListMealCategories retrieves meal categories for a frame.
 func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/categories", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/categories", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list meal categories request: %w", err)
 	}
@@ -19,7 +19,7 @@ func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
 
 // ListRecipes retrieves recipes for a frame.
 func (c *Client) ListRecipes(frameID string) ([]Recipe, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list recipes request: %w", err)
 	}
@@ -34,7 +34,7 @@ func (c *Client) ListRecipes(frameID string) ([]Recipe, error) {
 
 // GetRecipe retrieves a single recipe by ID.
 func (c *Client) GetRecipe(frameID, recipeID string) (*Recipe, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", SkylightURL, frameID, recipeID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get recipe request: %w", err)
 	}
@@ -51,7 +51,7 @@ func (c *Client) GetRecipe(frameID, recipeID string) (*Recipe, error) {
 func (c *Client) CreateRecipe(frameID string, recipe RecipeData) (*Recipe, error) {
 	reqBody := RecipeRequest{Recipe: recipe}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/recipes", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), frameID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create recipe request: %w", err)
 	}
@@ -68,7 +68,7 @@ func (c *Client) CreateRecipe(frameID string, recipe RecipeData) (*Recipe, error
 func (c *Client) UpdateRecipe(frameID, recipeID string, recipe RecipeData) (*Recipe, error) {
 	reqBody := RecipeRequest{Recipe: recipe}
 
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", SkylightURL, frameID, recipeID), reqBody)
+	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update recipe request: %w", err)
 	}
@@ -83,7 +83,7 @@ func (c *Client) UpdateRecipe(frameID, recipeID string, recipe RecipeData) (*Rec
 
 // DeleteRecipe deletes a recipe.
 func (c *Client) DeleteRecipe(frameID, recipeID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", SkylightURL, frameID, recipeID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete recipe request: %w", err)
 	}
@@ -97,7 +97,7 @@ func (c *Client) DeleteRecipe(frameID, recipeID string) error {
 
 // ListMealSittings retrieves meal sittings for a frame.
 func (c *Client) ListMealSittings(frameID string) ([]MealSitting, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list meal sittings request: %w", err)
 	}
@@ -114,7 +114,7 @@ func (c *Client) ListMealSittings(frameID string) ([]MealSitting, error) {
 func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*MealSitting, error) {
 	reqBody := MealSittingRequest{MealSitting: sitting}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/sittings", SkylightURL, frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), frameID), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create meal sitting request: %w", err)
 	}
@@ -129,7 +129,7 @@ func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*Me
 
 // AddRecipeToGroceryList adds a recipe's ingredients to the grocery list.
 func (c *Client) AddRecipeToGroceryList(frameID, recipeID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", SkylightURL, frameID, recipeID), nil)
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), frameID, recipeID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create add to grocery list request: %w", err)
 	}

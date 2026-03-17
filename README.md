@@ -2,601 +2,259 @@
 
 [![Build Status](https://github.com/sebrandon1/go-skylight/actions/workflows/pre-main.yaml/badge.svg)](https://github.com/sebrandon1/go-skylight/actions/workflows/pre-main.yaml)
 [![codecov](https://codecov.io/gh/sebrandon1/go-skylight/branch/main/graph/badge.svg)](https://codecov.io/gh/sebrandon1/go-skylight)
+[![Go Reference](https://pkg.go.dev/badge/github.com/sebrandon1/go-skylight/lib.svg)](https://pkg.go.dev/github.com/sebrandon1/go-skylight/lib)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sebrandon1/go-skylight)](https://go.dev/)
 [![License](https://img.shields.io/github/license/sebrandon1/go-skylight)](LICENSE)
 
-A Go wrapper for the [Skylight Calendar](https://app.ourskylight.com) API. Provides both a CLI tool and a Go library for managing Skylight frames, calendar events, chores, lists, rewards, meals, and more.
+Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.com) API. Manage frames, calendars, chores, rewards, lists, meals, and family member categories from the terminal or from Go code.
 
-## Installation
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  go-skylight CLI  (cmd/)                                     │
+│  Cobra commands: calendar · chore · reward · list · meal … │
+└──────────────────────┬───────────────────────────────────────┘
+                       │ calls
+┌──────────────────────▼───────────────────────────────────────┐
+│  lib.Client  (lib/)                                          │
+│  retry · rate-limit · slog logging · typed errors           │
+└──────────────────────┬───────────────────────────────────────┘
+                       │ HTTPS / Basic auth
+             ┌─────────▼──────────┐
+             │  Skylight REST API │
+             └────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│  alpaca-trigger  (cmd/alpaca-trigger/)                       │
+│  lib.RewardsPoller ──► lib.Client ──► Skylight API          │
+│        │                                                     │
+│        └──► AlpacaClient ──► Alpaca v2 REST API             │
+│             POST /v2/orders  (VOO notional buy)             │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Quick Start
+
+### Install
 
 ```bash
 go install github.com/sebrandon1/go-skylight@latest
 ```
 
-## Authentication
-
-Skylight uses Basic auth with a `user-id` and `api-token` pair. You can obtain these by logging in with your email and password:
+### Authenticate
 
 ```bash
-go-skylight login --email user@example.com --password yourpassword
+# Option 1: interactive login (saves credentials to ~/.skylight/config)
+go-skylight login --email user@example.com --password yourpassword --save
+
+# Option 2: supply credentials directly on every command
+go-skylight get chore list --user-id YOUR_UID --token YOUR_TOKEN --frame-id FRAME_ID
 ```
 
-Output:
+After `login --save`, credentials are stored in `~/.skylight/config` and loaded automatically.
 
-```
-Login successful!
-User ID: abc123
-API Token: xyz789
-```
+## Authentication Modes
 
-Use the returned `user-id` and `token` in all subsequent commands.
+| Mode | Flags / Config Keys |
+|------|---------------------|
+| Email + password | `--email` / `--password` |
+| Pre-existing token | `--user-id` / `--token` |
+| Config file | `SKYLIGHT_EMAIL`, `SKYLIGHT_PASSWORD`, `SKYLIGHT_TOKEN`, `SKYLIGHT_USER_ID`, `SKYLIGHT_FRAME_ID` |
 
-## CLI Usage
+Config file location: `~/.skylight/config` (override with `--config`). CLI flags take precedence.
 
-All commands require `--user-id` and `--token` flags. For brevity, the examples below use shell variables:
+## CLI Reference
+
+All commands accept `--user-id`, `--token`, `--frame-id`, and `--config` as persistent flags.
+
+### Calendar
 
 ```bash
-export SKYLIGHT_UID="your-user-id"
-export SKYLIGHT_TOKEN="your-api-token"
-export SKYLIGHT_FRAME="your-frame-id"
-```
-
-### Calendar Events
-
-```bash
-# List events in a date range
-go-skylight get calendar list \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --start-date 2024-01-01 --end-date 2024-01-31
-
-# Create an event
-go-skylight get calendar create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Family Dinner" --start-at "2024-01-15T18:00:00Z" --end-at "2024-01-15T19:30:00Z"
-
-# Create an all-day event
-go-skylight get calendar create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Vacation" --start-at "2024-06-01" --end-at "2024-06-07" --all-day
-
-# Delete an event
-go-skylight get calendar delete \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --event-id EVENT_ID
-
-# List linked source calendars (Google, iCal, etc.)
-go-skylight get calendar sources \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
+go-skylight get calendar list [--start-date DATE] [--end-date DATE]
+go-skylight get calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day]
+go-skylight get calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME]
+go-skylight get calendar delete --event-id ID
+go-skylight get calendar sources
 ```
 
 ### Chores
 
 ```bash
-# List all chores
-go-skylight get chore list \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# List chores with filters
-go-skylight get chore list \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --date 2024-01-15 --status pending --assignee-id CATEGORY_ID
-
-# Create a chore
-go-skylight get chore create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Clean room" --points 5
-
-# Delete a chore
-go-skylight get chore delete \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --chore-id CHORE_ID
-```
-
-### Lists & List Items
-
-```bash
-# List all lists
-go-skylight get list all \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# Get a specific list with its items
-go-skylight get list info \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --list-id LIST_ID
-
-# Create a new list
-go-skylight get list create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Grocery List"
-
-# Add an item to a list
-go-skylight get list add-item \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --list-id LIST_ID --title "Milk"
-
-# Delete an item from a list
-go-skylight get list delete-item \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --list-id LIST_ID --item-id ITEM_ID
-
-# Delete a list
-go-skylight get list delete \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --list-id LIST_ID
+go-skylight get chore list [--date DATE] [--assignee-id ID] [--status STATUS]
+go-skylight get chore create --title TITLE [--points N] [--assignee-id ID] [--date DATE]
+go-skylight get chore update --chore-id ID [--title T] [--status S] [--points N]
+go-skylight get chore delete --chore-id ID
 ```
 
 ### Rewards
 
 ```bash
-# List rewards
-go-skylight get reward list \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# Create a reward
-go-skylight get reward create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Ice Cream" --points 10
-
-# Redeem a reward
-go-skylight get reward redeem \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --reward-id REWARD_ID
-
-# Unredeem a reward
-go-skylight get reward unredeem \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --reward-id REWARD_ID
-
-# Check points balance
-go-skylight get reward points \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# Delete a reward
-go-skylight get reward delete \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --reward-id REWARD_ID
+go-skylight get reward list
+go-skylight get reward create --title TITLE --points N [--emoji-icon EMOJI]
+go-skylight get reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI]
+go-skylight get reward delete --reward-id ID
+go-skylight get reward redeem   --reward-id ID
+go-skylight get reward unredeem --reward-id ID
+go-skylight get reward points
 ```
 
-### Meals & Recipes
+### Lists
 
 ```bash
-# List meal categories
-go-skylight get meal categories \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
+go-skylight get list all
+go-skylight get list info       --list-id ID
+go-skylight get list create     --title TITLE [--color COLOR]
+go-skylight get list update     --list-id ID [--title T] [--color C]
+go-skylight get list delete     --list-id ID
+go-skylight get list add-item   --list-id ID --title TITLE
+go-skylight get list update-item --list-id ID --item-id ITEM_ID [--title T] [--completed]
+go-skylight get list delete-item --list-id ID --item-id ITEM_ID
+```
 
-# List all recipes
-go-skylight get meal recipes \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
+### Meals
 
-# Get a specific recipe
-go-skylight get meal recipe-info \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --recipe-id RECIPE_ID
+```bash
+go-skylight get meal categories
+go-skylight get meal recipes
+go-skylight get meal recipe-info --recipe-id ID
+go-skylight get meal create-recipe --title TITLE [--description D] [--ingredients a,b] [--url URL]
+go-skylight get meal update-recipe --recipe-id ID [--title T] [--description D]
+go-skylight get meal delete-recipe --recipe-id ID
+go-skylight get meal sittings
+go-skylight get meal create-sitting --recipe-id ID --date DATE
+go-skylight get meal add-to-grocery --recipe-id ID
+```
 
-# Create a recipe
-go-skylight get meal create-recipe \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Spaghetti"
+### Bounties & Rotations
 
-# Delete a recipe
-go-skylight get meal delete-recipe \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --recipe-id RECIPE_ID
-
-# List meal sittings (scheduled meals)
-go-skylight get meal sittings \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# Schedule a meal
-go-skylight get meal create-sitting \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --recipe-id RECIPE_ID --date 2024-01-15 --meal-type dinner
-
-# Add a recipe's ingredients to the grocery list
-go-skylight get meal add-to-grocery \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --recipe-id RECIPE_ID
+```bash
+go-skylight bounty create --title TITLE --points N --reward-title R [--emoji-icon EMOJI]
+go-skylight bounty list
+go-skylight rotation create --chores "Dishes,Vacuum" --assignees "id1,id2" \
+    --start-date DATE --weeks N --points N
 ```
 
 ### Dashboard
 
 ```bash
-# Show today's dashboard (events, chores, points, meals, lists)
-go-skylight dashboard \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-```
-
-### Bounties (Chore + Reward Pairs)
-
-```bash
-# Create a bounty (creates a chore and a paired reward together)
-go-skylight bounty create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --title "Clean the garage" --points 10 --assignee-id CATEGORY_ID \
-  --due-date 2024-01-15 --reward-title "Ice Cream" --emoji-icon "🍦"
-
-# List bounties (matched chore+reward pairs by point value)
-go-skylight bounty list \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-```
-
-### Chore Rotation
-
-```bash
-# Create rotating chore assignments across family members
-go-skylight rotation create \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME \
-  --chores "Dishes,Trash,Vacuuming" --assignee-ids "ID1,ID2,ID3" \
-  --start-date 2024-01-15 --weeks 4 --points 3
-```
-
-### Family Members (Categories)
-
-```bash
-go-skylight get category \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-```
-
-### Frame & Device Info
-
-```bash
-# Get frame details
-go-skylight get frame info \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# List connected devices
-go-skylight get frame devices \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN --frame-id $SKYLIGHT_FRAME
-
-# List available avatars
-go-skylight get frame avatars \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN
-
-# List available colors
-go-skylight get frame colors \
-  --user-id $SKYLIGHT_UID --token $SKYLIGHT_TOKEN
+go-skylight today   # or: go-skylight dashboard
 ```
 
 ## Library Usage
 
-### Authentication
-
 ```go
-package main
+import "github.com/sebrandon1/go-skylight/lib"
 
-import (
-    "fmt"
-    "log"
+// Basic client
+client, err := lib.NewClientWithToken("user-id", "api-token")
 
-    "github.com/sebrandon1/go-skylight/lib"
+// With functional options: retry, rate limiting, logging, custom base URL
+client, err := lib.NewClientWithToken("user-id", "api-token",
+    lib.WithRetry(3, 500*time.Millisecond, 10*time.Second),
+    lib.WithRateLimit(rate.Limit(5), 10),
+    lib.WithLogger(slog.Default()),
+    lib.WithBaseURL("https://staging.example.com/api"), // test seam
 )
 
-func main() {
-    // Option 1: Login with email/password (returns user ID and token)
-    client, err := lib.NewClient("user@example.com", "password")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Authenticated as %s\n", client.UserID)
+// List chores
+chores, err := client.ListChores("frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
 
-    // Option 2: Use an existing user ID and API token
-    client, err = lib.NewClientWithToken("your-user-id", "your-api-token")
-    if err != nil {
-        log.Fatal(err)
-    }
-}
-```
-
-### Calendar Events
-
-```go
-// List events in a date range
-events, err := client.ListCalendarEvents("frame-id", "2024-01-01", "2024-01-31")
-if err != nil {
-    log.Fatal(err)
-}
-for _, e := range events {
-    fmt.Printf("%s - %s: %s\n", e.StartAt, e.EndAt, e.Title)
-}
-
-// Create an event
-event, err := client.CreateCalendarEvent("frame-id", lib.CalendarEventData{
-    Title:   "Team Meeting",
-    StartAt: "2024-01-15T10:00:00Z",
-    EndAt:   "2024-01-15T11:00:00Z",
-})
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Created event: %s\n", event.ID)
-
-// Update an event
-updated, err := client.UpdateCalendarEvent("frame-id", event.ID, lib.CalendarEventData{
-    Title: "Updated Meeting",
-})
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Updated: %s\n", updated.Title)
-
-// Delete an event
-err = client.DeleteCalendarEvent("frame-id", event.ID)
-if err != nil {
-    log.Fatal(err)
-}
-
-// List linked source calendars
-calendars, err := client.ListSourceCalendars("frame-id")
-if err != nil {
-    log.Fatal(err)
-}
-for _, c := range calendars {
-    fmt.Printf("%s (%s) - enabled: %t\n", c.Name, c.Provider, c.Enabled)
-}
-```
-
-### Chores
-
-```go
-// List chores (with optional filters — pass empty strings to skip)
-chores, err := client.ListChores("frame-id", "2024-01-15", "pending", "assignee-id")
-if err != nil {
-    log.Fatal(err)
-}
-for _, c := range chores {
-    fmt.Printf("[%s] %s (%d pts)\n", c.Status, c.Title, c.Points)
-}
-
-// Create a chore
-chore, err := client.CreateChore("frame-id", lib.ChoreData{
-    Title:  "Walk the dog",
-    Points: 5,
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// Update a chore
-updated, err := client.UpdateChore("frame-id", chore.ID, lib.ChoreData{
-    Status: "completed",
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// Delete a chore
-err = client.DeleteChore("frame-id", chore.ID)
-```
-
-### Lists & List Items
-
-```go
-// Create a list
-list, err := client.CreateList("frame-id", lib.ListData{
-    Title: "Grocery List",
-    Color: "#4CAF50",
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// Add items to the list
-item, err := client.AddListItem("frame-id", list.ID, lib.ListItemData{
-    Title: "Eggs",
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// Mark item as completed
-_, err = client.UpdateListItem("frame-id", list.ID, item.ID, lib.ListItemData{
-    Completed: true,
-})
-
-// Get a list with all its items
-fullList, err := client.GetList("frame-id", list.ID)
-if err != nil {
-    log.Fatal(err)
-}
-for _, item := range fullList.Items {
-    status := "[ ]"
-    if item.Completed {
-        status = "[x]"
-    }
-    fmt.Printf("%s %s\n", status, item.Title)
-}
-
-// Delete an item, then the list
-_ = client.DeleteListItem("frame-id", list.ID, item.ID)
-_ = client.DeleteList("frame-id", list.ID)
-
-// Create a task box item (quick task)
-_, err = client.CreateTaskBoxItem("frame-id", lib.TaskBoxItemData{
-    Title: "Call dentist",
-})
-```
-
-### Rewards
-
-```go
-// Create a reward
-reward, err := client.CreateReward("frame-id", lib.RewardData{
-    Title:  "Movie Night",
-    Points: 20,
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// List all rewards
-rewards, err := client.ListRewards("frame-id")
-for _, r := range rewards {
-    fmt.Printf("%s - %d pts (redeemed: %t)\n", r.Title, r.Points, r.Redeemed)
-}
-
-// Check points balance
-points, err := client.GetRewardPoints("frame-id")
-fmt.Printf("Total points: %d\n", points.Points)
-
-// Redeem and unredeem
-_ = client.RedeemReward("frame-id", reward.ID)
-_ = client.UnredeemReward("frame-id", reward.ID)
-
-// Update and delete
-_, _ = client.UpdateReward("frame-id", reward.ID, lib.RewardData{Points: 30})
-_ = client.DeleteReward("frame-id", reward.ID)
-```
-
-### Meals & Recipes
-
-```go
-// List meal categories
-categories, err := client.ListMealCategories("frame-id")
-
-// Create a recipe
-recipe, err := client.CreateRecipe("frame-id", lib.RecipeData{
-    Title:       "Spaghetti Bolognese",
-    Description: "Classic Italian pasta dish",
-    Ingredients: []string{"spaghetti", "ground beef", "tomato sauce", "onion", "garlic"},
-})
-if err != nil {
-    log.Fatal(err)
-}
-
-// Get a recipe by ID
-r, err := client.GetRecipe("frame-id", recipe.ID)
-fmt.Printf("%s: %s\n", r.Title, r.Description)
-for _, ing := range r.Ingredients {
-    fmt.Printf("  - %s\n", ing)
-}
-
-// Schedule a meal
-sitting, err := client.CreateMealSitting("frame-id", lib.MealSittingData{
-    RecipeID: recipe.ID,
-    Date:     "2024-01-15",
-    MealType: "dinner",
-})
-
-// Add recipe ingredients to the grocery list
-err = client.AddRecipeToGroceryList("frame-id", recipe.ID)
-
-// Update and delete recipes
-_, _ = client.UpdateRecipe("frame-id", recipe.ID, lib.RecipeData{Title: "Updated Spaghetti"})
-_ = client.DeleteRecipe("frame-id", recipe.ID)
-
-// List meal sittings and recipes
-sittings, _ := client.ListMealSittings("frame-id")
-recipes, _ := client.ListRecipes("frame-id")
-```
-
-### Dashboard
-
-```go
-// Get today's dashboard (events, chores, points, meals, lists)
-dash, err := client.GetDashboard("frame-id")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Date: %s, Events: %d, Chores: %d\n",
-    dash.Date, len(dash.Events), len(dash.Chores))
-```
-
-### Bounties
-
-```go
-// Create a bounty (chore + paired reward)
+// Create a bounty (chore + matched reward)
 bounty, err := client.CreateBounty("frame-id", lib.BountyData{
-    Title:       "Clean the garage",
+    Title:       "Clean the kitchen",
     Points:      10,
-    DueDate:     "2024-01-15",
-    AssigneeID:  "category-id",
-    RewardTitle: "Ice Cream",
+    RewardTitle: "Ice cream night",
     EmojiIcon:   "🍦",
 })
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Chore: %s, Reward: %s\n", bounty.Chore.Title, bounty.Reward.Title)
 
-// List bounties (matched by point value)
-bounties, err := client.ListBounties("frame-id")
+// Stream reward redemptions
+poller := lib.NewRewardsPoller(client, "frame-id", 60*time.Second, "")
+poller.Start(ctx)
+for event := range poller.Events() {
+    fmt.Printf("%s redeemed %s (%d pts)\n",
+        event.ChildName, event.RewardName, event.Points)
+}
 ```
 
-### Chore Rotation
+### Typed Errors
 
 ```go
-// Create rotating chore assignments across family members
-result, err := client.CreateChoreRotation("frame-id", lib.RotationData{
-    Chores:      []string{"Dishes", "Trash", "Vacuuming"},
-    AssigneeIDs: []string{"id1", "id2", "id3"},
-    StartDate:   "2024-01-15",
-    Weeks:       4,
-    Points:      3,
-})
-if err != nil {
-    log.Fatal(err)
+var authErr *lib.AuthError
+var notFound *lib.NotFoundError
+var rateLimit *lib.RateLimitError
+var netErr *lib.NetworkError
+
+if errors.As(err, &authErr) {
+    // re-authenticate
+} else if errors.As(err, &rateLimit) {
+    time.Sleep(rateLimit.RetryAfter)
 }
-fmt.Printf("Created %d chores\n", len(result.Chores))
-```
-
-### Family Members, Frame & Utilities
-
-```go
-// List family members (categories)
-members, err := client.ListCategories("frame-id")
-for _, m := range members {
-    fmt.Printf("%s (color: %s)\n", m.Name, m.Color)
-}
-
-// Get frame info
-frame, err := client.GetFrame("frame-id")
-fmt.Printf("Frame: %s (timezone: %s)\n", frame.Name, frame.TimeZone)
-
-// List connected devices
-devices, err := client.ListDevices("frame-id")
-for _, d := range devices {
-    fmt.Printf("%s - online: %t\n", d.Name, d.Online)
-}
-
-// List available avatars and colors
-avatars, _ := client.GetAvatars()
-colors, _ := client.GetColors()
 ```
 
 ## API Coverage
 
-| Resource | Operations |
-|----------|-----------|
-| Session | Login (email/password) |
-| Calendar Events | List, Create, Update, Delete |
-| Source Calendars | List |
-| Chores | List (with filters), Create, Update, Delete |
-| Lists | List, Get, Create, Update, Delete |
-| List Items | Add, Update, Delete |
-| Task Box | Create |
-| Rewards | List, Create, Update, Delete, Redeem, Unredeem, Points |
-| Recipes | List, Get, Create, Update, Delete, Add to Grocery |
-| Meal Sittings | List, Create |
-| Meal Categories | List |
-| Categories | List |
-| Frame | Get |
-| Devices | List |
-| Avatars | List |
-| Colors | List |
-| Dashboard | Get (aggregates today's events, chores, points, meals, lists) |
-| Bounties | Create, List (chore + reward pairs) |
-| Chore Rotation | Create (rotating assignments across members) |
+| Resource | List | Create | Update | Delete | Extra |
+|----------|------|--------|--------|--------|-------|
+| Calendar events | ✓ | ✓ | ✓ | ✓ | sources |
+| Chores | ✓ | ✓ | ✓ | ✓ | filter by date/assignee/status |
+| Rewards | ✓ | ✓ | ✓ | ✓ | redeem, unredeem, points |
+| Lists | ✓ | ✓ | ✓ | ✓ | items CRUD, task box |
+| Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |
+| Categories | ✓ | — | — | — | family members |
+| Frame | — | — | — | — | info, devices, avatars, colors |
+| Bounties | ✓ | ✓ | — | — | chore + reward pairs |
+| Rotations | — | ✓ | — | — | rotating assignments |
+| Dashboard | — | — | — | — | today aggregate |
+
+## Alpaca Integration
+
+`alpaca-trigger` watches for Skylight reward redemptions and places a notional
+VOO market buy on Alpaca Markets every time a reward is redeemed.
+
+### Setup
+
+```bash
+make build-trigger
+```
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ALPACA_API_KEY` | ✓ | — | Alpaca API key ID |
+| `ALPACA_API_SECRET` | ✓ | — | Alpaca API secret key |
+| `ALPACA_BASE_URL` | — | `https://paper-api.alpaca.markets` | **Paper trading by default** |
+| `SKYLIGHT_USER_ID` | ✓ | — | Skylight user ID |
+| `SKYLIGHT_TOKEN` | ✓ | — | Skylight API token |
+| `SKYLIGHT_FRAME_ID` | ✓ | — | Skylight frame ID to watch |
+| `POLLER_INTERVAL` | — | `60s` | Poll frequency (Go duration string) |
+| `POLLER_STATE_FILE` | — | `~/.skylight/poller-state.json` | Deduplication state |
+| `VOO_NOTIONAL` | — | `1.00` | Dollar amount per redemption |
+
+> **Warning:** Set `ALPACA_BASE_URL=https://api.alpaca.markets` only when you intend to place real orders. The default is the paper-trading endpoint.
+
+### Run
+
+```bash
+export ALPACA_API_KEY=your_key
+export ALPACA_API_SECRET=your_secret
+export SKYLIGHT_USER_ID=uid
+export SKYLIGHT_TOKEN=tok
+export SKYLIGHT_FRAME_ID=fid
+
+./alpaca-trigger
+```
 
 ## Development
 
 ```bash
-make build    # Build binary
-make test     # Run tests
-make lint     # Run linter
-make vet      # Run go vet
-make clean    # Remove binary
+make build          # build go-skylight CLI
+make build-trigger  # build alpaca-trigger
+make test           # go test ./... -v
+make lint           # golangci-lint run ./...
+make vet            # go vet ./...
+make clean          # remove built binaries
 ```
 
-## License
-
-Apache License 2.0
+CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos across Go 1.25.x and 1.26.x.

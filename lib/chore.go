@@ -4,7 +4,7 @@ import "fmt"
 
 // ListChores retrieves chores for a frame with optional filters.
 func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", SkylightURL, frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list chores request: %w", err)
 	}
@@ -47,7 +47,7 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 
 // CreateChore creates a new chore on a frame.
 func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores", SkylightURL, frameID), chore)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chore request: %w", err)
 	}
@@ -63,7 +63,7 @@ func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
 
 // UpdateChore updates an existing chore.
 func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, error) {
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/chores/%s", SkylightURL, frameID, choreID), chore)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), frameID, choreID), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update chore request: %w", err)
 	}
@@ -79,7 +79,7 @@ func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, 
 
 // DeleteChore deletes a chore.
 func (c *Client) DeleteChore(frameID, choreID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", SkylightURL, frameID, choreID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), frameID, choreID), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}

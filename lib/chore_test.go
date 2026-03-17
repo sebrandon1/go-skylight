@@ -8,480 +8,277 @@ import (
 )
 
 func TestListChores(t *testing.T) {
-	mockResp := choreAPIResponse{
-		Data: []choreAPIEntry{
-			{
-				ID: "1",
-				Attributes: struct {
-					Summary      string `json:"summary"`
-					Status       string `json:"status"`
-					Start        string `json:"start"`
-					RewardPoints int    `json:"reward_points"`
-					Recurring    bool   `json:"recurring"`
-				}{Summary: "Clean room", Status: "pending"},
-			},
-			{
-				ID: "2",
-				Attributes: struct {
-					Summary      string `json:"summary"`
-					Status       string `json:"status"`
-					Start        string `json:"start"`
-					RewardPoints int    `json:"reward_points"`
-					Recurring    bool   `json:"recurring"`
-				}{Summary: "Do homework", Status: "completed"},
-			},
+	tests := []struct {
+		name       string
+		opts       ChoreListOptions
+		status     int
+		response   string
+		wantLen    int
+		wantTitle  string
+		wantAssign string
+		wantErr    bool
+	}{
+		{
+			name:      "returns chores",
+			status:    http.StatusOK,
+			response:  `{"data":[{"id":"1","attributes":{"summary":"Clean room","status":"pending"}},{"id":"2","attributes":{"summary":"Do homework","status":"completed"}}]}`,
+			wantLen:   2,
+			wantTitle: "Clean room",
+		},
+		{
+			name:     "passes date filter",
+			opts:     ChoreListOptions{Date: "2024-01-15"},
+			status:   http.StatusOK,
+			response: `{"data":[]}`,
+		},
+		{
+			name:     "passes status filter",
+			opts:     ChoreListOptions{Status: "completed"},
+			status:   http.StatusOK,
+			response: `{"data":[]}`,
+		},
+		{
+			name:     "passes all filters",
+			opts:     ChoreListOptions{Date: "2024-01-15", Status: "pending", AssigneeID: "cat1"},
+			status:   http.StatusOK,
+			response: `{"data":[]}`,
+		},
+		{
+			name:       "flattens category relationship",
+			status:     http.StatusOK,
+			response:   `{"data":[{"id":"1","attributes":{"summary":"Clean room","status":"pending","start":"2024-01-15","reward_points":5},"relationships":{"category":{"data":{"id":"cat123","type":"category"}}}}]}`,
+			wantLen:    1,
+			wantTitle:  "Clean room",
+			wantAssign: "cat123",
+		},
+		{
+			name:    "server error returns error",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+		{
+			name:     "invalid JSON returns error",
+			status:   http.StatusOK,
+			response: `not valid json`,
+			wantErr:  true,
 		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockResp)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/chores" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				q := r.URL.Query()
+				if tc.opts.Date != "" && q.Get("date") != tc.opts.Date {
+					t.Errorf("date: want %q got %q", tc.opts.Date, q.Get("date"))
+				}
+				if tc.opts.Status != "" && q.Get("status") != tc.opts.Status {
+					t.Errorf("status: want %q got %q", tc.opts.Status, q.Get("status"))
+				}
+				if tc.opts.AssigneeID != "" && q.Get("assignee_id") != tc.opts.AssigneeID {
+					t.Errorf("assignee_id: want %q got %q", tc.opts.AssigneeID, q.Get("assignee_id"))
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/frames/frame1/chores" {
-			t.Errorf("Expected path /api/frames/frame1/chores, got %s", r.URL.Path)
-		}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	chores, err := client.ListChores("frame1", ChoreListOptions{})
-	if err != nil {
-		t.Fatalf("ListChores failed: %v", err)
-	}
-
-	if len(chores) != 2 {
-		t.Errorf("Expected 2 chores, got %d", len(chores))
-	}
-
-	if chores[0].Title != "Clean room" {
-		t.Errorf("Expected title 'Clean room', got '%s'", chores[0].Title)
+			client, _ := NewClientWithToken("u", "t")
+			chores, err := client.ListChores("frame1", tc.opts)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(chores) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(chores))
+			}
+			if tc.wantTitle != "" && len(chores) > 0 && chores[0].Title != tc.wantTitle {
+				t.Errorf("Title: want %q got %q", tc.wantTitle, chores[0].Title)
+			}
+			if tc.wantAssign != "" && len(chores) > 0 && chores[0].AssigneeID != tc.wantAssign {
+				t.Errorf("AssigneeID: want %q got %q", tc.wantAssign, chores[0].AssigneeID)
+			}
+		})
 	}
 }
 
 func TestCreateChore(t *testing.T) {
-	mockResp := choreAPISingleResponse{
-		Data: choreAPIEntry{
-			ID: "3",
-			Attributes: struct {
-				Summary      string `json:"summary"`
-				Status       string `json:"status"`
-				Start        string `json:"start"`
-				RewardPoints int    `json:"reward_points"`
-				Recurring    bool   `json:"recurring"`
-			}{Summary: "Walk dog", RewardPoints: 5},
+	tests := []struct {
+		name      string
+		input     ChoreData
+		status    int
+		response  string
+		wantTitle string
+		wantErr   bool
+	}{
+		{
+			name:      "creates chore",
+			input:     ChoreData{Title: "Walk dog", Points: 5},
+			status:    http.StatusCreated,
+			response:  `{"data":{"id":"3","attributes":{"summary":"Walk dog","reward_points":5}}}`,
+			wantTitle: "Walk dog",
+		},
+		{
+			name:      "sends all fields in request body",
+			input:     ChoreData{Title: "Walk the dog", DueDate: "2024-01-15", Points: 10, AssigneeID: "cat1"},
+			status:    http.StatusCreated,
+			response:  `{"data":{"id":"c1","attributes":{"summary":"Walk the dog"}}}`,
+			wantTitle: "Walk the dog",
+		},
+		{
+			name:    "server error returns error",
+			input:   ChoreData{Title: "Test"},
+			status:  http.StatusInternalServerError,
+			wantErr: true,
 		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockResp)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/chores" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				var raw map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				if raw["summary"] != tc.input.Title {
+					t.Errorf("summary: want %q got %v", tc.input.Title, raw["summary"])
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			t.Errorf("Expected POST request, got %s", r.Method)
-		}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	chore, err := client.CreateChore("frame1", ChoreData{Title: "Walk dog", Points: 5})
-	if err != nil {
-		t.Fatalf("CreateChore failed: %v", err)
-	}
-
-	if chore.Title != "Walk dog" {
-		t.Errorf("Expected title 'Walk dog', got '%s'", chore.Title)
-	}
-}
-
-func TestDeleteChore(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "DELETE" {
-			t.Errorf("Expected DELETE request, got %s", r.Method)
-		}
-
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	err = client.DeleteChore("frame1", "chore1")
-	if err != nil {
-		t.Fatalf("DeleteChore failed: %v", err)
-	}
-}
-
-func TestListChoresWithFilters(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("date") != "2024-01-15" {
-			t.Errorf("Expected date query param '2024-01-15', got '%s'", r.URL.Query().Get("date"))
-		}
-		if r.URL.Query().Get("status") != "pending" {
-			t.Errorf("Expected status query param 'pending', got '%s'", r.URL.Query().Get("status"))
-		}
-		if r.URL.Query().Get("assignee_id") != "cat1" {
-			t.Errorf("Expected assignee_id query param 'cat1', got '%s'", r.URL.Query().Get("assignee_id"))
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":[]}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListChores("frame1", ChoreListOptions{Date: "2024-01-15", Status: "pending", AssigneeID: "cat1"})
-	if err != nil {
-		t.Fatalf("ListChores with filters failed: %v", err)
+			client, _ := NewClientWithToken("u", "t")
+			chore, err := client.CreateChore("frame1", tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && chore.Title != tc.wantTitle {
+				t.Errorf("Title: want %q got %q", tc.wantTitle, chore.Title)
+			}
+		})
 	}
 }
 
 func TestUpdateChore(t *testing.T) {
-	mockResp := choreAPISingleResponse{
-		Data: choreAPIEntry{
-			ID: "1",
-			Attributes: struct {
-				Summary      string `json:"summary"`
-				Status       string `json:"status"`
-				Start        string `json:"start"`
-				RewardPoints int    `json:"reward_points"`
-				Recurring    bool   `json:"recurring"`
-			}{Summary: "Updated chore", Status: "completed"},
+	tests := []struct {
+		name       string
+		choreID    string
+		input      ChoreData
+		status     int
+		response   string
+		wantStatus string
+		wantErr    bool
+	}{
+		{
+			name:       "updates chore",
+			choreID:    "chore1",
+			input:      ChoreData{Title: "Updated chore", Status: "completed"},
+			status:     http.StatusOK,
+			response:   `{"data":{"id":"1","attributes":{"summary":"Updated chore","status":"completed"}}}`,
+			wantStatus: "completed",
+		},
+		{
+			name:    "server error returns error",
+			choreID: "chore1",
+			input:   ChoreData{Title: "Test"},
+			status:  http.StatusInternalServerError,
+			wantErr: true,
 		},
 	}
 
-	mockResponseJSON, _ := json.Marshal(mockResp)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPut {
+					t.Errorf("expected PUT, got %s", r.Method)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" {
-			t.Errorf("Expected PUT request, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/frames/frame1/chores/chore1" {
-			t.Errorf("Expected path /api/frames/frame1/chores/chore1, got %s", r.URL.Path)
-		}
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockResponseJSON)
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	chore, err := client.UpdateChore("frame1", "chore1", ChoreData{Title: "Updated chore", Status: "completed"})
-	if err != nil {
-		t.Fatalf("UpdateChore failed: %v", err)
-	}
-
-	if chore.Status != "completed" {
-		t.Errorf("Expected status 'completed', got '%s'", chore.Status)
+			client, _ := NewClientWithToken("u", "t")
+			chore, err := client.UpdateChore("frame1", tc.choreID, tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && chore.Status != tc.wantStatus {
+				t.Errorf("Status: want %q got %q", tc.wantStatus, chore.Status)
+			}
+		})
 	}
 }
 
-func TestChoreErrorHandling(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
+func TestDeleteChore(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		wantErr bool
+	}{
+		{"deletes with 204", http.StatusNoContent, false},
+		{"server error returns error", http.StatusInternalServerError, true},
 	}
 
-	_, err = client.ListChores("frame1", ChoreListOptions{})
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete {
+					t.Errorf("expected DELETE, got %s", r.Method)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
 
-func TestCreateChoreError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
 
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.CreateChore("frame1", ChoreData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
-
-func TestUpdateChoreError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.UpdateChore("frame1", "chore1", ChoreData{Title: "Test"})
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
-
-func TestDeleteChoreError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "Server error"}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	err = client.DeleteChore("frame1", "chore1")
-	if err == nil {
-		t.Error("Expected error, got nil")
-	}
-}
-
-func TestChoreInvalidJSONResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`not valid json`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListChores("frame1", ChoreListOptions{})
-	if err == nil {
-		t.Error("Expected error for invalid JSON, got nil")
-	}
-}
-
-func TestCreateChoreRequestBody(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var raw map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
-			t.Errorf("Failed to decode request body: %v", err)
-		}
-
-		if raw["summary"] != "Walk the dog" {
-			t.Errorf("Expected summary 'Walk the dog', got '%v'", raw["summary"])
-		}
-		if raw["start"] != "2024-01-15" {
-			t.Errorf("Expected start '2024-01-15', got '%v'", raw["start"])
-		}
-		if raw["reward_points"] != float64(10) {
-			t.Errorf("Expected reward_points 10, got %v", raw["reward_points"])
-		}
-		if raw["category_id"] != "cat1" {
-			t.Errorf("Expected category_id 'cat1', got '%v'", raw["category_id"])
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"data":{"id":"chore1","attributes":{"summary":"Walk the dog"}}}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.CreateChore("frame1", ChoreData{
-		Title:      "Walk the dog",
-		DueDate:    "2024-01-15",
-		Points:     10,
-		AssigneeID: "cat1",
-	})
-	if err != nil {
-		t.Fatalf("CreateChore failed: %v", err)
-	}
-}
-
-func TestListChoresWithDateFilterOnly(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("date") != "2024-01-15" {
-			t.Errorf("Expected date '2024-01-15', got '%s'", r.URL.Query().Get("date"))
-		}
-		if r.URL.Query().Get("status") != "" {
-			t.Errorf("Expected no status param, got '%s'", r.URL.Query().Get("status"))
-		}
-		if r.URL.Query().Get("assignee_id") != "" {
-			t.Errorf("Expected no assignee_id param, got '%s'", r.URL.Query().Get("assignee_id"))
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":[]}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListChores("frame1", ChoreListOptions{Date: "2024-01-15"})
-	if err != nil {
-		t.Fatalf("ListChores with date filter only failed: %v", err)
-	}
-}
-
-func TestListChoresWithStatusFilterOnly(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("date") != "" {
-			t.Errorf("Expected no date param, got '%s'", r.URL.Query().Get("date"))
-		}
-		if r.URL.Query().Get("status") != "completed" {
-			t.Errorf("Expected status 'completed', got '%s'", r.URL.Query().Get("status"))
-		}
-		if r.URL.Query().Get("assignee_id") != "" {
-			t.Errorf("Expected no assignee_id param, got '%s'", r.URL.Query().Get("assignee_id"))
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":[]}`))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	_, err = client.ListChores("frame1", ChoreListOptions{Status: "completed"})
-	if err != nil {
-		t.Fatalf("ListChores with status filter only failed: %v", err)
-	}
-}
-
-func TestListChoresWithCategoryRelationship(t *testing.T) {
-	mockJSON := `{"data":[{"id":"1","attributes":{"summary":"Clean room","status":"pending","start":"2024-01-15","reward_points":5,"recurring":false},"relationships":{"category":{"data":{"id":"cat123","type":"category"}}}}]}`
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(mockJSON))
-	}))
-	defer server.Close()
-
-	originalURL := SkylightURL
-	SkylightURL = server.URL + "/api"
-	defer func() { SkylightURL = originalURL }()
-
-	client, err := NewClientWithToken("user1", "token1")
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
-	chores, err := client.ListChores("frame1", ChoreListOptions{})
-	if err != nil {
-		t.Fatalf("ListChores failed: %v", err)
-	}
-
-	if len(chores) != 1 {
-		t.Fatalf("Expected 1 chore, got %d", len(chores))
-	}
-	if chores[0].AssigneeID != "cat123" {
-		t.Errorf("Expected assignee_id 'cat123', got '%s'", chores[0].AssigneeID)
-	}
-	if chores[0].Title != "Clean room" {
-		t.Errorf("Expected title 'Clean room', got '%s'", chores[0].Title)
-	}
-	if chores[0].Points != 5 {
-		t.Errorf("Expected points 5, got %d", chores[0].Points)
+			client, _ := NewClientWithToken("u", "t")
+			err := client.DeleteChore("frame1", "chore1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
 	}
 }

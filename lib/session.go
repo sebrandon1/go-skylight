@@ -9,7 +9,7 @@ func (c *Client) Login(email, password string) (*Session, error) {
 		Password: password,
 	}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/sessions", SkylightURL), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/sessions", c.effectiveURL()), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create login request: %w", err)
 	}
