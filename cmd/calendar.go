@@ -29,11 +29,7 @@ var calendarListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate)
 		if err != nil {
@@ -51,11 +47,7 @@ var calendarCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
 			Title:   calendarTitle,
@@ -78,13 +70,9 @@ var calendarDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.DeleteCalendarEvent(frameID, calendarEventID)
+		err := client.DeleteCalendarEvent(frameID, calendarEventID)
 		if err != nil {
 			fmt.Printf("Error deleting calendar event: %v\n", err)
 			os.Exit(1)
@@ -100,11 +88,7 @@ var sourceCalendarsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		calendars, err := client.ListSourceCalendars(frameID)
 		if err != nil {
@@ -162,6 +146,8 @@ func init() {
 	calendarCreateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarCreateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarCreateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
+	calendarCreateCmd.MarkFlagRequired("title")    //nolint:errcheck
+	calendarCreateCmd.MarkFlagRequired("start-at") //nolint:errcheck
 
 	calendarUpdateCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to update")
 	calendarUpdateCmd.Flags().StringVar(&calendarTitle, "title", "", "Event title")
@@ -170,4 +156,5 @@ func init() {
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
+	calendarDeleteCmd.MarkFlagRequired("event-id") //nolint:errcheck
 }

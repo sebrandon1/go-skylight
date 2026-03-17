@@ -28,11 +28,7 @@ var listListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		lists, err := client.ListLists(frameID)
 		if err != nil {
@@ -50,11 +46,7 @@ var listGetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		list, err := client.GetList(frameID, listID)
 		if err != nil {
@@ -72,11 +64,7 @@ var listCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		list, err := client.CreateList(frameID, lib.ListData{
 			Title: listTitle,
@@ -97,13 +85,9 @@ var listDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.DeleteList(frameID, listID)
+		err := client.DeleteList(frameID, listID)
 		if err != nil {
 			fmt.Printf("Error deleting list: %v\n", err)
 			os.Exit(1)
@@ -119,11 +103,7 @@ var listAddItemCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
 		item, err := client.AddListItem(frameID, listID, lib.ListItemData{
 			Title: listItemTitle,
@@ -143,13 +123,9 @@ var listDeleteItemCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
-		client, err := lib.NewClientWithToken(userID, token)
-		if err != nil {
-			fmt.Printf("Error creating client: %v\n", err)
-			os.Exit(1)
-		}
+		client := getClient()
 
-		err = client.DeleteListItem(frameID, listID, listItemID)
+		err := client.DeleteListItem(frameID, listID, listItemID)
 		if err != nil {
 			fmt.Printf("Error deleting list item: %v\n", err)
 			os.Exit(1)
@@ -222,9 +198,14 @@ func init() {
 	listCmd.AddCommand(listDeleteItemCmd)
 
 	listGetCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listGetCmd.MarkFlagRequired("list-id") //nolint:errcheck
+
 	listCreateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
 	listCreateCmd.Flags().StringVar(&listColor, "color", "", "List color")
+	listCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listDeleteCmd.MarkFlagRequired("list-id") //nolint:errcheck
 
 	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listUpdateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
@@ -232,12 +213,18 @@ func init() {
 
 	listAddItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listAddItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
+	listAddItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	listAddItemCmd.MarkFlagRequired("title")   //nolint:errcheck
 
 	listUpdateItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listUpdateItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
 	listUpdateItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
 	listUpdateItemCmd.Flags().BoolVar(&listItemCompleted, "completed", false, "Mark item as completed")
+	listUpdateItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	listUpdateItemCmd.MarkFlagRequired("item-id") //nolint:errcheck
 
 	listDeleteItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
+	listDeleteItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	listDeleteItemCmd.MarkFlagRequired("item-id") //nolint:errcheck
 }

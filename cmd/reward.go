@@ -187,6 +187,8 @@ func init() {
 	rewardCreateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
 	rewardCreateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
 	rewardCreateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
+	rewardCreateCmd.MarkFlagRequired("title")  //nolint:errcheck
+	rewardCreateCmd.MarkFlagRequired("points") //nolint:errcheck
 
 	rewardUpdateCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID to update")
 	rewardUpdateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
