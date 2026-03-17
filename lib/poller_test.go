@@ -39,9 +39,7 @@ func makePollerServer(t *testing.T, rewards []Reward, categories []Category) *ht
 					},
 				}
 				if rw.CategoryID != "" {
-					entries[i].Relationships.Category.Data = &struct {
-						ID string `json:"id"`
-					}{ID: rw.CategoryID}
+					entries[i].Relationships.Category.Data = &apiRelationshipData{ID: rw.CategoryID}
 				}
 			}
 			if err := json.NewEncoder(w).Encode(rewardAPIResponse{Data: entries}); err != nil {

@@ -1,5 +1,10 @@
 package lib
 
+// apiRelationshipData is the JSON-API "data" object inside a to-one relationship.
+type apiRelationshipData struct {
+	ID string `json:"id"`
+}
+
 // Session holds the authenticated user credentials extracted from login.
 type Session struct {
 	UserID   string
@@ -71,9 +76,7 @@ type calendarAPIEntry struct {
 	} `json:"attributes"`
 	Relationships struct {
 		Category struct {
-			Data *struct {
-				ID string `json:"id"`
-			} `json:"data"`
+			Data *apiRelationshipData `json:"data"`
 		} `json:"category"`
 	} `json:"relationships"`
 }
@@ -154,9 +157,7 @@ type choreAPIEntry struct {
 	} `json:"attributes"`
 	Relationships struct {
 		Category struct {
-			Data *struct {
-				ID string `json:"id"`
-			} `json:"data"`
+			Data *apiRelationshipData `json:"data"`
 		} `json:"category"`
 	} `json:"relationships"`
 }
@@ -341,9 +342,7 @@ type rewardAPIEntry struct {
 	} `json:"attributes"`
 	Relationships struct {
 		Category struct {
-			Data *struct {
-				ID string `json:"id"`
-			} `json:"data"`
+			Data *apiRelationshipData `json:"data"`
 		} `json:"category"`
 	} `json:"relationships"`
 }
@@ -433,9 +432,7 @@ type recipeAPIEntry struct {
 	} `json:"attributes"`
 	Relationships struct {
 		MealCategory struct {
-			Data *struct {
-				ID string `json:"id"`
-			} `json:"data"`
+			Data *apiRelationshipData `json:"data"`
 		} `json:"meal_category"`
 	} `json:"relationships"`
 }
@@ -493,14 +490,10 @@ type mealSittingAPIEntry struct {
 	} `json:"attributes"`
 	Relationships struct {
 		MealCategory struct {
-			Data *struct {
-				ID string `json:"id"`
-			} `json:"data"`
+			Data *apiRelationshipData `json:"data"`
 		} `json:"meal_category"`
 		MealRecipe struct {
-			Data *struct {
-				ID string `json:"id"`
-			} `json:"data"`
+			Data *apiRelationshipData `json:"data"`
 		} `json:"meal_recipe"`
 	} `json:"relationships"`
 }
