@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.0.12] - 2026-03-18
+
+### Changed
+- Bump `github.com/cpuguy83/go-md2man/v2` from v2.0.6 to v2.0.7
+- Bump `github.com/spf13/pflag` from v1.0.9 to v1.0.10
+
 ## [1.0.0] - 2026-03-16
 
 ### Added
