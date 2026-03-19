@@ -2,6 +2,8 @@ package lib
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -456,6 +458,56 @@ func TestBadURLNewRequestErrors(t *testing.T) {
 				t.Errorf("expected error with bad URL, got nil")
 			}
 		})
+	}
+}
+
+func TestEffectiveURLFallback(t *testing.T) {
+	client, _ := NewClientWithToken("u", "t")
+	// Client created without WithBaseURL — baseURL is set to default
+	// Clear it to test the fallback branch
+	client.baseURL = ""
+	got := client.effectiveURL()
+	if got != SkylightURL {
+		t.Errorf("effectiveURL = %q, want %q", got, SkylightURL)
+	}
+}
+
+func TestDoWithLogger(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(categoryAPIResponse{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	client, _ := NewClientWithToken("u", "t", WithBaseURL(srv.URL+"/api"), WithLogger(logger))
+
+	// Make a request that exercises both logger.Debug branches in do()
+	_, err := client.ListCategories("frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDoDeleteErrorResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		if _, err := w.Write([]byte(`{"error":"forbidden"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.DeleteChore("frame1", "ch1")
+	if err == nil {
+		t.Error("expected error for 403 response, got nil")
 	}
 }
 

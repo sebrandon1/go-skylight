@@ -1,8 +1,11 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -188,6 +191,198 @@ func TestRewardsPollerStatePersistence(t *testing.T) {
 		// Good — no duplicate event.
 	}
 	p2.Stop()
+}
+
+func TestNewRewardsPollerDefaultStatePath(t *testing.T) {
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	p := NewRewardsPoller(client, "f1", time.Hour, "")
+	if p.stateFile == "" {
+		t.Error("stateFile should default to non-empty path")
+	}
+	if !filepath.IsAbs(p.stateFile) {
+		t.Errorf("stateFile should be absolute, got %q", p.stateFile)
+	}
+}
+
+func TestLoadStateCorruptJSON(t *testing.T) {
+	dir := t.TempDir()
+	stateFile := filepath.Join(dir, "state.json")
+	if err := os.WriteFile(stateFile, []byte(`{corrupt`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t", WithLogger(logger))
+	p := NewRewardsPoller(client, "f1", time.Hour, stateFile)
+	if len(p.seen) != 0 {
+		t.Errorf("seen should be empty after corrupt state, got %d", len(p.seen))
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("corrupt state file")) {
+		t.Error("expected warning about corrupt state file in logs")
+	}
+}
+
+func TestLoadStateReadErrorNonErrNotExist(t *testing.T) {
+	// Use a directory as the state file path to trigger a non-ErrNotExist read error
+	dir := t.TempDir()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t", WithLogger(logger))
+	p := NewRewardsPoller(client, "f1", time.Hour, dir)
+	if len(p.seen) != 0 {
+		t.Errorf("seen should be empty, got %d", len(p.seen))
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("could not read state file")) {
+		t.Error("expected warning about read error in logs")
+	}
+}
+
+func TestSaveStateMkdirAllError(t *testing.T) {
+	// Create a file where a directory should be to cause MkdirAll failure
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stateFile := filepath.Join(blocker, "subdir", "state.json")
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t", WithLogger(logger))
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(t.TempDir(), "clean-state.json"))
+	p.stateFile = stateFile
+	p.logger = logger
+	p.seen["test"] = struct{}{}
+	p.saveState()
+	if !bytes.Contains(buf.Bytes(), []byte("failed to create state directory")) {
+		t.Error("expected warning about MkdirAll failure")
+	}
+}
+
+func TestSaveStateWriteError(t *testing.T) {
+	// Create a read-only directory to prevent writing
+	dir := t.TempDir()
+	stateDir := filepath.Join(dir, "readonly")
+	if err := os.MkdirAll(stateDir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	stateFile := filepath.Join(stateDir, "state.json")
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t", WithLogger(logger))
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(t.TempDir(), "clean-state.json"))
+	p.stateFile = stateFile
+	p.logger = logger
+	p.seen["test"] = struct{}{}
+	p.saveState()
+	if !bytes.Contains(buf.Bytes(), []byte("failed to write state file")) {
+		t.Error("expected warning about write failure")
+	}
+}
+
+func TestPollerListRewardsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/frames/f1/categories":
+			if err := json.NewEncoder(w).Encode(categoryAPIResponse{}); err != nil {
+				t.Errorf("encode: %v", err)
+			}
+		case "/api/frames/f1/rewards":
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t", WithLogger(logger))
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(t.TempDir(), "state.json"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	p.Start(ctx)
+
+	time.Sleep(200 * time.Millisecond)
+	p.Stop()
+
+	if !bytes.Contains(buf.Bytes(), []byte("ListRewards failed")) {
+		t.Error("expected warning about ListRewards failure")
+	}
+}
+
+func TestPollerEventChannelFull(t *testing.T) {
+	// Create many redeemed rewards to overflow the 64-buffer channel
+	rewards := make([]Reward, 70)
+	for i := range rewards {
+		rewards[i] = Reward{
+			ID:       fmt.Sprintf("rw%d", i),
+			Title:    fmt.Sprintf("Prize %d", i),
+			Points:   1,
+			Redeemed: true,
+		}
+	}
+
+	srv := makePollerServer(t, rewards, nil)
+	defer srv.Close()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t", WithLogger(logger))
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(t.TempDir(), "state.json"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	p.Start(ctx)
+
+	time.Sleep(500 * time.Millisecond)
+	p.Stop()
+
+	if !bytes.Contains(buf.Bytes(), []byte("event channel full")) {
+		t.Error("expected warning about channel full")
+	}
 }
 
 func TestRewardsPollerStop(t *testing.T) {

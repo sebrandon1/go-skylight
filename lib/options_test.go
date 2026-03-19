@@ -2,6 +2,8 @@ package lib
 
 import (
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -69,8 +71,6 @@ func TestWithRetry(t *testing.T) {
 }
 
 func TestWithLogger(t *testing.T) {
-	// Verify WithLogger stores the logger and that requests proceed normally
-	// with logging enabled (the logger discards to /dev/null via a nil handler).
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(calendarAPIResponse{Data: []calendarAPIEntry{{ID: "1"}}}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,11 +78,16 @@ func TestWithLogger(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	client, err := NewClientWithToken("u", "t",
 		WithBaseURL(srv.URL+"/api"),
+		WithLogger(logger),
 	)
 	if err != nil {
 		t.Fatalf("NewClientWithToken: %v", err)
+	}
+	if client.logger != logger {
+		t.Error("logger not set on client")
 	}
 	if _, err = client.ListCalendarEvents("f1", "", ""); err != nil {
 		t.Fatalf("ListCalendarEvents: %v", err)
