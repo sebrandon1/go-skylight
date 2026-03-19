@@ -6,6 +6,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func TestSetVersion(t *testing.T) {
+	SetVersion("1.2.3")
+	if rootCmd.Version != "1.2.3" {
+		t.Errorf("rootCmd.Version = %q, want %q", rootCmd.Version, "1.2.3")
+	}
+	// Reset for other tests
+	SetVersion("dev")
+}
+
+func TestExecuteHelp(t *testing.T) {
+	rootCmd.SetArgs([]string{"--help"})
+	if err := Execute(); err != nil {
+		t.Errorf("Execute --help failed: %v", err)
+	}
+}
+
 func TestRootCommandExists(t *testing.T) {
 	if rootCmd == nil {
 		t.Fatal("rootCmd should not be nil")

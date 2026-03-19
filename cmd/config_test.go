@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -124,6 +125,71 @@ func TestLoadConfigMissingFile(t *testing.T) {
 
 	if email != "" {
 		t.Errorf("email should be empty when config file is missing")
+	}
+
+	configPath = ""
+}
+
+func TestSaveConfigMkdirAllError(t *testing.T) {
+	// Create a file where a directory should be
+	dir := t.TempDir()
+	blocker := filepath.Join(dir, "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath = filepath.Join(blocker, "subdir", "config")
+	err := saveConfig(map[string]string{"KEY": "VALUE"})
+	if err == nil {
+		t.Error("expected error when MkdirAll fails")
+	}
+	configPath = ""
+}
+
+func TestSaveConfigWriteError(t *testing.T) {
+	dir := t.TempDir()
+	readonlyDir := filepath.Join(dir, "readonly")
+	if err := os.MkdirAll(readonlyDir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	configPath = filepath.Join(readonlyDir, "config")
+	err := saveConfig(map[string]string{"KEY": "VALUE"})
+	if err == nil {
+		t.Error("expected error when file cannot be written")
+	}
+	configPath = ""
+}
+
+func TestSaveConfigMergesExistingKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	// Write initial config
+	if err := os.WriteFile(path, []byte("EXISTING_KEY=old_value\nSKYLIGHT_EMAIL=test@test.com\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath = path
+
+	err := saveConfig(map[string]string{"SKYLIGHT_TOKEN": "newtok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+
+	// EXISTING_KEY should be preserved
+	if !strings.Contains(content, "EXISTING_KEY=old_value") {
+		t.Error("existing key should be preserved")
+	}
+	// New key should be added
+	if !strings.Contains(content, "SKYLIGHT_TOKEN=newtok") {
+		t.Error("new key should be added")
+	}
+	// Original key should be preserved
+	if !strings.Contains(content, "SKYLIGHT_EMAIL=test@test.com") {
+		t.Error("original SKYLIGHT_EMAIL should be preserved")
 	}
 
 	configPath = ""

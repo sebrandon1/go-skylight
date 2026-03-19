@@ -98,6 +98,93 @@ func TestBuyVOOServerError(t *testing.T) {
 	}
 }
 
+func TestBuyVOOConnectionRefused(t *testing.T) {
+	client := NewAlpacaClient("http://localhost:1", "key", "secret")
+	_, err := client.BuyVOO(context.Background(), "1.00")
+	if err == nil {
+		t.Fatal("expected error for unreachable server")
+	}
+}
+
+func TestBuyVOOInvalidJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`not json`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	client := NewAlpacaClient(srv.URL, "key", "secret")
+	_, err := client.BuyVOO(context.Background(), "1.00")
+	if err == nil {
+		t.Fatal("expected error for invalid JSON response")
+	}
+}
+
+func TestConfigFromEnvMissingAPISecret(t *testing.T) {
+	t.Setenv("ALPACA_API_KEY", "key")
+	t.Setenv("ALPACA_API_SECRET", "")
+	t.Setenv("SKYLIGHT_USER_ID", "uid")
+	t.Setenv("SKYLIGHT_TOKEN", "tok")
+	t.Setenv("SKYLIGHT_FRAME_ID", "fid")
+
+	_, err := configFromEnv()
+	if err == nil {
+		t.Error("expected error for missing ALPACA_API_SECRET")
+	}
+}
+
+func TestConfigFromEnvMissingSkylight(t *testing.T) {
+	tests := []struct {
+		name    string
+		setEnvs map[string]string
+	}{
+		{
+			name: "missing SKYLIGHT_USER_ID",
+			setEnvs: map[string]string{
+				"ALPACA_API_KEY":    "key",
+				"ALPACA_API_SECRET": "secret",
+				"SKYLIGHT_USER_ID":  "",
+				"SKYLIGHT_TOKEN":    "tok",
+				"SKYLIGHT_FRAME_ID": "fid",
+			},
+		},
+		{
+			name: "missing SKYLIGHT_TOKEN",
+			setEnvs: map[string]string{
+				"ALPACA_API_KEY":    "key",
+				"ALPACA_API_SECRET": "secret",
+				"SKYLIGHT_USER_ID":  "uid",
+				"SKYLIGHT_TOKEN":    "",
+				"SKYLIGHT_FRAME_ID": "fid",
+			},
+		},
+		{
+			name: "missing SKYLIGHT_FRAME_ID",
+			setEnvs: map[string]string{
+				"ALPACA_API_KEY":    "key",
+				"ALPACA_API_SECRET": "secret",
+				"SKYLIGHT_USER_ID":  "uid",
+				"SKYLIGHT_TOKEN":    "tok",
+				"SKYLIGHT_FRAME_ID": "",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			for k, v := range tc.setEnvs {
+				t.Setenv(k, v)
+			}
+			_, err := configFromEnv()
+			if err == nil {
+				t.Error("expected error")
+			}
+		})
+	}
+}
+
 func TestConfigFromEnv(t *testing.T) {
 	t.Run("missing required vars", func(t *testing.T) {
 		t.Setenv("ALPACA_API_KEY", "")

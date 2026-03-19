@@ -248,6 +248,122 @@ func TestCreateBountyCleanupOnRewardFailure(t *testing.T) {
 	}
 }
 
+func TestCreateBountyChoreFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateBounty("frame1", BountyData{Title: "Test", Points: 5, RewardTitle: "Prize"})
+	if err == nil {
+		t.Fatal("expected error when CreateChore fails")
+	}
+}
+
+func TestCreateBountyInvalidAssigneeID(t *testing.T) {
+	var deleteCount atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/chores":
+			w.WriteHeader(http.StatusCreated)
+			if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
+				Data: choreAPIEntry{ID: "ch1"},
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		case r.Method == http.MethodDelete:
+			deleteCount.Add(1)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateBounty("frame1", BountyData{
+		Title:       "Test",
+		Points:      5,
+		RewardTitle: "Prize",
+		AssigneeID:  "not-a-number",
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid AssigneeID")
+	}
+	if deleteCount.Load() != 1 {
+		t.Errorf("expected 1 cleanup DELETE, got %d", deleteCount.Load())
+	}
+}
+
+func TestListBountiesChoreError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/frames/frame1/chores":
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
+		case "/api/frames/frame1/rewards":
+			if err := json.NewEncoder(w).Encode(rewardAPIResponse{}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.ListBounties("frame1")
+	if err == nil {
+		t.Fatal("expected error when ListChores fails")
+	}
+}
+
+func TestListBountiesRewardError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/frames/frame1/chores":
+			if err := json.NewEncoder(w).Encode(choreAPIResponse{}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		case "/api/frames/frame1/rewards":
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.ListBounties("frame1")
+	if err == nil {
+		t.Fatal("expected error when ListRewards fails")
+	}
+}
+
 func TestListBounties(t *testing.T) {
 	tests := []struct {
 		name       string
