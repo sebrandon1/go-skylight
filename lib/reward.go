@@ -4,7 +4,7 @@ import "fmt"
 
 // ListRewards retrieves rewards for a frame.
 func (c *Client) ListRewards(frameID string) ([]Reward, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/rewards", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/rewards", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list rewards request: %w", err)
 	}
@@ -60,7 +60,7 @@ func (c *Client) UpdateReward(frameID, rewardID string, reward RewardData) (*Rew
 
 // DeleteReward deletes a reward.
 func (c *Client) DeleteReward(frameID, rewardID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), frameID, rewardID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), frameID, rewardID))
 	if err != nil {
 		return fmt.Errorf("failed to create delete reward request: %w", err)
 	}
@@ -74,7 +74,7 @@ func (c *Client) DeleteReward(frameID, rewardID string) error {
 
 // RedeemReward redeems a reward.
 func (c *Client) RedeemReward(frameID, rewardID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/rewards/%s/redeem", c.effectiveURL(), frameID, rewardID), nil)
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/rewards/%s/redeem", c.effectiveURL(), frameID, rewardID))
 	if err != nil {
 		return fmt.Errorf("failed to create redeem reward request: %w", err)
 	}
@@ -88,7 +88,7 @@ func (c *Client) RedeemReward(frameID, rewardID string) error {
 
 // UnredeemReward unredeems a reward.
 func (c *Client) UnredeemReward(frameID, rewardID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/rewards/%s/unredeem", c.effectiveURL(), frameID, rewardID), nil)
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/rewards/%s/unredeem", c.effectiveURL(), frameID, rewardID))
 	if err != nil {
 		return fmt.Errorf("failed to create unredeem reward request: %w", err)
 	}
@@ -102,7 +102,7 @@ func (c *Client) UnredeemReward(frameID, rewardID string) error {
 
 // GetRewardPoints retrieves reward points for a frame.
 func (c *Client) GetRewardPoints(frameID string) ([]RewardPointEntry, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get reward points request: %w", err)
 	}

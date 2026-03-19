@@ -136,7 +136,11 @@ func backoffDelay(base, max time.Duration, attempt int) time.Duration {
 		return exp
 	}
 	var b [8]byte
-	_, _ = rand.Read(b[:])
+	// crypto/rand.Read is guaranteed to return len(b) bytes on supported
+	// platforms; an error here would indicate a broken OS entropy source.
+	if _, err := rand.Read(b[:]); err != nil {
+		return exp
+	}
 	n := binary.LittleEndian.Uint64(b[:]) % half
 	return time.Duration(n) + exp/2 //nolint:gosec
 }
