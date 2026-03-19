@@ -4,7 +4,7 @@ import "fmt"
 
 // ListCategories retrieves categories (family members) for a frame.
 func (c *Client) ListCategories(frameID string) ([]Category, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list categories request: %w", err)
 	}

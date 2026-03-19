@@ -6,7 +6,7 @@ const choreStatusPending = "pending"
 
 // ListChores retrieves chores for a frame with optional filters.
 func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list chores request: %w", err)
 	}
@@ -81,7 +81,7 @@ func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, 
 
 // DeleteChore deletes a chore.
 func (c *Client) DeleteChore(frameID, choreID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), frameID, choreID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), frameID, choreID))
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}

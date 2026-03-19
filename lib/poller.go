@@ -220,11 +220,21 @@ func (p *RewardsPoller) saveState() {
 	state := pollerState{SeenRewardIDs: ids}
 	data, err := json.Marshal(state)
 	if err != nil {
+		if p.logger != nil {
+			p.logger.Warn("poller: failed to marshal state", slog.String("error", err.Error()))
+		}
 		return
 	}
 
 	if err := os.MkdirAll(filepath.Dir(p.stateFile), 0o700); err != nil {
+		if p.logger != nil {
+			p.logger.Warn("poller: failed to create state directory", slog.String("path", filepath.Dir(p.stateFile)), slog.String("error", err.Error()))
+		}
 		return
 	}
-	_ = os.WriteFile(p.stateFile, data, 0o600)
+	if err := os.WriteFile(p.stateFile, data, 0o600); err != nil {
+		if p.logger != nil {
+			p.logger.Warn("poller: failed to write state file", slog.String("path", p.stateFile), slog.String("error", err.Error()))
+		}
+	}
 }

@@ -7,7 +7,7 @@ const listItemStatusPending = "pending"
 
 // ListLists retrieves all lists for a frame.
 func (c *Client) ListLists(frameID string) ([]List, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list lists request: %w", err)
 	}
@@ -26,7 +26,7 @@ func (c *Client) ListLists(frameID string) ([]List, error) {
 
 // GetList retrieves a single list by ID (includes items from the included array).
 func (c *Client) GetList(frameID, listID string) (*List, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get list request: %w", err)
 	}
@@ -88,7 +88,7 @@ func (c *Client) UpdateList(frameID, listID string, list ListData) (*List, error
 
 // DeleteList deletes a list.
 func (c *Client) DeleteList(frameID, listID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID))
 	if err != nil {
 		return fmt.Errorf("failed to create delete list request: %w", err)
 	}
@@ -155,7 +155,7 @@ func (c *Client) UpdateListItem(frameID, listID, itemID string, item ListItemDat
 
 // DeleteListItem deletes an item from a list.
 func (c *Client) DeleteListItem(frameID, listID, itemID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), frameID, listID, itemID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), frameID, listID, itemID))
 	if err != nil {
 		return fmt.Errorf("failed to create delete list item request: %w", err)
 	}

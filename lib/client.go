@@ -156,7 +156,10 @@ func (c *Client) get(req *http.Request, v any) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	if err := checkStatus(resp, body); err != nil {
 		return err
 	}
@@ -170,7 +173,10 @@ func (c *Client) post(req *http.Request, v any) error {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return checkStatus(resp, body)
 	}
@@ -191,7 +197,10 @@ func (c *Client) put(req *http.Request, v any) error {
 		return nil
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return checkStatus(resp, body)
 	}
@@ -212,7 +221,10 @@ func (c *Client) patch(req *http.Request, v any) error {
 		return nil
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return checkStatus(resp, body)
 	}
@@ -232,7 +244,10 @@ func (c *Client) doDelete(req *http.Request) error {
 	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
 		return nil
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	return checkStatus(resp, body)
 }
 
@@ -244,9 +259,8 @@ func addQueryParams(req *http.Request, params map[string]string) {
 	req.URL.RawQuery = q.Encode()
 }
 
-//nolint:unparam
-func newRequest(method, url string, body io.Reader) (*http.Request, error) {
-	return http.NewRequest(method, url, body)
+func newRequest(method, url string) (*http.Request, error) {
+	return http.NewRequest(method, url, nil)
 }
 
 func newRequestWithBody(method, url string, body any) (*http.Request, error) {

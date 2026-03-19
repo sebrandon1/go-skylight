@@ -4,7 +4,7 @@ import "fmt"
 
 // ListMealCategories retrieves meal categories for a frame.
 func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/categories", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/categories", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list meal categories request: %w", err)
 	}
@@ -23,7 +23,7 @@ func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
 
 // ListRecipes retrieves recipes for a frame.
 func (c *Client) ListRecipes(frameID string) ([]Recipe, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list recipes request: %w", err)
 	}
@@ -42,7 +42,7 @@ func (c *Client) ListRecipes(frameID string) ([]Recipe, error) {
 
 // GetRecipe retrieves a single recipe by ID.
 func (c *Client) GetRecipe(frameID, recipeID string) (*Recipe, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get recipe request: %w", err)
 	}
@@ -92,7 +92,7 @@ func (c *Client) UpdateRecipe(frameID, recipeID string, recipe RecipeData) (*Rec
 
 // DeleteRecipe deletes a recipe.
 func (c *Client) DeleteRecipe(frameID, recipeID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID), nil)
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID))
 	if err != nil {
 		return fmt.Errorf("failed to create delete recipe request: %w", err)
 	}
@@ -106,7 +106,7 @@ func (c *Client) DeleteRecipe(frameID, recipeID string) error {
 
 // ListMealSittings retrieves meal sittings for a frame within an optional date range.
 func (c *Client) ListMealSittings(frameID string, opts MealSittingListOptions) ([]MealSitting, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), frameID), nil)
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list meal sittings request: %w", err)
 	}
@@ -157,7 +157,7 @@ func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*Me
 
 // AddRecipeToGroceryList adds a recipe's ingredients to the grocery list.
 func (c *Client) AddRecipeToGroceryList(frameID, recipeID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), frameID, recipeID), nil)
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), frameID, recipeID))
 	if err != nil {
 		return fmt.Errorf("failed to create add to grocery list request: %w", err)
 	}
