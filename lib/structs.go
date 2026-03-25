@@ -592,6 +592,11 @@ type frameAPIResponse struct {
 	Data frameAPIEntry `json:"data"`
 }
 
+// framesAPIResponse wraps the JSON-API envelope for frame list responses.
+type framesAPIResponse struct {
+	Data []frameAPIEntry `json:"data"`
+}
+
 // frameAPIEntry represents a frame in JSON-API format.
 type frameAPIEntry struct {
 	ID         string `json:"id"`

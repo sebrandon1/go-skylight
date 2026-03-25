@@ -2,6 +2,25 @@ package lib
 
 import "fmt"
 
+// ListFrames retrieves all frames accessible to the authenticated user.
+func (c *Client) ListFrames() ([]Frame, error) {
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames", c.effectiveURL()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create list frames request: %w", err)
+	}
+
+	var apiResp framesAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to list frames: %w", err)
+	}
+
+	frames := make([]Frame, len(apiResp.Data))
+	for i := range apiResp.Data {
+		frames[i] = apiResp.Data[i].toFrame()
+	}
+	return frames, nil
+}
+
 // GetFrame retrieves frame information.
 func (c *Client) GetFrame(frameID string) (*Frame, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), frameID))

@@ -6,6 +6,76 @@ import (
 	"testing"
 )
 
+func TestListFrames(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   int
+		response string
+		wantLen  int
+		wantName string
+		wantErr  bool
+	}{
+		{
+			name:     "returns frames",
+			status:   http.StatusOK,
+			response: `{"data":[{"id":"f1","type":"frame_show","attributes":{"name":"Family Frame","timezone":"America/Chicago"}},{"id":"f2","type":"frame_show","attributes":{"name":"Office","timezone":"America/New_York"}}]}`,
+			wantLen:  2,
+			wantName: "Family Frame",
+		},
+		{
+			name:     "empty list",
+			status:   http.StatusOK,
+			response: `{"data":[]}`,
+			wantLen:  0,
+		},
+		{
+			name:    "unauthorized returns error",
+			status:  http.StatusUnauthorized,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			frames, err := client.ListFrames()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(frames) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(frames))
+			}
+			if tc.wantName != "" && len(frames) > 0 && frames[0].Name != tc.wantName {
+				t.Errorf("Name: want %q got %q", tc.wantName, frames[0].Name)
+			}
+		})
+	}
+}
+
 func TestGetFrame(t *testing.T) {
 	tests := []struct {
 		name     string
