@@ -42,6 +42,34 @@ Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.co
 go install github.com/sebrandon1/go-skylight@latest
 ```
 
+### Docker
+
+No Go toolchain required — pull the image and run any command directly:
+
+```bash
+docker run --rm \
+  sebrandon1/go-skylight:latest \
+  get chore create \
+  --user-id YOUR_UID \
+  --token YOUR_TOKEN \
+  --frame-id FRAME_ID \
+  --title "Take out the trash" \
+  --points 5
+```
+
+Pass credentials via environment variables to keep the command tidy:
+
+```bash
+docker run --rm \
+  -e SKYLIGHT_USER_ID=YOUR_UID \
+  -e SKYLIGHT_TOKEN=YOUR_TOKEN \
+  -e SKYLIGHT_FRAME_ID=FRAME_ID \
+  sebrandon1/go-skylight:latest \
+  get chore create --title "Take out the trash" --points 5
+```
+
+Images are published to [Docker Hub](https://hub.docker.com/r/sebrandon1/go-skylight) on every release for `linux/amd64` and `linux/arm64`.
+
 ### Authenticate
 
 ```bash
