@@ -170,13 +170,13 @@ var mealCreateSittingCmd = &cobra.Command{
 
 var mealDeleteSittingCmd = &cobra.Command{
 	Use:   "delete-sitting",
-	Short: "Delete a meal sitting",
+	Short: "Delete a meal sitting instance",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
 		client := getClient()
 
-		err := client.DeleteMealSitting(frameID, sittingID)
+		err := client.DeleteMealSitting(frameID, sittingID, sittingDate)
 		if err != nil {
 			fmt.Printf("Error deleting meal sitting: %v\n", err)
 			os.Exit(1)
@@ -276,7 +276,9 @@ func init() {
 	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
 
 	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
 	mealDeleteSittingCmd.MarkFlagRequired("sitting-id") //nolint:errcheck
+	mealDeleteSittingCmd.MarkFlagRequired("date")       //nolint:errcheck
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 }

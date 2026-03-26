@@ -155,9 +155,9 @@ func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*Me
 	return &result, nil
 }
 
-// DeleteMealSitting deletes a meal sitting by ID.
-func (c *Client) DeleteMealSitting(frameID, sittingID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), frameID, sittingID))
+// DeleteMealSitting deletes a specific instance of a meal sitting by sitting ID and date (YYYY-MM-DD).
+func (c *Client) DeleteMealSitting(frameID, sittingID, date string) error {
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/sittings/%s/instances/%s", c.effectiveURL(), frameID, sittingID, date))
 	if err != nil {
 		return fmt.Errorf("failed to create delete meal sitting request: %w", err)
 	}
