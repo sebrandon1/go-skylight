@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 	"strings"
 )
 
@@ -48,7 +47,7 @@ func (c *Client) ListPhotos(frameID string, opts PhotoListOptions) ([]Photo, str
 func (c *Client) UploadPhoto(frameID string, ext string, imageData []byte, caption string) (*PhotoUploadResponse, error) {
 	// Step 1: request a presigned S3 upload URL
 	uploadReq := photoUploadURLRequest{
-		Ext:      strings.TrimPrefix(strings.ToLower(ext), "."),
+		Ext:      strings.ToLower(ext),
 		FrameIDs: []string{frameID},
 		Caption:  caption,
 	}
@@ -110,7 +109,7 @@ func (c *Client) DeletePhotos(frameID string, messageIDs []int) error {
 
 // extToContentType maps a file extension to a MIME content type.
 func extToContentType(ext string) string {
-	switch strings.ToLower(strings.TrimPrefix(filepath.Ext("."+ext), ".")) {
+	switch strings.ToLower(ext) {
 	case "png":
 		return "image/png"
 	case "gif":
