@@ -155,6 +155,20 @@ func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*Me
 	return &result, nil
 }
 
+// DeleteMealSitting deletes a meal sitting by ID.
+func (c *Client) DeleteMealSitting(frameID, sittingID string) error {
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), frameID, sittingID))
+	if err != nil {
+		return fmt.Errorf("failed to create delete meal sitting request: %w", err)
+	}
+
+	if err := c.doDelete(req); err != nil {
+		return fmt.Errorf("failed to delete meal sitting: %w", err)
+	}
+
+	return nil
+}
+
 // AddRecipeToGroceryList adds a recipe's ingredients to the grocery list.
 func (c *Client) AddRecipeToGroceryList(frameID, recipeID string) error {
 	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), frameID, recipeID))

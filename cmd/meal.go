@@ -15,6 +15,7 @@ var (
 	recipeIngredients []string
 	recipeURL         string
 	recipeCategoryID  string
+	sittingID         string
 	sittingDate       string
 	sittingSummary    string
 	sittingDateMin    string
@@ -167,6 +168,24 @@ var mealCreateSittingCmd = &cobra.Command{
 	},
 }
 
+var mealDeleteSittingCmd = &cobra.Command{
+	Use:   "delete-sitting",
+	Short: "Delete a meal sitting",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		err := client.DeleteMealSitting(frameID, sittingID)
+		if err != nil {
+			fmt.Printf("Error deleting meal sitting: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Meal sitting deleted successfully")
+	},
+}
+
 var mealAddToGroceryCmd = &cobra.Command{
 	Use:   "add-to-grocery",
 	Short: "Add recipe ingredients to grocery list",
@@ -226,6 +245,7 @@ func init() {
 	mealCmd.AddCommand(mealDeleteRecipeCmd)
 	mealCmd.AddCommand(mealSittingsCmd)
 	mealCmd.AddCommand(mealCreateSittingCmd)
+	mealCmd.AddCommand(mealDeleteSittingCmd)
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
@@ -254,6 +274,9 @@ func init() {
 	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
 	mealCreateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date")
 	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
+
+	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealDeleteSittingCmd.MarkFlagRequired("sitting-id") //nolint:errcheck
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 }
