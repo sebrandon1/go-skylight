@@ -154,6 +154,14 @@ go-skylight get meal create-sitting --recipe-id ID --date DATE
 go-skylight get meal add-to-grocery --recipe-id ID
 ```
 
+### Photos
+
+```bash
+go-skylight get photo list [--page-token TOKEN]
+go-skylight get photo upload --file PATH [--caption TEXT]
+go-skylight get photo delete --message-id ID [--message-id ID ...]
+```
+
 ### Bounties & Rotations
 
 ```bash
@@ -231,6 +239,7 @@ if errors.As(err, &authErr) {
 | Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |
 | Categories | ✓ | — | — | — | family members |
 | Frame | — | — | — | — | info, devices, avatars, colors |
+| Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), bulk delete |
 | Bounties | ✓ | ✓ | — | — | chore + reward pairs |
 | Rotations | — | ✓ | — | — | rotating assignments |
 | Dashboard | — | — | — | — | today aggregate |

@@ -78,6 +78,7 @@ func init() {
 	getCmd.AddCommand(mealCmd)
 	getCmd.AddCommand(categoryCmd)
 	getCmd.AddCommand(frameCmd)
+	getCmd.AddCommand(photoCmd)
 }
 
 func requireFrameID() {
