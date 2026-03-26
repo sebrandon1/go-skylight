@@ -729,3 +729,87 @@ type RotationData struct {
 type RotationResult struct {
 	Chores []Chore `json:"chores"`
 }
+
+// Photo represents a photo (or video) message on a Skylight frame.
+type Photo struct {
+	ID           string `json:"id"`
+	Status       string `json:"status"`
+	AssetType    string `json:"asset_type"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+	ThumbnailURL string `json:"thumbnail_url"`
+	AssetURL     string `json:"asset_url"`
+	SenderID     int    `json:"sender_id"`
+}
+
+// PhotoListOptions holds optional filters for listing photos.
+type PhotoListOptions struct {
+	// PageToken controls pagination. Use "__START__" for the first page.
+	PageToken string
+}
+
+// PhotoUploadResponse holds the result of a successful upload URL request.
+type PhotoUploadResponse struct {
+	// UploadURL is the presigned S3 PUT URL to upload the image bytes to.
+	UploadURL  string   `json:"url"`
+	Key        string   `json:"key"`
+	GetURL     string   `json:"get_url"`
+	MessageIDs []int    `json:"message_ids"`
+	FrameNames []string `json:"frame_names"`
+}
+
+// photoAPIResponse is the JSON-API envelope for messages list responses.
+type photoAPIResponse struct {
+	Data []photoAPIEntry `json:"data"`
+	Meta *photoMeta      `json:"meta"`
+}
+
+// photoMeta holds pagination tokens returned by the messages endpoint.
+type photoMeta struct {
+	NextPageToken string `json:"next_page_token"`
+	SyncToken     string `json:"sync_token"`
+}
+
+// photoAPIEntry is a single message_status item in JSON-API format.
+type photoAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Status       string `json:"status"`
+		AssetType    string `json:"asset_type"`
+		CreatedAt    string `json:"created_at"`
+		UpdatedAt    string `json:"updated_at"`
+		ThumbnailURL string `json:"thumbnail_url"`
+		AssetURL     string `json:"asset_url"`
+		SenderID     int    `json:"sender_id"`
+	} `json:"attributes"`
+}
+
+func (e photoAPIEntry) toPhoto() Photo {
+	return Photo{
+		ID:           e.ID,
+		Status:       e.Attributes.Status,
+		AssetType:    e.Attributes.AssetType,
+		CreatedAt:    e.Attributes.CreatedAt,
+		UpdatedAt:    e.Attributes.UpdatedAt,
+		ThumbnailURL: e.Attributes.ThumbnailURL,
+		AssetURL:     e.Attributes.AssetURL,
+		SenderID:     e.Attributes.SenderID,
+	}
+}
+
+// photoUploadURLRequest is the request body for POST /api/upload_url.
+type photoUploadURLRequest struct {
+	Ext      string   `json:"ext"`
+	FrameIDs []string `json:"frame_ids"`
+	Caption  string   `json:"caption,omitempty"`
+}
+
+// photoUploadURLResponse is the API response for POST /api/upload_url.
+type photoUploadURLResponse struct {
+	Data PhotoUploadResponse `json:"data"`
+}
+
+// photoDeleteRequest is the body for DELETE /messages/destroy_multiple.
+type photoDeleteRequest struct {
+	MessageIDs []int `json:"message_ids"`
+}
