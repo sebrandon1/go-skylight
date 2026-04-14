@@ -27,6 +27,14 @@ type SessionRequest struct {
 	Password string `json:"password"`
 }
 
+// OAuthTokenResponse holds the OAuth2 token response from Skylight.
+type OAuthTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+}
+
 // CalendarEvent represents a calendar event.
 type CalendarEvent struct {
 	ID          string `json:"id,omitempty"`

@@ -144,6 +144,10 @@ func TestNewClient(t *testing.T) {
 				if client.APIToken != tc.wantTok {
 					t.Errorf("APIToken: want %q got %q", tc.wantTok, client.APIToken)
 				}
+				// NewClient (legacy) should still produce Bearer auth cache.
+				if client.UserID != tc.wantUID {
+					t.Errorf("UserID: want %q got %q", tc.wantUID, client.UserID)
+				}
 			}
 		})
 	}
@@ -152,9 +156,12 @@ func TestNewClient(t *testing.T) {
 func TestAuthorizationHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
-		// Basic base64("user1:token1") = "dXNlcjE6dG9rZW4x"
-		if auth != "Basic dXNlcjE6dG9rZW4x" {
-			t.Errorf("Authorization: want Basic dXNlcjE6dG9rZW4x, got %q", auth)
+		if auth != "Bearer token1" {
+			t.Errorf("Authorization: want Bearer token1, got %q", auth)
+		}
+		apiVer := r.Header.Get("skylight-api-version")
+		if apiVer != "2026-03-01" {
+			t.Errorf("skylight-api-version: want 2026-03-01, got %q", apiVer)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
