@@ -9,12 +9,14 @@ import (
 )
 
 var (
-	email      string
-	password   string
-	token      string
-	userID     string
-	frameID    string
-	autoClient *lib.Client
+	email             string
+	password          string
+	token             string
+	userID            string
+	frameID           string
+	refreshToken      string
+	deviceFingerprint string
+	autoClient        *lib.Client
 )
 
 var version = "dev"
@@ -45,8 +47,32 @@ func init() {
 		if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" {
 			return nil
 		}
-		// Auto-login if email/password set but no token/userID
+
+		// Prefer OAuth2 refresh token flow (new API).
+		if refreshToken != "" {
+			fingerprint := deviceFingerprint
+			if fingerprint == "" {
+				fingerprint = defaultFingerprint()
+			}
+			c, err := lib.NewClientWithRefreshToken(refreshToken, fingerprint)
+			if err != nil {
+				return fmt.Errorf("auto-login failed: %w", err)
+			}
+			autoClient = c
+			// Persist the rotated refresh token back to config.
+			if c.RefreshToken != "" && c.RefreshToken != refreshToken {
+				_ = saveConfig(map[string]string{
+					"SKYLIGHT_REFRESH_TOKEN":      c.RefreshToken,
+					"SKYLIGHT_DEVICE_FINGERPRINT": fingerprint,
+				})
+				refreshToken = c.RefreshToken
+			}
+			return nil
+		}
+
+		// Legacy: email/password via deprecated /api/sessions endpoint.
 		if email != "" && password != "" && (token == "" || userID == "") {
+			//nolint:staticcheck // intentional fallback for legacy callers.
 			c, err := lib.NewClient(email, password)
 			if err != nil {
 				return fmt.Errorf("auto-login failed: %w", err)
@@ -59,11 +85,13 @@ func init() {
 	}
 
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file path (default ~/.skylight/config)")
-	rootCmd.PersistentFlags().StringVar(&email, "email", "", "Skylight account email")
-	rootCmd.PersistentFlags().StringVar(&password, "password", "", "Skylight account password")
-	rootCmd.PersistentFlags().StringVar(&token, "token", "", "API token (alternative to email/password)")
-	rootCmd.PersistentFlags().StringVar(&userID, "user-id", "", "User ID (required with --token)")
+	rootCmd.PersistentFlags().StringVar(&email, "email", "", "Skylight account email (deprecated: use --refresh-token)")
+	rootCmd.PersistentFlags().StringVar(&password, "password", "", "Skylight account password (deprecated: use --refresh-token)")
+	rootCmd.PersistentFlags().StringVar(&token, "token", "", "Bearer access token (alternative to --refresh-token)")
+	rootCmd.PersistentFlags().StringVar(&userID, "user-id", "", "User ID (used with --token)")
 	rootCmd.PersistentFlags().StringVar(&frameID, "frame-id", "", "Frame ID")
+	rootCmd.PersistentFlags().StringVar(&refreshToken, "refresh-token", "", "OAuth2 refresh token")
+	rootCmd.PersistentFlags().StringVar(&deviceFingerprint, "device-fingerprint", "", "Device fingerprint UUID (stable per device)")
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(loginCmd)
@@ -98,6 +126,28 @@ func getClient() *lib.Client {
 		os.Exit(1)
 	}
 	return client
+}
+
+// defaultFingerprint returns a stable UUID derived from the hostname,
+// or a fixed fallback if the hostname cannot be determined.
+func defaultFingerprint() string {
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		return "00000000-0000-0000-0000-000000000001"
+	}
+	// Derive a deterministic UUID from the hostname bytes (version 4 format,
+	// not cryptographically random, but stable across invocations).
+	h := fnv32(host)
+	return fmt.Sprintf("%08x-0000-4000-8000-%012x", h, h)
+}
+
+func fnv32(s string) uint64 {
+	var h uint64 = 14695981039346656037
+	for i := 0; i < len(s); i++ {
+		h ^= uint64(s[i])
+		h *= 1099511628211
+	}
+	return h
 }
 
 // Execute executes the root command.

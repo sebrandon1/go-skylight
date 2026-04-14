@@ -34,11 +34,13 @@ func loadConfig() {
 	defer f.Close()
 
 	vars := map[string]*string{
-		"SKYLIGHT_EMAIL":    &email,
-		"SKYLIGHT_PASSWORD": &password,
-		"SKYLIGHT_TOKEN":    &token,
-		"SKYLIGHT_USER_ID":  &userID,
-		"SKYLIGHT_FRAME_ID": &frameID,
+		"SKYLIGHT_EMAIL":              &email,
+		"SKYLIGHT_PASSWORD":           &password,
+		"SKYLIGHT_TOKEN":              &token,
+		"SKYLIGHT_USER_ID":            &userID,
+		"SKYLIGHT_FRAME_ID":           &frameID,
+		"SKYLIGHT_REFRESH_TOKEN":      &refreshToken,
+		"SKYLIGHT_DEVICE_FINGERPRINT": &deviceFingerprint,
 	}
 
 	scanner := bufio.NewScanner(f)

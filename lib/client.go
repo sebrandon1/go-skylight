@@ -3,7 +3,6 @@ package lib
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,13 +21,15 @@ var (
 	SkylightURL = "https://app.ourskylight.com/api"
 )
 
-// Client is a Skylight API client. Create one with NewClient or
-// NewClientWithToken; use With* functional options for advanced configuration.
+// Client is a Skylight API client. Create one with NewClient,
+// NewClientWithToken, or NewClientWithRefreshToken; use With* functional
+// options for advanced configuration.
 type Client struct {
-	UserID     string
-	APIToken   string
-	HTTPClient *http.Client
-	authCache  string
+	UserID       string
+	APIToken     string // Bearer access token (used for Authorization header).
+	RefreshToken string // OAuth2 refresh token; rotates on each use.
+	HTTPClient   *http.Client
+	authCache    string
 
 	baseURL string
 	logger  *slog.Logger
@@ -48,8 +49,12 @@ func newHTTPClient() *http.Client {
 	}
 }
 
-// NewClient authenticates via email/password and returns a ready-to-use client.
-// Optional ClientOption values customize HTTP client, logging, retry, etc.
+// NewClient authenticates via email/password using the legacy /api/sessions
+// endpoint and returns a ready-to-use client.
+//
+// Deprecated: Skylight no longer supports the legacy sessions endpoint. Use
+// NewClientWithRefreshToken instead, with a refresh token obtained via
+// LoginHeadless or the "skylight auth login --save" command.
 func NewClient(email, password string, opts ...ClientOption) (*Client, error) {
 	if email == "" || password == "" {
 		return nil, errors.New("email and password are required")
@@ -75,13 +80,47 @@ func NewClient(email, password string, opts ...ClientOption) (*Client, error) {
 
 	c.UserID = session.UserID
 	c.APIToken = session.APIToken
-	c.authCache = "Basic " + base64.StdEncoding.EncodeToString([]byte(c.UserID+":"+c.APIToken))
+	c.authCache = "Bearer " + c.APIToken
 
 	return c, nil
 }
 
-// NewClientWithToken creates a client from a pre-existing user ID and API token,
-// skipping the login round-trip. Optional ClientOption values apply as usual.
+// NewClientWithRefreshToken authenticates using an OAuth2 refresh token and
+// returns a ready-to-use client. The refresh token rotates on each use; the
+// caller should persist Client.RefreshToken after a successful call.
+func NewClientWithRefreshToken(refreshToken, fingerprint string, opts ...ClientOption) (*Client, error) {
+	if refreshToken == "" {
+		return nil, errors.New("refresh token is required")
+	}
+	if fingerprint == "" {
+		return nil, errors.New("device fingerprint is required")
+	}
+
+	tok, err := RefreshOAuthToken(refreshToken, fingerprint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to authenticate: %w", err)
+	}
+
+	cfg := defaultClientConfig()
+	for _, o := range opts {
+		o(&cfg)
+	}
+
+	return &Client{
+		APIToken:     tok.AccessToken,
+		RefreshToken: tok.RefreshToken,
+		authCache:    "Bearer " + tok.AccessToken,
+		HTTPClient:   cfg.httpClient,
+		baseURL:      cfg.baseURL,
+		logger:       cfg.logger,
+		limiter:      cfg.limiter,
+		retry:        cfg.retry,
+	}, nil
+}
+
+// NewClientWithToken creates a client from a pre-existing user ID and Bearer
+// access token, skipping the login round-trip. Optional ClientOption values
+// apply as usual.
 func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, error) {
 	if userID == "" || token == "" {
 		return nil, errors.New("user ID and token are required")
@@ -95,7 +134,7 @@ func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, er
 	return &Client{
 		UserID:     userID,
 		APIToken:   token,
-		authCache:  "Basic " + base64.StdEncoding.EncodeToString([]byte(userID+":"+token)),
+		authCache:  "Bearer " + token,
 		HTTPClient: cfg.httpClient,
 		baseURL:    cfg.baseURL,
 		logger:     cfg.logger,
@@ -107,6 +146,7 @@ func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, er
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Authorization", c.authCache)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("skylight-api-version", "2026-03-01")
 }
 
 // effectiveURL returns the client's base URL, falling back to the package-level

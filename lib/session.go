@@ -1,8 +1,212 @@
 package lib
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"regexp"
+	"time"
+)
 
-// Login authenticates with the Skylight API using email and password.
+const (
+	skylightClientID    = "skylight-mobile"
+	skylightScope       = "everything"
+	skylightRedirectURI = "https://ourskylight.com/welcome"
+)
+
+var (
+	// OAuthURL is the Skylight OAuth2 token endpoint. Override in tests.
+	OAuthURL = "https://app.ourskylight.com/oauth/token"
+
+	// AuthSessionURL is the Skylight Rails session login endpoint. Override in tests.
+	AuthSessionURL = "https://app.ourskylight.com/auth/session"
+
+	// OAuthAuthorizeURL is the Skylight OAuth2 authorize endpoint. Override in tests.
+	OAuthAuthorizeURL = "https://app.ourskylight.com/oauth/authorize"
+)
+
+// RefreshOAuthToken exchanges a refresh token for a new access token using
+// the Skylight OAuth2 refresh token grant. The refresh token rotates on each
+// use; callers must persist the new RefreshToken from the response.
+func RefreshOAuthToken(refreshToken, fingerprint string) (*OAuthTokenResponse, error) {
+	return postOAuthToken(url.Values{
+		"grant_type":                             {"refresh_token"},
+		"refresh_token":                          {refreshToken},
+		"client_id":                              {skylightClientID},
+		"skylight_api_client_device_fingerprint": {fingerprint},
+	})
+}
+
+// LoginHeadless performs a headless OAuth2 authorization-code login using
+// email and password. It returns a token response including both an access
+// token and a refresh token. The fingerprint is a stable UUID that identifies
+// this client device.
+func LoginHeadless(email, password, fingerprint string) (*OAuthTokenResponse, error) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating cookie jar: %w", err)
+	}
+
+	hc := &http.Client{
+		Jar:     jar,
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	// Step 1: GET login page to extract CSRF token.
+	csrfToken, err := fetchCSRFToken(hc)
+	if err != nil {
+		return nil, fmt.Errorf("fetching CSRF token: %w", err)
+	}
+
+	// Step 2: POST credentials to create a Rails session.
+	if err := postSession(hc, email, password, csrfToken); err != nil {
+		return nil, fmt.Errorf("logging in: %w", err)
+	}
+
+	// Step 3: GET OAuth authorize endpoint to receive the auth code.
+	code, err := fetchAuthCode(hc, fingerprint)
+	if err != nil {
+		return nil, fmt.Errorf("fetching auth code: %w", err)
+	}
+
+	// Step 4: Exchange auth code for tokens.
+	return exchangeAuthCode(code, fingerprint)
+}
+
+// fetchCSRFToken GETs the login page and extracts the Rails authenticity_token.
+func fetchCSRFToken(hc *http.Client) (string, error) {
+	resp, err := hc.Get(AuthSessionURL + "/new")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	// Match <input ... name="authenticity_token" ... value="..." />
+	re := regexp.MustCompile(`name="authenticity_token"[^>]*value="([^"]+)"`)
+	if m := re.FindSubmatch(body); len(m) > 1 {
+		return string(m[1]), nil
+	}
+	// Also try value before name ordering.
+	re2 := regexp.MustCompile(`value="([^"]+)"[^>]*name="authenticity_token"`)
+	if m := re2.FindSubmatch(body); len(m) > 1 {
+		return string(m[1]), nil
+	}
+	return "", fmt.Errorf("authenticity_token not found in login page")
+}
+
+// postSession POSTs credentials to the Rails session endpoint.
+func postSession(hc *http.Client, email, password, csrfToken string) error {
+	form := url.Values{}
+	form.Set("authenticity_token", csrfToken)
+	form.Set("session[email]", email)
+	form.Set("session[password]", password)
+
+	resp, err := hc.PostForm(AuthSessionURL, form)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("login returned status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
+// fetchAuthCode GETs the OAuth authorize endpoint and extracts the auth code
+// from the redirect Location header.
+func fetchAuthCode(hc *http.Client, fingerprint string) (string, error) {
+	params := url.Values{}
+	params.Set("client_id", skylightClientID)
+	params.Set("response_type", "code")
+	params.Set("redirect_uri", skylightRedirectURI)
+	params.Set("scope", skylightScope)
+	params.Set("skylight_api_client_device_fingerprint", fingerprint)
+
+	authorizeURL := OAuthAuthorizeURL + "?" + params.Encode()
+	resp, err := hc.Get(authorizeURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	location := resp.Header.Get("Location")
+	if location == "" {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("oauth authorize returned status %d with no Location: %s", resp.StatusCode, string(body))
+	}
+
+	u, err := url.Parse(location)
+	if err != nil {
+		return "", fmt.Errorf("parsing redirect URL: %w", err)
+	}
+
+	code := u.Query().Get("code")
+	if code == "" {
+		return "", fmt.Errorf("no code in redirect URL: %s", location)
+	}
+	return code, nil
+}
+
+// exchangeAuthCode exchanges an OAuth2 authorization code for tokens.
+func exchangeAuthCode(code, fingerprint string) (*OAuthTokenResponse, error) {
+	return postOAuthToken(url.Values{
+		"grant_type":                             {"authorization_code"},
+		"code":                                   {code},
+		"client_id":                              {skylightClientID},
+		"redirect_uri":                           {skylightRedirectURI},
+		"scope":                                  {skylightScope},
+		"skylight_api_client_device_fingerprint": {fingerprint},
+	})
+}
+
+// postOAuthToken posts form values to the OAuth token endpoint and returns the response.
+func postOAuthToken(data url.Values) (*OAuthTokenResponse, error) {
+	//nolint:gosec // OAuthURL is a package-level var, not user input; swappable in tests.
+	resp, err := http.PostForm(OAuthURL, data)
+	if err != nil {
+		return nil, fmt.Errorf("oauth token request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading oauth response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("oauth token request failed (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var token OAuthTokenResponse
+	if err := json.Unmarshal(body, &token); err != nil {
+		return nil, fmt.Errorf("parsing oauth response: %w", err)
+	}
+
+	if token.AccessToken == "" {
+		return nil, fmt.Errorf("oauth response missing access_token: %s", string(body))
+	}
+
+	return &token, nil
+}
+
+// Login authenticates with the Skylight API using email and password via the
+// legacy /api/sessions endpoint.
+//
+// Deprecated: Skylight no longer supports this endpoint. Use LoginHeadless or
+// RefreshOAuthToken instead.
 func (c *Client) Login(email, password string) (*Session, error) {
 	reqBody := SessionRequest{
 		Email:    email,
