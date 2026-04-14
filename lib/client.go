@@ -15,6 +15,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// DateFormat is the standard date layout used across the Skylight API (YYYY-MM-DD).
+const DateFormat = "2006-01-02"
+
 var (
 	// SkylightURL is the default base URL for all API calls.
 	// Override via WithBaseURL or by assigning directly in tests.

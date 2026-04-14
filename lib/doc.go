@@ -27,7 +27,6 @@
 //     AddRecipeToGroceryList
 //   - Categories (family members): ListCategories
 //   - Frame: GetFrame, ListDevices, GetAvatars, GetColors
-//   - Dashboard (today's aggregate): GetDashboard
 //   - Bounties (chore+reward pairs): CreateBounty, ListBounties
 //   - Chore rotations: CreateChoreRotation
 //

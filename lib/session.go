@@ -8,8 +8,24 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
+
+const (
+	browserUA     = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+	browserAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+)
+
+func newBrowserRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", browserUA)
+	req.Header.Set("Accept", browserAccept)
+	return req, nil
+}
 
 const (
 	skylightClientID    = "skylight-mobile"
@@ -81,7 +97,12 @@ func LoginHeadless(email, password, fingerprint string) (*OAuthTokenResponse, er
 
 // fetchCSRFToken GETs the login page and extracts the Rails authenticity_token.
 func fetchCSRFToken(hc *http.Client) (string, error) {
-	resp, err := hc.Get(AuthSessionURL + "/new")
+	req, err := newBrowserRequest("GET", AuthSessionURL+"/new", nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := hc.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -109,10 +130,20 @@ func fetchCSRFToken(hc *http.Client) (string, error) {
 func postSession(hc *http.Client, email, password, csrfToken string) error {
 	form := url.Values{}
 	form.Set("authenticity_token", csrfToken)
-	form.Set("session[email]", email)
-	form.Set("session[password]", password)
+	form.Set("email", email)
+	form.Set("password", password)
 
-	resp, err := hc.PostForm(AuthSessionURL, form)
+	req, err := newBrowserRequest("POST", AuthSessionURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if u, e := url.Parse(AuthSessionURL); e == nil {
+		req.Header.Set("Origin", u.Scheme+"://"+u.Host)
+	}
+	req.Header.Set("Referer", AuthSessionURL+"/new")
+
+	resp, err := hc.Do(req)
 	if err != nil {
 		return err
 	}
@@ -136,7 +167,12 @@ func fetchAuthCode(hc *http.Client, fingerprint string) (string, error) {
 	params.Set("skylight_api_client_device_fingerprint", fingerprint)
 
 	authorizeURL := OAuthAuthorizeURL + "?" + params.Encode()
-	resp, err := hc.Get(authorizeURL)
+	req, err := newBrowserRequest("GET", authorizeURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := hc.Do(req)
 	if err != nil {
 		return "", err
 	}

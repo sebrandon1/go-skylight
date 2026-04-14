@@ -52,69 +52,6 @@ func ExampleClient_ListCalendarEvents() {
 	// Team meeting
 }
 
-func ExampleClient_GetDashboard() {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/frames/f1/calendar_events":
-			if _, err := w.Write([]byte(`{"data":[{"id":"ev1","type":"calendar_event","attributes":{"summary":"Stand-up","starts_at":"","ends_at":"","all_day":false}}]}`)); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		case "/api/frames/f1/chores":
-			if err := json.NewEncoder(w).Encode(struct {
-				Data []struct {
-					ID         string `json:"id"`
-					Attributes struct {
-						Summary string `json:"summary"`
-						Status  string `json:"status"`
-					} `json:"attributes"`
-				} `json:"data"`
-			}{
-				Data: []struct {
-					ID         string `json:"id"`
-					Attributes struct {
-						Summary string `json:"summary"`
-						Status  string `json:"status"`
-					} `json:"attributes"`
-				}{{ID: "ch1", Attributes: struct {
-					Summary string `json:"summary"`
-					Status  string `json:"status"`
-				}{Summary: "Dishes", Status: "pending"}}},
-			}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		case "/api/frames/f1/reward_points":
-			if err := json.NewEncoder(w).Encode([]lib.RewardPointEntry{{CategoryID: 1, CurrentPointBalance: 50}}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		case "/api/frames/f1/meals/sittings":
-			if _, err := w.Write([]byte(`{"data":[]}`)); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		case "/api/frames/f1/lists":
-			if _, err := w.Write([]byte(`{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries","color":"","kind":""}}]}`)); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer srv.Close()
-
-	old := lib.SkylightURL
-	lib.SkylightURL = srv.URL + "/api"
-	defer func() { lib.SkylightURL = old }()
-
-	client, _ := lib.NewClientWithToken("u", "t")
-	dash, err := client.GetDashboard("f1")
-	if err != nil {
-		fmt.Println("error:", err)
-		return
-	}
-	fmt.Printf("events=%d chores=%d lists=%d\n", len(dash.Events), len(dash.Chores), len(dash.Lists))
-	// Output:
-	// events=1 chores=1 lists=1
-}
-
 // ExampleRewardsPoller demonstrates streaming reward redemption events.
 // The poller runs on a configurable interval; here we stop it after the first
 // event to keep the example deterministic.
