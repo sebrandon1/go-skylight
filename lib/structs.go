@@ -696,16 +696,6 @@ type colorAPIResponse struct {
 	Data []Color `json:"data"`
 }
 
-// Dashboard aggregates today's data from multiple Skylight resources.
-type Dashboard struct {
-	Date         string             `json:"date"`
-	Events       []CalendarEvent    `json:"events"`
-	Chores       []Chore            `json:"chores"`
-	Points       []RewardPointEntry `json:"points"`
-	MealSittings []MealSitting      `json:"meal_sittings"`
-	Lists        []List             `json:"lists"`
-}
-
 // BountyData holds the input for creating a bounty (chore + paired reward).
 type BountyData struct {
 	Title       string `json:"title"`

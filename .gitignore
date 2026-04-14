@@ -16,3 +16,5 @@ go.work
 go.work.sum
 go-skylight
 .vscode
+.playwright-mcp/
+go-skylight-linux
