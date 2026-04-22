@@ -26,8 +26,8 @@ func TestRootCommandExists(t *testing.T) {
 	if rootCmd == nil {
 		t.Fatal("rootCmd should not be nil")
 	}
-	if rootCmd.Use != "skylight" {
-		t.Errorf("Expected Use 'skylight', got '%s'", rootCmd.Use)
+	if rootCmd.Use != "go-skylight" {
+		t.Errorf("Expected Use 'go-skylight', got '%s'", rootCmd.Use)
 	}
 }
 
