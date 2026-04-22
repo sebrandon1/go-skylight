@@ -98,6 +98,17 @@ func init() {
 	rootCmd.AddCommand(bountyCmd)
 	rootCmd.AddCommand(rotationCmd)
 
+	// Top-level resource commands (flattened from get prefix)
+	rootCmd.AddCommand(calendarCmd)
+	rootCmd.AddCommand(choreCmd)
+	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(rewardCmd)
+	rootCmd.AddCommand(mealCmd)
+	rootCmd.AddCommand(categoryCmd)
+	rootCmd.AddCommand(frameCmd)
+	rootCmd.AddCommand(photoCmd)
+
+	// Backward compatibility: keep get subcommands but hide them
 	getCmd.AddCommand(calendarCmd)
 	getCmd.AddCommand(choreCmd)
 	getCmd.AddCommand(listCmd)
@@ -106,6 +117,7 @@ func init() {
 	getCmd.AddCommand(categoryCmd)
 	getCmd.AddCommand(frameCmd)
 	getCmd.AddCommand(photoCmd)
+	getCmd.Hidden = true
 }
 
 func requireFrameID() {
