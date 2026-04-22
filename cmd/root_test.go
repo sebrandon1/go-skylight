@@ -784,3 +784,60 @@ func TestCalendarHelpDoesNotError(t *testing.T) {
 		t.Errorf("Execute 'get calendar --help' failed: %v", err)
 	}
 }
+
+// TestResourceCommandsAtRootLevel verifies that all resource commands are
+// registered directly under rootCmd, not only nested under get.
+func TestResourceCommandsAtRootLevel(t *testing.T) {
+	expected := map[string]bool{
+		"calendar": false,
+		"chore":    false,
+		"list":     false,
+		"reward":   false,
+		"meal":     false,
+		"category": false,
+		"frame":    false,
+	}
+	for _, cmd := range rootCmd.Commands() {
+		if _, ok := expected[cmd.Use]; ok {
+			expected[cmd.Use] = true
+		}
+	}
+	for name, found := range expected {
+		if !found {
+			t.Errorf("expected '%s' as a top-level command under root", name)
+		}
+	}
+}
+
+// TestResourceCommandPaths guards against the Cobra dual-parent bug where
+// adding the same *cobra.Command instance to two parents causes CommandPath()
+// to reflect the wrong ancestor (e.g. "skylight get chore" instead of "skylight chore").
+func TestResourceCommandPaths(t *testing.T) {
+	tests := []struct {
+		wantPath string
+		cmd      *cobra.Command
+	}{
+		{"skylight calendar", calendarCmd},
+		{"skylight chore", choreCmd},
+		{"skylight list", listCmd},
+		{"skylight reward", rewardCmd},
+		{"skylight meal", mealCmd},
+		{"skylight category", categoryCmd},
+		{"skylight frame", frameCmd},
+	}
+	for _, tt := range tests {
+		t.Run(tt.wantPath, func(t *testing.T) {
+			if got := tt.cmd.CommandPath(); got != tt.wantPath {
+				t.Errorf("CommandPath() = %q, want %q", got, tt.wantPath)
+			}
+		})
+	}
+}
+
+// TestGetCommandIsHidden verifies that get is hidden now that resource commands
+// live at the top level.
+func TestGetCommandIsHidden(t *testing.T) {
+	if !getCmd.Hidden {
+		t.Error("getCmd should be hidden after flattening resource commands to top level")
+	}
+}
