@@ -12,6 +12,22 @@ var frameCmd = &cobra.Command{
 	Short: "Frame and device info commands",
 }
 
+var frameListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all frames",
+	Run: func(cmd *cobra.Command, args []string) {
+		client := getClient()
+
+		frames, err := client.ListFrames()
+		if err != nil {
+			fmt.Printf("Error listing frames: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(frames)
+	},
+}
+
 var frameInfoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get frame information",
@@ -81,6 +97,7 @@ var frameColorsCmd = &cobra.Command{
 }
 
 func init() {
+	frameCmd.AddCommand(frameListCmd)
 	frameCmd.AddCommand(frameInfoCmd)
 	frameCmd.AddCommand(frameDevicesCmd)
 	frameCmd.AddCommand(frameAvatarsCmd)
