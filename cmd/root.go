@@ -43,8 +43,10 @@ func init() {
 		// Load config file first (CLI flags take precedence since they're already set)
 		loadConfig()
 
-		// Skip auto-login for login command itself and help
-		if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" {
+		// Skip auto-login for login command itself, help, and config subcommands
+		// (config commands must work even when credentials are missing or expired).
+		if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" ||
+			(cmd.Parent() != nil && cmd.Parent().Name() == "config") {
 			return nil
 		}
 
@@ -107,6 +109,7 @@ func init() {
 	rootCmd.AddCommand(categoryCmd)
 	rootCmd.AddCommand(frameCmd)
 	rootCmd.AddCommand(photoCmd)
+	rootCmd.AddCommand(configCmd)
 }
 
 func requireFrameID() {
