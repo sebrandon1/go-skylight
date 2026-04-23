@@ -785,19 +785,19 @@ func TestResourceCommandsAtRootLevel(t *testing.T) {
 
 // TestResourceCommandPaths guards against the Cobra dual-parent bug where
 // adding the same *cobra.Command instance to two parents causes CommandPath()
-// to reflect the wrong ancestor (e.g. "skylight get chore" instead of "skylight chore").
+// to reflect the wrong ancestor (e.g. "go-skylight get chore" instead of "go-skylight chore").
 func TestResourceCommandPaths(t *testing.T) {
 	tests := []struct {
 		wantPath string
 		cmd      *cobra.Command
 	}{
-		{"skylight calendar", calendarCmd},
-		{"skylight chore", choreCmd},
-		{"skylight list", listCmd},
-		{"skylight reward", rewardCmd},
-		{"skylight meal", mealCmd},
-		{"skylight category", categoryCmd},
-		{"skylight frame", frameCmd},
+		{"go-skylight calendar", calendarCmd},
+		{"go-skylight chore", choreCmd},
+		{"go-skylight list", listCmd},
+		{"go-skylight reward", rewardCmd},
+		{"go-skylight meal", mealCmd},
+		{"go-skylight category", categoryCmd},
+		{"go-skylight frame", frameCmd},
 	}
 	for _, tt := range tests {
 		t.Run(tt.wantPath, func(t *testing.T) {
