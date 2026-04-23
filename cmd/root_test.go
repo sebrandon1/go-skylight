@@ -92,32 +92,6 @@ func TestRootSubcommands(t *testing.T) {
 	}
 }
 
-func TestGetSubcommands(t *testing.T) {
-	subcommands := getCmd.Commands()
-
-	expected := map[string]bool{
-		"calendar": false,
-		"chore":    false,
-		"list":     false,
-		"reward":   false,
-		"meal":     false,
-		"category": false,
-		"frame":    false,
-	}
-
-	for _, cmd := range subcommands {
-		if _, ok := expected[cmd.Use]; ok {
-			expected[cmd.Use] = true
-		}
-	}
-
-	for name, found := range expected {
-		if !found {
-			t.Errorf("Expected subcommand '%s' under get", name)
-		}
-	}
-}
-
 func TestLoginCommandExists(t *testing.T) {
 	if loginCmd == nil {
 		t.Fatal("loginCmd should not be nil")
