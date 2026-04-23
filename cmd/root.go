@@ -93,19 +93,20 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&refreshToken, "refresh-token", "", "OAuth2 refresh token")
 	rootCmd.PersistentFlags().StringVar(&deviceFingerprint, "device-fingerprint", "", "Device fingerprint UUID (stable per device)")
 
+	getCmd.Hidden = true
+
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(bountyCmd)
 	rootCmd.AddCommand(rotationCmd)
-
-	getCmd.AddCommand(calendarCmd)
-	getCmd.AddCommand(choreCmd)
-	getCmd.AddCommand(listCmd)
-	getCmd.AddCommand(rewardCmd)
-	getCmd.AddCommand(mealCmd)
-	getCmd.AddCommand(categoryCmd)
-	getCmd.AddCommand(frameCmd)
-	getCmd.AddCommand(photoCmd)
+	rootCmd.AddCommand(calendarCmd)
+	rootCmd.AddCommand(choreCmd)
+	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(rewardCmd)
+	rootCmd.AddCommand(mealCmd)
+	rootCmd.AddCommand(categoryCmd)
+	rootCmd.AddCommand(frameCmd)
+	rootCmd.AddCommand(photoCmd)
 }
 
 func requireFrameID() {
