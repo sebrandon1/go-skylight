@@ -24,6 +24,7 @@ var sensitiveConfigKeys = map[string]bool{
 }
 
 const notSet = "(not set)"
+const masked = "****"
 
 // configValues returns pointers to the package-level config globals.
 // Must stay in sync with the vars map in loadConfig().
@@ -45,9 +46,9 @@ func maskValue(key, value string) string {
 	}
 	if sensitiveConfigKeys[key] {
 		if len(value) <= 4 {
-			return "****"
+			return masked
 		}
-		return value[:4] + "****"
+		return value[:4] + masked
 	}
 	return value
 }
