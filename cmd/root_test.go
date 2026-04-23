@@ -661,6 +661,10 @@ func TestAllCommandsHaveShortDescriptions(t *testing.T) {
 		"frame devices":       frameDevicesCmd,
 		"frame avatars":       frameAvatarsCmd,
 		"frame colors":        frameColorsCmd,
+		"config":              configCmd,
+		"config show":         configShowCmd,
+		"config get":          configGetCmd,
+		"config set":          configSetCmd,
 	}
 
 	for name, c := range cmds {
@@ -709,12 +713,15 @@ func TestLeafCommandsHaveRunFunctions(t *testing.T) {
 		"frame devices":       frameDevicesCmd,
 		"frame avatars":       frameAvatarsCmd,
 		"frame colors":        frameColorsCmd,
+		"config show":         configShowCmd,
+		"config get":          configGetCmd,
+		"config set":          configSetCmd,
 	}
 
 	for name, c := range leafCmds {
 		t.Run(name, func(t *testing.T) {
-			if c.Run == nil {
-				t.Errorf("Leaf command '%s' should have a Run function", name)
+			if c.Run == nil && c.RunE == nil {
+				t.Errorf("Leaf command '%s' should have a Run or RunE function", name)
 			}
 		})
 	}
@@ -732,6 +739,7 @@ func TestParentCommandsHaveNoRunFunction(t *testing.T) {
 		"reward":   rewardCmd,
 		"meal":     mealCmd,
 		"frame":    frameCmd,
+		"config":   configCmd,
 	}
 
 	for name, c := range parentCmds {
@@ -813,5 +821,26 @@ func TestResourceCommandPaths(t *testing.T) {
 func TestGetCommandIsHidden(t *testing.T) {
 	if !getCmd.Hidden {
 		t.Error("getCmd should be hidden after flattening resource commands to top level")
+	}
+}
+
+func TestConfigCommandExists(t *testing.T) {
+	if configCmd == nil {
+		t.Fatal("configCmd should not be nil")
+	}
+	if configCmd.Use != "config" {
+		t.Errorf("Expected Use 'config', got '%s'", configCmd.Use)
+	}
+
+	expected := map[string]bool{"show": false, "get": false, "set": false}
+	for _, sub := range configCmd.Commands() {
+		if _, ok := expected[sub.Name()]; ok {
+			expected[sub.Name()] = true
+		}
+	}
+	for name, found := range expected {
+		if !found {
+			t.Errorf("Expected subcommand '%s' under config", name)
+		}
 	}
 }
