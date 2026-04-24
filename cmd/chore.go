@@ -93,6 +93,24 @@ var choreDeleteCmd = &cobra.Command{
 	},
 }
 
+var choreCompleteCmd = &cobra.Command{
+	Use:   "complete",
+	Short: "Mark a chore as completed",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		chore, err := client.UpdateChore(frameID, choreID, lib.ChoreData{Status: "completed"})
+		if err != nil {
+			fmt.Printf("Error completing chore: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(chore)
+	},
+}
+
 var choreUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a chore",
@@ -133,6 +151,7 @@ func init() {
 	choreCmd.AddCommand(choreCreateCmd)
 	choreCmd.AddCommand(choreUpdateCmd)
 	choreCmd.AddCommand(choreDeleteCmd)
+	choreCmd.AddCommand(choreCompleteCmd)
 
 	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Date filter")
 	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter")
@@ -157,4 +176,7 @@ func init() {
 	choreUpdateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
+
+	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")
+	choreCompleteCmd.MarkFlagRequired("chore-id") //nolint:errcheck
 }

@@ -212,9 +212,10 @@ func TestChoreSubcommands(t *testing.T) {
 	subcommands := choreCmd.Commands()
 
 	expected := map[string]bool{
-		"list":   false,
-		"create": false,
-		"delete": false,
+		"list":     false,
+		"create":   false,
+		"delete":   false,
+		"complete": false,
 	}
 
 	for _, cmd := range subcommands {
@@ -283,6 +284,13 @@ func TestChoreDeleteFlags(t *testing.T) {
 	f := choreDeleteCmd.Flags().Lookup("chore-id")
 	if f == nil {
 		t.Error("Expected flag 'chore-id' on chore delete command")
+	}
+}
+
+func TestChoreCompleteFlags(t *testing.T) {
+	f := choreCompleteCmd.Flags().Lookup("chore-id")
+	if f == nil {
+		t.Error("Expected flag 'chore-id' on chore complete command")
 	}
 }
 
@@ -632,6 +640,7 @@ func TestAllCommandsHaveShortDescriptions(t *testing.T) {
 		"chore list":          choreListCmd,
 		"chore create":        choreCreateCmd,
 		"chore delete":        choreDeleteCmd,
+		"chore complete":      choreCompleteCmd,
 		"list":                listCmd,
 		"list all":            listListCmd,
 		"list info":           listGetCmd,
@@ -688,6 +697,7 @@ func TestLeafCommandsHaveRunFunctions(t *testing.T) {
 		"chore list":          choreListCmd,
 		"chore create":        choreCreateCmd,
 		"chore delete":        choreDeleteCmd,
+		"chore complete":      choreCompleteCmd,
 		"list all":            listListCmd,
 		"list info":           listGetCmd,
 		"list create":         listCreateCmd,
