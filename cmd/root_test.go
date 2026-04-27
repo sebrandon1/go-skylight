@@ -26,8 +26,8 @@ func TestRootCommandExists(t *testing.T) {
 	if rootCmd == nil {
 		t.Fatal("rootCmd should not be nil")
 	}
-	if rootCmd.Use != "go-skylight" {
-		t.Errorf("Expected Use 'go-skylight', got '%s'", rootCmd.Use)
+	if rootCmd.Use != "skylight" {
+		t.Errorf("Expected Use 'skylight', got '%s'", rootCmd.Use)
 	}
 }
 
@@ -803,19 +803,19 @@ func TestResourceCommandsAtRootLevel(t *testing.T) {
 
 // TestResourceCommandPaths guards against the Cobra dual-parent bug where
 // adding the same *cobra.Command instance to two parents causes CommandPath()
-// to reflect the wrong ancestor (e.g. "go-skylight get chore" instead of "go-skylight chore").
+// to reflect the wrong ancestor (e.g. "skylight get chore" instead of "skylight chore").
 func TestResourceCommandPaths(t *testing.T) {
 	tests := []struct {
 		wantPath string
 		cmd      *cobra.Command
 	}{
-		{"go-skylight calendar", calendarCmd},
-		{"go-skylight chore", choreCmd},
-		{"go-skylight list", listCmd},
-		{"go-skylight reward", rewardCmd},
-		{"go-skylight meal", mealCmd},
-		{"go-skylight category", categoryCmd},
-		{"go-skylight frame", frameCmd},
+		{"skylight calendar", calendarCmd},
+		{"skylight chore", choreCmd},
+		{"skylight list", listCmd},
+		{"skylight reward", rewardCmd},
+		{"skylight meal", mealCmd},
+		{"skylight category", categoryCmd},
+		{"skylight frame", frameCmd},
 	}
 	for _, tt := range tests {
 		t.Run(tt.wantPath, func(t *testing.T) {

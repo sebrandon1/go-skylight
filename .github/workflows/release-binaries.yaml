@@ -31,14 +31,14 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p dist
-          BINARY_NAME=go-skylight
+          BINARY_NAME=skylight
           OUTPUT="dist/${BINARY_NAME}"
           go build -trimpath -ldflags "-s -w -X main.Version=${GITHUB_REF_NAME}" -o "$OUTPUT" .
 
       - name: Package
         run: |
           set -euo pipefail
-          BINARY_NAME=go-skylight
+          BINARY_NAME=skylight
           TAG="${GITHUB_REF_NAME}"
           PKG_NAME="${BINARY_NAME}_${TAG}_${{ matrix.goos }}_${{ matrix.goarch }}"
           mkdir -p dist/pkg
@@ -47,7 +47,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: go-skylight_${{ matrix.goos }}_${{ matrix.goarch }}
+          name: skylight_${{ matrix.goos }}_${{ matrix.goarch }}
           path: dist/pkg/*
           if-no-files-found: error
 

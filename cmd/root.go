@@ -22,7 +22,7 @@ var (
 var version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:     "go-skylight",
+	Use:     "skylight",
 	Short:   "Skylight CLI interacts with the Skylight Calendar API",
 	Version: version,
 }

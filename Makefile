@@ -1,4 +1,4 @@
-APP_NAME=go-skylight
+APP_NAME=skylight
 VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo "dev")
 LDFLAGS=-ldflags "-X main.Version=$(VERSION)"
 
