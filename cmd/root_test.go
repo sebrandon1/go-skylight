@@ -216,6 +216,8 @@ func TestChoreSubcommands(t *testing.T) {
 		"create":   false,
 		"delete":   false,
 		"complete": false,
+		"skip":     false,
+		"claim":    false,
 	}
 
 	for _, cmd := range subcommands {
@@ -244,6 +246,7 @@ func TestChoreListFlags(t *testing.T) {
 		{"after flag", "after"},
 		{"before flag", "before"},
 		{"include-late flag", "include-late"},
+		{"up-for-grabs flag", "up-for-grabs"},
 	}
 
 	for _, tt := range tests {
@@ -268,6 +271,7 @@ func TestChoreCreateFlags(t *testing.T) {
 		{"assignee-id flag", "assignee-id"},
 		{"points flag", "points"},
 		{"recurring flag", "recurring"},
+		{"up-for-grabs flag", "up-for-grabs"},
 	}
 
 	for _, tt := range tests {
@@ -291,6 +295,22 @@ func TestChoreCompleteFlags(t *testing.T) {
 	f := choreCompleteCmd.Flags().Lookup("chore-id")
 	if f == nil {
 		t.Error("Expected flag 'chore-id' on chore complete command")
+	}
+}
+
+func TestChoreSkipFlags(t *testing.T) {
+	f := choreSkipCmd.Flags().Lookup("chore-id")
+	if f == nil {
+		t.Error("Expected flag 'chore-id' on chore skip command")
+	}
+}
+
+func TestChoreClaimFlags(t *testing.T) {
+	flags := choreClaimCmd.Flags()
+	for _, name := range []string{"chore-id", "assignee-id"} {
+		if flags.Lookup(name) == nil {
+			t.Errorf("Expected flag %q on chore claim command", name)
+		}
 	}
 }
 

@@ -32,6 +32,7 @@ func TestCreateChoreRotation(t *testing.T) {
 					Start        string `json:"start"`
 					RewardPoints int    `json:"reward_points"`
 					Recurring    bool   `json:"recurring"`
+					UpForGrabs   bool   `json:"up_for_grabs"`
 				}{
 					Summary: body["summary"].(string),
 					Start:   body["start"].(string),
@@ -114,6 +115,7 @@ func TestCreateChoreRotationPartialFailure(t *testing.T) {
 					Start        string `json:"start"`
 					RewardPoints int    `json:"reward_points"`
 					Recurring    bool   `json:"recurring"`
+					UpForGrabs   bool   `json:"up_for_grabs"`
 				}{Summary: "Task"},
 			},
 		}); err != nil {
