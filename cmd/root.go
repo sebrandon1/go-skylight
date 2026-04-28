@@ -8,6 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	outputJSON  = "json"
+	outputTable = "table"
+)
+
 var (
 	email             string
 	password          string
@@ -95,7 +100,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&frameID, "frame-id", "", "Frame ID")
 	rootCmd.PersistentFlags().StringVar(&refreshToken, "refresh-token", "", "OAuth2 refresh token")
 	rootCmd.PersistentFlags().StringVar(&deviceFingerprint, "device-fingerprint", "", "Device fingerprint UUID (stable per device)")
-	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "json", "Output format: json or table")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", outputJSON, "Output format: json or table")
 
 	getCmd.Hidden = true
 

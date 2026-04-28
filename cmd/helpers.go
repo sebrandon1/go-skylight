@@ -21,7 +21,7 @@ func printJSON(data any) {
 // printOutput prints data in the format specified by --output (json or table).
 // Defaults to JSON for types that don't have a dedicated table renderer.
 func printOutput(data any) {
-	if outputFormat == "table" {
+	if outputFormat == outputTable {
 		switch v := data.(type) {
 		case []lib.Chore:
 			printChoresTable(v)

@@ -73,7 +73,7 @@ var statusCmd = &cobra.Command{
 			pointsStr = "none"
 		}
 
-		if outputFormat == "json" {
+		if outputFormat == outputJSON {
 			type pointEntry struct {
 				Name    string `json:"name"`
 				Balance int    `json:"balance"`

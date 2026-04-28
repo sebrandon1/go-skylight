@@ -216,7 +216,7 @@ func captureStdout(fn func()) string {
 }
 
 func TestPrintOutputJSONFallback(t *testing.T) {
-	outputFormat = "json"
+	outputFormat = outputJSON
 	output := captureStdout(func() {
 		printOutput(map[string]string{"key": "value"})
 	})
@@ -226,7 +226,7 @@ func TestPrintOutputJSONFallback(t *testing.T) {
 }
 
 func TestPrintOutputChoresTable(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	chores := []lib.Chore{
 		{ID: "1", Title: "Clean room", Status: "pending", DueDate: "2026-04-28", Points: 10, AssigneeID: "cat1"},
 	}
@@ -240,7 +240,7 @@ func TestPrintOutputChoresTable(t *testing.T) {
 }
 
 func TestPrintOutputRewardsTable(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	rewards := []lib.Reward{
 		{ID: "r1", Title: "Ice cream", Points: 50, EmojiIcon: "🍦", Redeemed: false},
 	}
@@ -254,7 +254,7 @@ func TestPrintOutputRewardsTable(t *testing.T) {
 }
 
 func TestPrintOutputFramesTable(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	frames := []lib.Frame{
 		{ID: "f1", Name: "Kitchen Frame", TimeZone: "America/New_York"},
 	}
@@ -268,7 +268,7 @@ func TestPrintOutputFramesTable(t *testing.T) {
 }
 
 func TestPrintOutputCalendarTable(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	events := []lib.CalendarEvent{
 		{ID: "e1", Title: "Soccer practice", StartAt: "2026-04-28T16:00:00Z", AllDay: false},
 	}
@@ -282,7 +282,7 @@ func TestPrintOutputCalendarTable(t *testing.T) {
 }
 
 func TestPrintOutputCategoriesTable(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	cats := []lib.Category{
 		{ID: "c1", Name: "Alice", Color: "blue"},
 	}
@@ -296,7 +296,7 @@ func TestPrintOutputCategoriesTable(t *testing.T) {
 }
 
 func TestPrintOutputRewardRedeemedFlag(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	rewards := []lib.Reward{
 		{ID: "r1", Title: "Movie night", Points: 100, Redeemed: true},
 		{ID: "r2", Title: "Candy", Points: 20, Redeemed: false},
@@ -311,7 +311,7 @@ func TestPrintOutputRewardRedeemedFlag(t *testing.T) {
 }
 
 func TestPrintOutputUnknownTypeDefaultsToJSON(t *testing.T) {
-	outputFormat = "table"
+	outputFormat = outputTable
 	output := captureStdout(func() {
 		printOutput(map[string]int{"count": 5})
 	})
