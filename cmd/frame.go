@@ -24,7 +24,7 @@ var frameListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(frames)
+		printOutput(frames)
 	},
 }
 

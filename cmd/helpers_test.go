@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/sebrandon1/go-skylight/lib"
 )
 
 func TestPrintJSON(t *testing.T) {
@@ -198,6 +200,123 @@ func TestPrintJSONWithBooleans(t *testing.T) {
 	}
 	if !strings.Contains(output, "\"deleted\": false") {
 		t.Errorf("Expected deleted=false in output, got: %s", output)
+	}
+}
+
+func captureStdout(fn func()) string {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	fn()
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	return buf.String()
+}
+
+func TestPrintOutputJSONFallback(t *testing.T) {
+	outputFormat = outputJSON
+	output := captureStdout(func() {
+		printOutput(map[string]string{"key": "value"})
+	})
+	if !strings.Contains(output, `"key": "value"`) {
+		t.Errorf("Expected JSON output, got: %s", output)
+	}
+}
+
+func TestPrintOutputChoresTable(t *testing.T) {
+	outputFormat = outputTable
+	chores := []lib.Chore{
+		{ID: "1", Title: "Clean room", Status: "pending", DueDate: "2026-04-28", Points: 10, AssigneeID: "cat1"},
+	}
+	output := captureStdout(func() { printOutput(chores) })
+	if !strings.Contains(output, "Clean room") {
+		t.Errorf("Expected chore title in table output, got: %s", output)
+	}
+	if !strings.Contains(output, "TITLE") {
+		t.Errorf("Expected header in table output, got: %s", output)
+	}
+}
+
+func TestPrintOutputRewardsTable(t *testing.T) {
+	outputFormat = outputTable
+	rewards := []lib.Reward{
+		{ID: "r1", Title: "Ice cream", Points: 50, EmojiIcon: "🍦", Redeemed: false},
+	}
+	output := captureStdout(func() { printOutput(rewards) })
+	if !strings.Contains(output, "Ice cream") {
+		t.Errorf("Expected reward title in table output, got: %s", output)
+	}
+	if !strings.Contains(output, "POINTS") {
+		t.Errorf("Expected POINTS header, got: %s", output)
+	}
+}
+
+func TestPrintOutputFramesTable(t *testing.T) {
+	outputFormat = outputTable
+	frames := []lib.Frame{
+		{ID: "f1", Name: "Kitchen Frame", TimeZone: "America/New_York"},
+	}
+	output := captureStdout(func() { printOutput(frames) })
+	if !strings.Contains(output, "Kitchen Frame") {
+		t.Errorf("Expected frame name in table output, got: %s", output)
+	}
+	if !strings.Contains(output, "TIMEZONE") {
+		t.Errorf("Expected TIMEZONE header, got: %s", output)
+	}
+}
+
+func TestPrintOutputCalendarTable(t *testing.T) {
+	outputFormat = outputTable
+	events := []lib.CalendarEvent{
+		{ID: "e1", Title: "Soccer practice", StartAt: "2026-04-28T16:00:00Z", AllDay: false},
+	}
+	output := captureStdout(func() { printOutput(events) })
+	if !strings.Contains(output, "Soccer practice") {
+		t.Errorf("Expected event title in table output, got: %s", output)
+	}
+	if !strings.Contains(output, "ALL DAY") {
+		t.Errorf("Expected ALL DAY header, got: %s", output)
+	}
+}
+
+func TestPrintOutputCategoriesTable(t *testing.T) {
+	outputFormat = outputTable
+	cats := []lib.Category{
+		{ID: "c1", Name: "Alice", Color: "blue"},
+	}
+	output := captureStdout(func() { printOutput(cats) })
+	if !strings.Contains(output, "Alice") {
+		t.Errorf("Expected category name in table output, got: %s", output)
+	}
+	if !strings.Contains(output, "COLOR") {
+		t.Errorf("Expected COLOR header, got: %s", output)
+	}
+}
+
+func TestPrintOutputRewardRedeemedFlag(t *testing.T) {
+	outputFormat = outputTable
+	rewards := []lib.Reward{
+		{ID: "r1", Title: "Movie night", Points: 100, Redeemed: true},
+		{ID: "r2", Title: "Candy", Points: 20, Redeemed: false},
+	}
+	output := captureStdout(func() { printOutput(rewards) })
+	if !strings.Contains(output, "yes") {
+		t.Errorf("Expected 'yes' for redeemed reward, got: %s", output)
+	}
+	if !strings.Contains(output, "no") {
+		t.Errorf("Expected 'no' for unredeemed reward, got: %s", output)
+	}
+}
+
+func TestPrintOutputUnknownTypeDefaultsToJSON(t *testing.T) {
+	outputFormat = outputTable
+	output := captureStdout(func() {
+		printOutput(map[string]int{"count": 5})
+	})
+	if !strings.Contains(output, `"count": 5`) {
+		t.Errorf("Expected JSON fallback for unknown type, got: %s", output)
 	}
 }
 

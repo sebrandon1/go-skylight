@@ -21,6 +21,6 @@ var categoryCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(categories)
+		printOutput(categories)
 	},
 }
