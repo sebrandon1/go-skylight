@@ -49,7 +49,7 @@ var choreListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(chores)
+		printOutput(chores)
 	},
 }
 

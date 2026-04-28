@@ -36,7 +36,7 @@ var rewardListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(rewards)
+		printOutput(rewards)
 	},
 }
 

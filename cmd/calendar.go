@@ -37,7 +37,7 @@ var calendarListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(events)
+		printOutput(events)
 	},
 }
 

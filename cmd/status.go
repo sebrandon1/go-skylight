@@ -73,6 +73,28 @@ var statusCmd = &cobra.Command{
 			pointsStr = "none"
 		}
 
+		if outputFormat == "json" {
+			type pointEntry struct {
+				Name    string `json:"name"`
+				Balance int    `json:"balance"`
+			}
+			var pointEntries []pointEntry
+			for _, p := range points {
+				name := catNames[p.CategoryID]
+				if name == "" {
+					name = strconv.Itoa(p.CategoryID)
+				}
+				pointEntries = append(pointEntries, pointEntry{Name: name, Balance: p.CurrentPointBalance})
+			}
+			printJSON(map[string]any{
+				"frame":          frame.Name,
+				"pending_chores": len(chores),
+				"events_today":   len(events),
+				"points":         pointEntries,
+			})
+			return
+		}
+
 		fmt.Printf("Frame:   %s\n", frame.Name)
 		fmt.Printf("Chores:  %d pending today\n", len(chores))
 		fmt.Printf("Events:  %d today\n", len(events))
