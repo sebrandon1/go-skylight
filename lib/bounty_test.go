@@ -35,6 +35,7 @@ func TestCreateBounty(t *testing.T) {
 							Start        string `json:"start"`
 							RewardPoints int    `json:"reward_points"`
 							Recurring    bool   `json:"recurring"`
+							UpForGrabs   bool   `json:"up_for_grabs"`
 						}{Summary: "Task", RewardPoints: 5}},
 					}); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -87,6 +88,7 @@ func TestCreateBounty(t *testing.T) {
 							Start        string `json:"start"`
 							RewardPoints int    `json:"reward_points"`
 							Recurring    bool   `json:"recurring"`
+							UpForGrabs   bool   `json:"up_for_grabs"`
 						}{Summary: "Task", RewardPoints: 5}},
 					}); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -138,6 +140,7 @@ func TestCreateBounty(t *testing.T) {
 								Start        string `json:"start"`
 								RewardPoints int    `json:"reward_points"`
 								Recurring    bool   `json:"recurring"`
+								UpForGrabs   bool   `json:"up_for_grabs"`
 							}{Summary: "Do dishes", RewardPoints: 10},
 						},
 					}); err != nil {
@@ -214,6 +217,7 @@ func TestCreateBountyCleanupOnRewardFailure(t *testing.T) {
 						Start        string `json:"start"`
 						RewardPoints int    `json:"reward_points"`
 						Recurring    bool   `json:"recurring"`
+						UpForGrabs   bool   `json:"up_for_grabs"`
 					}{Summary: "Test"},
 				},
 			}); err != nil {
@@ -388,6 +392,7 @@ func TestListBounties(t *testing.T) {
 								Start        string `json:"start"`
 								RewardPoints int    `json:"reward_points"`
 								Recurring    bool   `json:"recurring"`
+								UpForGrabs   bool   `json:"up_for_grabs"`
 							}{Summary: "Task A", Status: "pending", RewardPoints: 10}},
 							{ID: "ch2", Attributes: struct {
 								Summary      string `json:"summary"`
@@ -395,6 +400,7 @@ func TestListBounties(t *testing.T) {
 								Start        string `json:"start"`
 								RewardPoints int    `json:"reward_points"`
 								Recurring    bool   `json:"recurring"`
+								UpForGrabs   bool   `json:"up_for_grabs"`
 							}{Summary: "Task B", Status: "pending", RewardPoints: 0}},
 						},
 					}); err != nil {

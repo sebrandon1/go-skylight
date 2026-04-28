@@ -146,6 +146,7 @@ type Chore struct {
 	Points     int    `json:"points,omitempty"`
 	Recurring  bool   `json:"recurring"`
 	AssigneeID string `json:"assignee_id,omitempty"`
+	UpForGrabs bool   `json:"up_for_grabs,omitempty"`
 }
 
 // choreAPIResponse wraps the JSON-API envelope for chore list responses.
@@ -162,6 +163,7 @@ type choreAPIEntry struct {
 		Start        string `json:"start"`
 		RewardPoints int    `json:"reward_points"`
 		Recurring    bool   `json:"recurring"`
+		UpForGrabs   bool   `json:"up_for_grabs"`
 	} `json:"attributes"`
 	Relationships struct {
 		Category struct {
@@ -178,12 +180,13 @@ type choreAPISingleResponse struct {
 // toChore converts a JSON-API chore entry to a flat Chore struct.
 func (e *choreAPIEntry) toChore() Chore {
 	c := Chore{
-		ID:        e.ID,
-		Title:     e.Attributes.Summary,
-		Status:    e.Attributes.Status,
-		DueDate:   e.Attributes.Start,
-		Points:    e.Attributes.RewardPoints,
-		Recurring: e.Attributes.Recurring,
+		ID:         e.ID,
+		Title:      e.Attributes.Summary,
+		Status:     e.Attributes.Status,
+		DueDate:    e.Attributes.Start,
+		Points:     e.Attributes.RewardPoints,
+		Recurring:  e.Attributes.Recurring,
+		UpForGrabs: e.Attributes.UpForGrabs,
 	}
 	if e.Relationships.Category.Data != nil {
 		c.AssigneeID = e.Relationships.Category.Data.ID
@@ -200,6 +203,7 @@ type ChoreData struct {
 	Status     string `json:"status,omitempty"`
 	AssigneeID string `json:"category_id,omitempty"`
 	Recurring  bool   `json:"recurring,omitempty"`
+	UpForGrabs bool   `json:"up_for_grabs,omitempty"`
 }
 
 // List represents a list (e.g., grocery list, todo list).
@@ -296,7 +300,7 @@ func (e *listItemAPIEntry) toListItem() ListItem {
 		ID:        e.ID,
 		Title:     e.Attributes.Label,
 		Status:    e.Attributes.Status,
-		Completed: e.Attributes.Status == "completed",
+		Completed: e.Attributes.Status == listItemStatusCompleted,
 		Position:  e.Attributes.Position,
 	}
 }
@@ -380,6 +384,12 @@ type RewardData struct {
 	CategoryIDs         []int  `json:"category_ids,omitempty"`
 }
 
+// ChoreCompletionData is the request body for the chore completions endpoint.
+type ChoreCompletionData struct {
+	Status       string `json:"status"`
+	InstanceDate string `json:"instance_date,omitempty"`
+}
+
 // ChoreListOptions holds optional filters for listing chores.
 type ChoreListOptions struct {
 	Date        string
@@ -388,6 +398,7 @@ type ChoreListOptions struct {
 	After       string
 	Before      string
 	IncludeLate bool
+	UpForGrabs  bool
 }
 
 // RewardPointEntry represents a per-category point balance.
