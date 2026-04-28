@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"regexp"
+	"time"
 )
 
 const (
@@ -35,13 +36,7 @@ func (c *Client) setCompletion(frameID, choreID, status string) error {
 	return c.put(req, &result)
 }
 
-// ListChores retrieves chores for a frame with optional filters.
-func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create list chores request: %w", err)
-	}
-
+func (opts ChoreListOptions) queryParams() map[string]string {
 	params := map[string]string{}
 	if opts.Date != "" {
 		params["date"] = opts.Date
@@ -64,8 +59,24 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 	if opts.UpForGrabs {
 		params["include_up_for_grabs"] = paramTrue
 		params["filter"] = "linked_to_profile"
+		if opts.After == "" {
+			params["after"] = time.Now().Format("2006-01-02")
+		}
+		if opts.Before == "" {
+			params["before"] = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+		}
 	}
-	if len(params) > 0 {
+	return params
+}
+
+// ListChores retrieves chores for a frame with optional filters.
+func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create list chores request: %w", err)
+	}
+
+	if params := opts.queryParams(); len(params) > 0 {
 		addQueryParams(req, params)
 	}
 
@@ -74,9 +85,13 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 		return nil, fmt.Errorf("failed to list chores: %w", err)
 	}
 
-	chores := make([]Chore, len(apiResp.Data))
+	chores := make([]Chore, 0, len(apiResp.Data))
 	for i := range apiResp.Data {
-		chores[i] = apiResp.Data[i].toChore()
+		c := apiResp.Data[i].toChore()
+		if opts.UpForGrabs && !c.UpForGrabs {
+			continue
+		}
+		chores = append(chores, c)
 	}
 
 	return chores, nil
