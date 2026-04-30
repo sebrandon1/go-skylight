@@ -38,6 +38,9 @@ func printOutput(data any) {
 		case []lib.Category:
 			printCategoriesTable(v)
 			return
+		case []ChoreStreakStats:
+			printChoreStreakTable(v)
+			return
 		}
 	}
 	printJSON(data)
@@ -95,6 +98,16 @@ func printCategoriesTable(cats []lib.Category) {
 	fmt.Fprintln(w, "ID\tNAME\tCOLOR")
 	for _, c := range cats {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", c.ID, c.Name, c.Color)
+	}
+	w.Flush()
+}
+
+func printChoreStreakTable(stats []ChoreStreakStats) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tCURRENT STREAK\tLONGEST STREAK\tCOMPLETED\tTOTAL\tRATE")
+	for _, s := range stats {
+		fmt.Fprintf(w, "%s\t%d days\t%d days\t%d\t%d\t%.1f%%\n",
+			s.AssigneeName, s.CurrentStreak, s.LongestStreak, s.CompletedChores, s.TotalChores, s.CompletionRate)
 	}
 	w.Flush()
 }
