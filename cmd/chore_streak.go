@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -131,24 +132,41 @@ for a given member are ignored and do not break streaks.`,
 		end := now.Format("2006-01-02")
 		start := now.AddDate(0, 0, -(streakDays - 1)).Format("2006-01-02")
 
-		categories, err := client.ListCategories(frameID)
-		if err != nil {
-			fmt.Printf("Error listing categories: %v\n", err)
+		var (
+			categories []lib.Category
+			catErr     error
+			chores     []lib.Chore
+			choreErr   error
+			wg         sync.WaitGroup
+		)
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			categories, catErr = client.ListCategories(frameID)
+		}()
+		go func() {
+			defer wg.Done()
+			chores, choreErr = client.ListChores(frameID, lib.ChoreListOptions{
+				After:       start,
+				Before:      end,
+				IncludeLate: true,
+			})
+		}()
+		wg.Wait()
+
+		if catErr != nil {
+			fmt.Printf("Error listing categories: %v\n", catErr)
 			os.Exit(1)
 		}
+		if choreErr != nil {
+			fmt.Printf("Error listing chores: %v\n", choreErr)
+			os.Exit(1)
+		}
+
 		catNames := make(map[string]string, len(categories))
 		for _, c := range categories {
 			catNames[c.ID] = c.Name
-		}
-
-		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
-			After:       start,
-			Before:      end,
-			IncludeLate: true,
-		})
-		if err != nil {
-			fmt.Printf("Error listing chores: %v\n", err)
-			os.Exit(1)
 		}
 
 		dates := make([]string, 0, streakDays)
@@ -158,11 +176,7 @@ for a given member are ignored and do not break streaks.`,
 
 		results := computeChoreStreaks(chores, dates, catNames)
 
-		if outputFormat == outputTable {
-			printChoreStreakTable(results)
-		} else {
-			printJSON(results)
-		}
+		printOutput(results)
 	},
 }
 
