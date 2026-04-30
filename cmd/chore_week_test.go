@@ -84,9 +84,9 @@ func TestBuildWeeklyView_SlotCount(t *testing.T) {
 func TestBuildWeeklyView_ChoresGroupedByDate(t *testing.T) {
 	monday, _ := weekStart("2026-04-27")
 	chores := []lib.Chore{
-		{ID: "1", Title: "Walk the dog", Status: "completed", DueDate: "2026-04-27"},
+		{ID: "1", Title: "Walk the dog", Status: "complete", DueDate: "2026-04-27"},
 		{ID: "2", Title: "Take out trash", Status: "pending", DueDate: "2026-04-28"},
-		{ID: "3", Title: "Feed the cat", Status: "completed", DueDate: "2026-04-28"},
+		{ID: "3", Title: "Feed the cat", Status: "complete", DueDate: "2026-04-28"},
 	}
 	days := buildWeeklyView(chores, monday)
 
@@ -118,7 +118,7 @@ func TestBuildWeeklyView_EmptyDays(t *testing.T) {
 func TestBuildWeeklyView_OutOfRangeChoresIgnored(t *testing.T) {
 	monday, _ := weekStart("2026-04-27")
 	chores := []lib.Chore{
-		{ID: "99", Title: "Old chore", Status: "completed", DueDate: "2026-04-20"},
+		{ID: "99", Title: "Old chore", Status: "complete", DueDate: "2026-04-20"},
 	}
 	days := buildWeeklyView(chores, monday)
 	for _, d := range days {
