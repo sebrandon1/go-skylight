@@ -20,6 +20,7 @@ var (
 	choreIncludeLate bool
 	choreRecurring   bool
 	choreUpForGrabs  bool
+	choreWeek        string
 )
 
 var choreCmd = &cobra.Command{
@@ -34,6 +35,31 @@ var choreListCmd = &cobra.Command{
 		requireFrameID()
 
 		client := getClient()
+
+		if cmd.Flags().Changed("week") {
+			monday, err := weekStart(choreWeek)
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
+			sunday := monday.AddDate(0, 0, 6)
+			chores, err := client.ListChores(frameID, lib.ChoreListOptions{
+				After:       monday.Format("2006-01-02"),
+				Before:      sunday.Format("2006-01-02"),
+				IncludeLate: true,
+			})
+			if err != nil {
+				fmt.Printf("Error listing chores: %v\n", err)
+				os.Exit(1)
+			}
+			days := buildWeeklyView(chores, monday)
+			if outputFormat == outputTable {
+				printChoreWeekTable(days)
+			} else {
+				printJSON(days)
+			}
+			return
+		}
 
 		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
 			Date:        choreDate,
@@ -209,6 +235,8 @@ func init() {
 	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "Before date filter")
 	choreListCmd.Flags().BoolVar(&choreIncludeLate, "include-late", false, "Include late chores")
 	choreListCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Only show up-for-grabs chores")
+	choreListCmd.Flags().StringVar(&choreWeek, "week", "", "Show weekly calendar view; optionally specify YYYY-MM-DD to select the week")
+	choreListCmd.Flags().Lookup("week").NoOptDefVal = "current"
 
 	choreCreateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
 	choreCreateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
