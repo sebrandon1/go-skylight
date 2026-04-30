@@ -41,6 +41,9 @@ func printOutput(data any) {
 		case []ChoreStreakStats:
 			printChoreStreakTable(v)
 			return
+		case []WeeklyChoreDay:
+			printChoreWeekTable(v)
+			return
 		}
 	}
 	printJSON(data)

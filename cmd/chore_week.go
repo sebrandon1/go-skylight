@@ -12,9 +12,10 @@ import (
 
 // WeeklyChoreDay represents one day's chores in the weekly view.
 type WeeklyChoreDay struct {
-	Day    string      `json:"day"`
-	Date   string      `json:"date"`
-	Chores []lib.Chore `json:"chores"`
+	Day     string      `json:"day"`
+	Date    string      `json:"date"`
+	Display string      `json:"-"`
+	Chores  []lib.Chore `json:"chores"`
 }
 
 // weekStart returns the Monday of the week containing the given date string.
@@ -44,13 +45,14 @@ func buildWeeklyView(chores []lib.Chore, monday time.Time) []WeeklyChoreDay {
 	for i := 0; i < 7; i++ {
 		d := monday.AddDate(0, 0, i)
 		days[i] = WeeklyChoreDay{
-			Day:    d.Format("Mon"),
-			Date:   d.Format("2006-01-02"),
-			Chores: []lib.Chore{},
+			Day:     d.Format("Mon"),
+			Date:    d.Format("2006-01-02"),
+			Display: d.Format("Jan 02"),
+			Chores:  []lib.Chore{},
 		}
 	}
 
-	byDate := make(map[string][]lib.Chore, len(chores))
+	byDate := make(map[string][]lib.Chore, 7)
 	for _, c := range chores {
 		date := c.DueDate
 		if len(date) >= 10 {
@@ -73,14 +75,12 @@ func printChoreWeekTable(days []WeeklyChoreDay) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "DAY\tDATE\tTITLE\tSTATUS")
 	for _, d := range days {
-		t, _ := time.Parse("2006-01-02", d.Date)
-		dateStr := t.Format("Jan 02")
 		if len(d.Chores) == 0 {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", d.Day, dateStr, "(no chores)", "—")
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", d.Day, d.Display, "(no chores)", "—")
 			continue
 		}
 		for i, c := range d.Chores {
-			dayCol, dateCol := d.Day, dateStr
+			dayCol, dateCol := d.Day, d.Display
 			if i > 0 {
 				dayCol, dateCol = "", ""
 			}

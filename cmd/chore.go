@@ -53,11 +53,7 @@ var choreListCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			days := buildWeeklyView(chores, monday)
-			if outputFormat == outputTable {
-				printChoreWeekTable(days)
-			} else {
-				printJSON(days)
-			}
+			printOutput(days)
 			return
 		}
 
