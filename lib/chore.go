@@ -7,7 +7,11 @@ import (
 )
 
 const (
-	choreStatusPending = "pending"
+	ChoreStatusComplete = "complete"
+	ChoreStatusPending  = "pending"
+	ChoreStatusSkipped  = "skipped"
+
+	choreStatusPending = ChoreStatusPending
 	paramTrue          = "true"
 )
 
@@ -152,7 +156,7 @@ func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, 
 
 // SkipChore skips a single instance of a recurring chore.
 func (c *Client) SkipChore(frameID, choreID string) error {
-	return c.setCompletion(frameID, choreID, "skipped")
+	return c.setCompletion(frameID, choreID, ChoreStatusSkipped)
 }
 
 // CompleteChore marks a chore instance as completed via the completions endpoint.
