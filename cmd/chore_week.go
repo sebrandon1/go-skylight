@@ -85,7 +85,7 @@ func printChoreWeekTable(days []WeeklyChoreDay) {
 				dayCol, dateCol = "", ""
 			}
 			status := "✗"
-			if c.Status == "completed" {
+			if c.Status == lib.ChoreStatusComplete {
 				status = "✓"
 			}
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", dayCol, dateCol, c.Title, status)

@@ -16,9 +16,9 @@ func TestComputeChoreStreaks_Empty(t *testing.T) {
 func TestComputeChoreStreaks_AllCompleted(t *testing.T) {
 	dates := []string{"2026-04-27", "2026-04-28", "2026-04-29"}
 	chores := []lib.Chore{
-		{AssigneeID: "1", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-28", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-29", Status: "completed"},
+		{AssigneeID: "1", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-28", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-29", Status: lib.ChoreStatusComplete},
 	}
 	catNames := map[string]string{"1": "Alice"}
 
@@ -44,9 +44,9 @@ func TestComputeChoreStreaks_AllCompleted(t *testing.T) {
 func TestComputeChoreStreaks_BrokenStreak(t *testing.T) {
 	dates := []string{"2026-04-27", "2026-04-28", "2026-04-29"}
 	chores := []lib.Chore{
-		{AssigneeID: "1", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-28", Status: "pending"},
-		{AssigneeID: "1", DueDate: "2026-04-29", Status: "completed"},
+		{AssigneeID: "1", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-28", Status: lib.ChoreStatusPending},
+		{AssigneeID: "1", DueDate: "2026-04-29", Status: lib.ChoreStatusComplete},
 	}
 
 	results := computeChoreStreaks(chores, dates, nil)
@@ -66,8 +66,8 @@ func TestComputeChoreStreaks_SkipDaysWithNoChores(t *testing.T) {
 	// April 28 has no chores for assignee "1" — streak should not break.
 	dates := []string{"2026-04-27", "2026-04-28", "2026-04-29"}
 	chores := []lib.Chore{
-		{AssigneeID: "1", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-29", Status: "completed"},
+		{AssigneeID: "1", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-29", Status: lib.ChoreStatusComplete},
 	}
 
 	results := computeChoreStreaks(chores, dates, nil)
@@ -87,12 +87,12 @@ func TestComputeChoreStreaks_SkipDaysWithNoChores(t *testing.T) {
 func TestComputeChoreStreaks_MultipleAssignees(t *testing.T) {
 	dates := []string{"2026-04-27", "2026-04-28", "2026-04-29"}
 	chores := []lib.Chore{
-		{AssigneeID: "1", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-28", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-29", Status: "completed"},
-		{AssigneeID: "2", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "2", DueDate: "2026-04-28", Status: "pending"},
-		{AssigneeID: "2", DueDate: "2026-04-29", Status: "pending"},
+		{AssigneeID: "1", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-28", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-29", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "2", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "2", DueDate: "2026-04-28", Status: lib.ChoreStatusPending},
+		{AssigneeID: "2", DueDate: "2026-04-29", Status: lib.ChoreStatusPending},
 	}
 	catNames := map[string]string{"1": "Alice", "2": "Bob"}
 
@@ -119,10 +119,10 @@ func TestComputeChoreStreaks_MultipleAssignees(t *testing.T) {
 func TestComputeChoreStreaks_CompletionRate(t *testing.T) {
 	dates := []string{"2026-04-27", "2026-04-28"}
 	chores := []lib.Chore{
-		{AssigneeID: "1", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-27", Status: "completed"},
-		{AssigneeID: "1", DueDate: "2026-04-28", Status: "pending"},
-		{AssigneeID: "1", DueDate: "2026-04-28", Status: "pending"},
+		{AssigneeID: "1", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-27", Status: lib.ChoreStatusComplete},
+		{AssigneeID: "1", DueDate: "2026-04-28", Status: lib.ChoreStatusPending},
+		{AssigneeID: "1", DueDate: "2026-04-28", Status: lib.ChoreStatusPending},
 	}
 
 	results := computeChoreStreaks(chores, dates, nil)
@@ -144,7 +144,7 @@ func TestComputeChoreStreaks_CompletionRate(t *testing.T) {
 func TestComputeChoreStreaks_SkipsUnassigned(t *testing.T) {
 	dates := []string{"2026-04-29"}
 	chores := []lib.Chore{
-		{AssigneeID: "", DueDate: "2026-04-29", Status: "completed"},
+		{AssigneeID: "", DueDate: "2026-04-29", Status: lib.ChoreStatusComplete},
 	}
 
 	results := computeChoreStreaks(chores, dates, nil)
@@ -156,7 +156,7 @@ func TestComputeChoreStreaks_SkipsUnassigned(t *testing.T) {
 func TestComputeChoreStreaks_FallbackToID(t *testing.T) {
 	dates := []string{"2026-04-29"}
 	chores := []lib.Chore{
-		{AssigneeID: "99", DueDate: "2026-04-29", Status: "completed"},
+		{AssigneeID: "99", DueDate: "2026-04-29", Status: lib.ChoreStatusComplete},
 	}
 
 	results := computeChoreStreaks(chores, dates, map[string]string{})

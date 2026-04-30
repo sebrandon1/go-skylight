@@ -44,7 +44,7 @@ func computeChoreStreaks(chores []lib.Chore, dates []string, catNames map[string
 		}
 		key := choreDay{c.DueDate, c.AssigneeID}
 		total[key]++
-		if c.Status == "completed" {
+		if c.Status == lib.ChoreStatusComplete {
 			done[key]++
 		}
 		assigneeSet[c.AssigneeID] = true
