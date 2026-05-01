@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 )
@@ -13,6 +14,17 @@ const (
 	boolYes = "yes"
 	boolNo  = "no"
 )
+
+// validateDate returns an error if date is non-empty and not in YYYY-MM-DD format.
+func validateDate(date string) error {
+	if date == "" {
+		return nil
+	}
+	if _, err := time.Parse(lib.DateFormat, date); err != nil {
+		return fmt.Errorf("invalid date %q: use YYYY-MM-DD format", date)
+	}
+	return nil
+}
 
 func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")

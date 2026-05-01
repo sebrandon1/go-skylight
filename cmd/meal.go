@@ -130,6 +130,18 @@ var mealSittingsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		for _, f := range []struct {
+			name string
+			val  string
+		}{{"date-min", sittingDateMin}, {"date-max", sittingDateMax}} {
+			if cmd.Flags().Changed(f.name) {
+				if err := validateDate(f.val); err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			}
+		}
+
 		client := getClient()
 
 		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
@@ -150,6 +162,11 @@ var mealCreateSittingCmd = &cobra.Command{
 	Short: "Create a meal sitting",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if err := validateDate(sittingDate); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		client := getClient()
 
@@ -173,6 +190,11 @@ var mealDeleteSittingCmd = &cobra.Command{
 	Short: "Delete a meal sitting instance",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if err := validateDate(sittingDate); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		client := getClient()
 

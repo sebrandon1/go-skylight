@@ -30,6 +30,18 @@ var calendarListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		for _, f := range []struct {
+			name string
+			val  string
+		}{{"start-date", calendarStartDate}, {"end-date", calendarEndDate}} {
+			if cmd.Flags().Changed(f.name) {
+				if err := validateDate(f.val); err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			}
+		}
+
 		client := getClient()
 
 		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate)
@@ -138,6 +150,13 @@ var calendarWeekCmd = &cobra.Command{
 	Short: "Show a 7-day Mon-Sun view of calendar events",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if cmd.Flags().Changed("date") {
+			if err := validateDate(calendarWeekDate); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
 
 		monday, err := weekStart(calendarWeekDate)
 		if err != nil {
