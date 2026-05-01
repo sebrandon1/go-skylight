@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,10 +13,12 @@ import (
 )
 
 var (
-	photoPageToken string
-	photoFile      string
-	photoCaption   string
-	photoMessageID []string
+	photoPageToken   string
+	photoFile        string
+	photoCaption     string
+	photoMessageID   []string
+	photoOutputDir   string
+	photoDownloadAll bool
 )
 
 var photoCmd = &cobra.Command{
@@ -104,10 +107,88 @@ var photoDeleteCmd = &cobra.Command{
 	},
 }
 
+var photoDownloadCmd = &cobra.Command{
+	Use:   "download",
+	Short: "Download photos from a frame to local files",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		if !photoDownloadAll && len(photoMessageID) == 0 {
+			fmt.Println("Error: specify --message-id or --all")
+			os.Exit(1)
+		}
+
+		client := getClient()
+
+		wantIDs := make(map[string]bool, len(photoMessageID))
+		for _, id := range photoMessageID {
+			wantIDs[id] = true
+		}
+
+		var toDownload []lib.Photo
+		pageToken := ""
+		for {
+			photos, nextToken, err := client.ListPhotos(frameID, lib.PhotoListOptions{PageToken: pageToken})
+			if err != nil {
+				fmt.Printf("Error listing photos: %v\n", err)
+				os.Exit(1)
+			}
+			for _, p := range photos {
+				if photoDownloadAll || wantIDs[p.ID] {
+					toDownload = append(toDownload, p)
+				}
+			}
+			if nextToken == "" {
+				break
+			}
+			pageToken = nextToken
+		}
+
+		if len(toDownload) == 0 {
+			fmt.Println("No matching photos found")
+			return
+		}
+
+		if err := os.MkdirAll(photoOutputDir, 0o755); err != nil {
+			fmt.Printf("Error creating output directory: %v\n", err)
+			os.Exit(1)
+		}
+
+		for _, p := range toDownload {
+			data, err := client.DownloadPhoto(p.AssetURL)
+			if err != nil {
+				fmt.Printf("Error downloading %s: %v\n", p.ID, err)
+				continue
+			}
+			ext := photoAssetExt(p.AssetURL, p.AssetType)
+			filename := filepath.Join(photoOutputDir, p.ID+ext)
+			if err := os.WriteFile(filename, data, 0o600); err != nil {
+				fmt.Printf("Error writing %s: %v\n", filename, err)
+				continue
+			}
+			fmt.Printf("Saved %s\n", filename)
+		}
+	},
+}
+
+// photoAssetExt infers the file extension from the asset URL path, falling back to asset type.
+func photoAssetExt(assetURL, assetType string) string {
+	if u, err := url.Parse(assetURL); err == nil {
+		if ext := filepath.Ext(u.Path); ext != "" {
+			return ext
+		}
+	}
+	if strings.HasPrefix(assetType, "video") {
+		return ".mp4"
+	}
+	return ".jpg"
+}
+
 func init() {
 	photoCmd.AddCommand(photoListCmd)
 	photoCmd.AddCommand(photoUploadCmd)
 	photoCmd.AddCommand(photoDeleteCmd)
+	photoCmd.AddCommand(photoDownloadCmd)
 
 	photoListCmd.Flags().StringVar(&photoPageToken, "page-token", "", "Pagination token (omit to start from beginning)")
 
@@ -117,4 +198,8 @@ func init() {
 
 	photoDeleteCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to delete (repeatable)")
 	photoDeleteCmd.MarkFlagRequired("message-id") //nolint:errcheck
+
+	photoDownloadCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to download (repeatable)")
+	photoDownloadCmd.Flags().BoolVar(&photoDownloadAll, "all", false, "Download all photos")
+	photoDownloadCmd.Flags().StringVar(&photoOutputDir, "output-dir", ".", "Directory to save downloaded files")
 }

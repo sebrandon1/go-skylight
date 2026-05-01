@@ -89,6 +89,28 @@ func (c *Client) UploadPhoto(frameID string, ext string, imageData []byte, capti
 	return &result, nil
 }
 
+// DownloadPhoto fetches the raw bytes of a photo from its CDN asset URL.
+// The URL is a pre-signed CloudFront URL returned by ListPhotos — no auth header is needed.
+func (c *Client) DownloadPhoto(assetURL string) ([]byte, error) {
+	req, err := http.NewRequest("GET", assetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create download request: %w", err)
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download photo: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read photo data: %w", err)
+	}
+	return data, nil
+}
+
 // DeletePhotos deletes one or more photos by their message IDs.
 func (c *Client) DeletePhotos(frameID string, messageIDs []int) error {
 	req, err := newRequestWithBody(
