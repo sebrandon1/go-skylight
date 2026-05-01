@@ -16,6 +16,7 @@ var (
 	calendarStartAt   string
 	calendarEndAt     string
 	calendarAllDay    bool
+	calendarWeekDate  string
 )
 
 var calendarCmd = &cobra.Command{
@@ -132,12 +133,43 @@ var calendarUpdateCmd = &cobra.Command{
 	},
 }
 
+var calendarWeekCmd = &cobra.Command{
+	Use:   "week",
+	Short: "Show a 7-day Mon-Sun view of calendar events",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		monday, err := weekStart(calendarWeekDate)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		sunday := monday.AddDate(0, 0, 6)
+
+		client := getClient()
+
+		events, err := client.ListCalendarEvents(
+			frameID,
+			monday.Format("2006-01-02"),
+			sunday.Format("2006-01-02"),
+		)
+		if err != nil {
+			fmt.Printf("Error listing calendar events: %v\n", err)
+			os.Exit(1)
+		}
+
+		days := buildCalendarWeeklyView(events, monday)
+		printOutput(days)
+	},
+}
+
 func init() {
 	calendarCmd.AddCommand(calendarListCmd)
 	calendarCmd.AddCommand(calendarCreateCmd)
 	calendarCmd.AddCommand(calendarUpdateCmd)
 	calendarCmd.AddCommand(calendarDeleteCmd)
 	calendarCmd.AddCommand(sourceCalendarsCmd)
+	calendarCmd.AddCommand(calendarWeekCmd)
 
 	calendarListCmd.Flags().StringVar(&calendarStartDate, "start-date", "", "Start date filter")
 	calendarListCmd.Flags().StringVar(&calendarEndDate, "end-date", "", "End date filter")
@@ -157,4 +189,6 @@ func init() {
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
 	calendarDeleteCmd.MarkFlagRequired("event-id") //nolint:errcheck
+
+	calendarWeekCmd.Flags().StringVar(&calendarWeekDate, "date", "", "Week containing this date (YYYY-MM-DD, default current week)")
 }
