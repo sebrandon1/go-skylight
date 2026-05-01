@@ -117,3 +117,56 @@ func saveConfig(values map[string]string) error {
 
 	return nil
 }
+
+// deleteFromConfig removes key from the config file.
+// Returns true if found and removed, false if the key was not present.
+func deleteFromConfig(key string) (bool, error) {
+	path := configPath
+	if path == "" {
+		path = defaultConfigPath()
+	}
+	if path == "" {
+		return false, fmt.Errorf("could not determine config path")
+	}
+
+	f, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	var lines []string
+	found := false
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			lines = append(lines, line)
+			continue
+		}
+		k, _, ok := strings.Cut(trimmed, "=")
+		if ok && strings.TrimSpace(k) == key {
+			found = true
+			continue
+		}
+		lines = append(lines, line)
+	}
+	f.Close()
+
+	if !found {
+		return false, nil
+	}
+
+	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return false, err
+	}
+	defer out.Close()
+	for _, line := range lines {
+		fmt.Fprintln(out, line)
+	}
+	return true, nil
+}

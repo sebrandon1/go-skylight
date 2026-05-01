@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -121,8 +124,77 @@ var configSetCmd = &cobra.Command{
 	},
 }
 
+var configUnsetCmd = &cobra.Command{
+	Use:   "unset <key>",
+	Short: "Remove a key from the configuration file",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		key := args[0]
+		if _, ok := configValues()[key]; !ok {
+			return fmt.Errorf("unknown config key %q; valid keys: %s", key, strings.Join(knownConfigKeys, ", "))
+		}
+
+		removed, err := deleteFromConfig(key)
+		if err != nil {
+			return fmt.Errorf("updating config: %w", err)
+		}
+
+		path := configPath
+		if path == "" {
+			path = defaultConfigPath()
+		}
+		if !removed {
+			fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s was not set in %s\n", key, path)
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "Unset %s in %s\n", key, path)
+		}
+		return nil
+	},
+}
+
+var configEditCmd = &cobra.Command{
+	Use:   "edit",
+	Short: "Open the configuration file in $EDITOR",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		path := configPath
+		if path == "" {
+			path = defaultConfigPath()
+		}
+		if path == "" {
+			return fmt.Errorf("could not determine config path")
+		}
+
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+				return fmt.Errorf("creating config directory: %w", err)
+			}
+			f, err := os.OpenFile(path, os.O_CREATE, 0o600)
+			if err != nil {
+				return fmt.Errorf("creating config file: %w", err)
+			}
+			f.Close()
+		}
+
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = os.Getenv("VISUAL")
+		}
+		if editor == "" {
+			editor = "vi"
+		}
+
+		c := exec.Command(editor, path) //nolint:gosec
+		c.Stdin = os.Stdin
+		c.Stdout = os.Stdout
+		c.Stderr = os.Stderr
+		return c.Run()
+	},
+}
+
 func init() {
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configSetCmd)
+	configCmd.AddCommand(configUnsetCmd)
+	configCmd.AddCommand(configEditCmd)
 }
