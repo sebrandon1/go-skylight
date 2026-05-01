@@ -60,7 +60,7 @@ var frameDevicesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(devices)
+		printOutput(devices)
 	},
 }
 
@@ -76,7 +76,7 @@ var frameAvatarsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(avatars)
+		printOutput(avatars)
 	},
 }
 
@@ -92,7 +92,7 @@ var frameColorsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(colors)
+		printOutput(colors)
 	},
 }
 

@@ -97,7 +97,7 @@ var sourceCalendarsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(calendars)
+		printOutput(calendars)
 	},
 }
 
