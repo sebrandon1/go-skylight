@@ -56,8 +56,8 @@ var choreListCmd = &cobra.Command{
 			}
 			sunday := monday.AddDate(0, 0, 6)
 			chores, err := client.ListChores(frameID, lib.ChoreListOptions{
-				After:       monday.Format("2006-01-02"),
-				Before:      sunday.Format("2006-01-02"),
+				After:       monday.Format(lib.DateFormat),
+				Before:      sunday.Format(lib.DateFormat),
 				IncludeLate: true,
 			})
 			if err != nil {
