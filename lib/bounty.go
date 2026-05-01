@@ -48,6 +48,44 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 	}, nil
 }
 
+// DeleteBounty deletes the chore and reward that make up a bounty.
+// Both deletions are attempted; the first error encountered is returned.
+func (c *Client) DeleteBounty(frameID, choreID, rewardID string) error {
+	choreErr := c.DeleteChore(frameID, choreID)
+	rewardErr := c.DeleteReward(frameID, rewardID)
+	if choreErr != nil {
+		return fmt.Errorf("failed to delete bounty chore: %w", choreErr)
+	}
+	if rewardErr != nil {
+		return fmt.Errorf("failed to delete bounty reward: %w", rewardErr)
+	}
+	return nil
+}
+
+// UpdateBounty updates the chore and reward that make up a bounty.
+// Only fields set in data are applied; zero-value fields are ignored by the underlying update calls.
+func (c *Client) UpdateBounty(frameID, choreID, rewardID string, data BountyData) (*Bounty, error) {
+	chore, err := c.UpdateChore(frameID, choreID, ChoreData{
+		Title:   data.Title,
+		Points:  data.Points,
+		DueDate: data.DueDate,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update bounty chore: %w", err)
+	}
+
+	reward, err := c.UpdateReward(frameID, rewardID, RewardData{
+		Title:     data.RewardTitle,
+		Points:    data.Points,
+		EmojiIcon: data.EmojiIcon,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to update bounty reward: %w", err)
+	}
+
+	return &Bounty{Chore: *chore, Reward: *reward}, nil
+}
+
 // ListBounties lists pending chores with points and unredeemed rewards,
 // matching them by point value as a heuristic.
 func (c *Client) ListBounties(frameID string) ([]Bounty, error) {
