@@ -31,6 +31,11 @@ var bountyCreateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		if err := validateDate(bountyDueDate); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
 		client := getClient()
 
 		bounty, err := client.CreateBounty(frameID, lib.BountyData{
@@ -91,6 +96,13 @@ var bountyUpdateCmd = &cobra.Command{
 	Short: "Update a bounty's chore and paired reward",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if cmd.Flags().Changed("due-date") {
+			if err := validateDate(bountyDueDate); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
 
 		client := getClient()
 

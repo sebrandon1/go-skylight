@@ -36,6 +36,18 @@ var choreListCmd = &cobra.Command{
 
 		client := getClient()
 
+		for _, f := range []struct {
+			name string
+			val  string
+		}{{"date", choreDate}, {"after", choreAfter}, {"before", choreBefore}} {
+			if cmd.Flags().Changed(f.name) {
+				if err := validateDate(f.val); err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+			}
+		}
+
 		if cmd.Flags().Changed("week") {
 			monday, err := weekStart(choreWeek)
 			if err != nil {
@@ -80,6 +92,11 @@ var choreCreateCmd = &cobra.Command{
 	Short: "Create a chore",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if err := validateDate(choreDate); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		client := getClient()
 
@@ -149,6 +166,13 @@ var choreUpdateCmd = &cobra.Command{
 	Short: "Update a chore",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if cmd.Flags().Changed("date") {
+			if err := validateDate(choreDate); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
 
 		client := getClient()
 
