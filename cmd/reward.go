@@ -194,8 +194,14 @@ func init() {
 	rewardUpdateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardUpdateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
 	rewardUpdateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
+	rewardUpdateCmd.MarkFlagRequired("reward-id") //nolint:errcheck
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
+	rewardDeleteCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+
 	rewardRedeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
+	rewardRedeemCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+
 	rewardUnredeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
+	rewardUnredeemCmd.MarkFlagRequired("reward-id") //nolint:errcheck
 }

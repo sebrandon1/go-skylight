@@ -250,6 +250,7 @@ func init() {
 	choreUpdateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
+	choreDeleteCmd.MarkFlagRequired("chore-id") //nolint:errcheck
 
 	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")
 	choreCompleteCmd.MarkFlagRequired("chore-id") //nolint:errcheck

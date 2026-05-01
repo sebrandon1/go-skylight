@@ -274,6 +274,9 @@ func init() {
 	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
 	mealCreateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date")
 	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
+	mealCreateSittingCmd.MarkFlagRequired("recipe-id")        //nolint:errcheck
+	mealCreateSittingCmd.MarkFlagRequired("date")             //nolint:errcheck
+	mealCreateSittingCmd.MarkFlagRequired("meal-category-id") //nolint:errcheck
 
 	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
@@ -281,4 +284,5 @@ func init() {
 	mealDeleteSittingCmd.MarkFlagRequired("date")       //nolint:errcheck
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+	mealAddToGroceryCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
 }

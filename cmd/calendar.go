@@ -186,6 +186,7 @@ func init() {
 	calendarUpdateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarUpdateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
+	calendarUpdateCmd.MarkFlagRequired("event-id") //nolint:errcheck
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
 	calendarDeleteCmd.MarkFlagRequired("event-id") //nolint:errcheck
