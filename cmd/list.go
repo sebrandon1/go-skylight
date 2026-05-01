@@ -36,7 +36,7 @@ var listListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(lists)
+		printOutput(lists)
 	},
 }
 

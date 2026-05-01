@@ -42,7 +42,7 @@ var mealCategoriesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(categories)
+		printOutput(categories)
 	},
 }
 
@@ -60,7 +60,7 @@ var mealRecipesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(recipes)
+		printOutput(recipes)
 	},
 }
 
@@ -141,7 +141,7 @@ var mealSittingsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(sittings)
+		printOutput(sittings)
 	},
 }
 

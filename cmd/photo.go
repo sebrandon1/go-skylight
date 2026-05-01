@@ -39,7 +39,7 @@ var photoListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(photos)
+		printOutput(photos)
 
 		if nextToken != "" {
 			fmt.Fprintf(os.Stderr, "Next page token: %s\n", nextToken)

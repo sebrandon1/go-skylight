@@ -72,7 +72,7 @@ func printCalendarWeekTable(days []WeeklyCalendarDay) {
 					timeCol = e.StartAt[11:16]
 				}
 			}
-			allDayCol := "no"
+			allDayCol := boolNo
 			if e.AllDay {
 				allDayCol = boolYes
 			}

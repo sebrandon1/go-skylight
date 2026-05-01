@@ -65,7 +65,7 @@ var bountyListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		printJSON(bounties)
+		printOutput(bounties)
 	},
 }
 
