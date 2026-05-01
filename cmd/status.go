@@ -17,7 +17,7 @@ var statusCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 		client := getClient()
-		today := time.Now().Format("2006-01-02")
+		today := time.Now().Format(lib.DateFormat)
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {

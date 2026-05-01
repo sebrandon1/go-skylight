@@ -169,8 +169,8 @@ var calendarWeekCmd = &cobra.Command{
 
 		events, err := client.ListCalendarEvents(
 			frameID,
-			monday.Format("2006-01-02"),
-			sunday.Format("2006-01-02"),
+			monday.Format(lib.DateFormat),
+			sunday.Format(lib.DateFormat),
 		)
 		if err != nil {
 			fmt.Printf("Error listing calendar events: %v\n", err)

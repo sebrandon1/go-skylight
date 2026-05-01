@@ -129,8 +129,8 @@ for a given member are ignored and do not break streaks.`,
 		client := getClient()
 
 		now := time.Now()
-		end := now.Format("2006-01-02")
-		start := now.AddDate(0, 0, -(streakDays - 1)).Format("2006-01-02")
+		end := now.Format(lib.DateFormat)
+		start := now.AddDate(0, 0, -(streakDays - 1)).Format(lib.DateFormat)
 
 		var (
 			categories []lib.Category
@@ -171,7 +171,7 @@ for a given member are ignored and do not break streaks.`,
 
 		dates := make([]string, 0, streakDays)
 		for i := -(streakDays - 1); i <= 0; i++ {
-			dates = append(dates, now.AddDate(0, 0, i).Format("2006-01-02"))
+			dates = append(dates, now.AddDate(0, 0, i).Format(lib.DateFormat))
 		}
 
 		results := computeChoreStreaks(chores, dates, catNames)

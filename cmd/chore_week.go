@@ -26,7 +26,7 @@ func weekStart(date string) (time.Time, error) {
 		t = time.Now()
 	} else {
 		var err error
-		t, err = time.Parse("2006-01-02", date)
+		t, err = time.Parse(lib.DateFormat, date)
 		if err != nil {
 			return time.Time{}, fmt.Errorf("invalid date %q: use YYYY-MM-DD format", date)
 		}
@@ -46,7 +46,7 @@ func buildWeeklyView(chores []lib.Chore, monday time.Time) []WeeklyChoreDay {
 		d := monday.AddDate(0, 0, i)
 		days[i] = WeeklyChoreDay{
 			Day:     d.Format("Mon"),
-			Date:    d.Format("2006-01-02"),
+			Date:    d.Format(lib.DateFormat),
 			Display: d.Format("Jan 02"),
 			Chores:  []lib.Chore{},
 		}
