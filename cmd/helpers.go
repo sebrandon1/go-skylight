@@ -9,6 +9,8 @@ import (
 	"github.com/sebrandon1/go-skylight/lib"
 )
 
+const boolYes = "yes"
+
 func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -44,6 +46,9 @@ func printOutput(data any) {
 		case []WeeklyChoreDay:
 			printChoreWeekTable(v)
 			return
+		case []WeeklyCalendarDay:
+			printCalendarWeekTable(v)
+			return
 		}
 	}
 	printJSON(data)
@@ -65,7 +70,7 @@ func printRewardsTable(rewards []lib.Reward) {
 	for _, r := range rewards {
 		redeemed := "no"
 		if r.Redeemed {
-			redeemed = "yes"
+			redeemed = boolYes
 		}
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\n",
 			r.ID, r.Title, r.Points, r.EmojiIcon, redeemed, r.CategoryID)
@@ -88,7 +93,7 @@ func printCalendarTable(events []lib.CalendarEvent) {
 	for _, e := range events {
 		allDay := "no"
 		if e.AllDay {
-			allDay = "yes"
+			allDay = boolYes
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 			e.ID, e.Title, e.StartAt, e.EndAt, allDay)
