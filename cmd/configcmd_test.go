@@ -224,6 +224,79 @@ func TestConfigSetUpdatesExistingKey(t *testing.T) {
 	}
 }
 
+func TestConfigUnsetUnknownKey(t *testing.T) {
+	resetGlobals(t)
+	err := configUnsetCmd.RunE(configUnsetCmd, []string{"SKYLIGHT_INVALID"})
+	if err == nil {
+		t.Error("expected error for unknown key, got nil")
+	}
+}
+
+func TestConfigUnsetKeyNotInFile(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	t.Cleanup(func() { configPath = "" })
+
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_FRAME_ID=frame1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var errBuf bytes.Buffer
+	configUnsetCmd.SetErr(&errBuf)
+	if err := configUnsetCmd.RunE(configUnsetCmd, []string{"SKYLIGHT_TOKEN"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(errBuf.String(), "warning") {
+		t.Errorf("expected warning for missing key, got: %q", errBuf.String())
+	}
+}
+
+func TestConfigUnsetRemovesKey(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	t.Cleanup(func() { configPath = "" })
+
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_FRAME_ID=frame1\nSKYLIGHT_TOKEN=tok123\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var outBuf bytes.Buffer
+	configUnsetCmd.SetOut(&outBuf)
+	if err := configUnsetCmd.RunE(configUnsetCmd, []string{"SKYLIGHT_TOKEN"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, _ := os.ReadFile(configPath)
+	content := string(data)
+	if strings.Contains(content, "SKYLIGHT_TOKEN") {
+		t.Error("config unset should have removed SKYLIGHT_TOKEN")
+	}
+	if !strings.Contains(content, "SKYLIGHT_FRAME_ID=frame1") {
+		t.Error("config unset should preserve other keys")
+	}
+	if !strings.Contains(outBuf.String(), "Unset") {
+		t.Errorf("expected 'Unset' in output, got: %q", outBuf.String())
+	}
+}
+
+func TestConfigEditCreatesFileIfMissing(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	t.Cleanup(func() { configPath = "" })
+
+	t.Setenv("EDITOR", "true")
+
+	if err := configEditCmd.RunE(configEditCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Error("config edit should create config file if missing")
+	}
+}
+
 // resetGlobals clears all config globals and resets them via t.Cleanup.
 func resetGlobals(t *testing.T) {
 	t.Helper()
