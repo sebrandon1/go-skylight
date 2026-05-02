@@ -69,20 +69,16 @@ var analyticsCmd = &cobra.Command{
 		wg.Wait()
 
 		if catErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing categories: %v\n", catErr)
-			os.Exit(1)
+			fatal("listing categories", catErr)
 		}
 		if choreErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing chores: %v\n", choreErr)
-			os.Exit(1)
+			fatal("listing chores", choreErr)
 		}
 		if rewardErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing rewards: %v\n", rewardErr)
-			os.Exit(1)
+			fatal("listing rewards", rewardErr)
 		}
 		if pointsErr != nil {
-			fmt.Fprintf(os.Stderr, "Error getting reward points: %v\n", pointsErr)
-			os.Exit(1)
+			fatal("getting reward points", pointsErr)
 		}
 		if eventErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: calendar events unavailable: %v\n", eventErr)

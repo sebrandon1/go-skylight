@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -32,8 +31,7 @@ var listListCmd = &cobra.Command{
 
 		lists, err := client.ListLists(frameID)
 		if err != nil {
-			fmt.Printf("Error listing lists: %v\n", err)
-			os.Exit(1)
+			fatal("listing lists", err)
 		}
 
 		printOutput(lists)
@@ -50,8 +48,7 @@ var listGetCmd = &cobra.Command{
 
 		list, err := client.GetList(frameID, listID)
 		if err != nil {
-			fmt.Printf("Error getting list: %v\n", err)
-			os.Exit(1)
+			fatal("getting list", err)
 		}
 
 		printJSON(list)
@@ -71,8 +68,7 @@ var listCreateCmd = &cobra.Command{
 			Color: listColor,
 		})
 		if err != nil {
-			fmt.Printf("Error creating list: %v\n", err)
-			os.Exit(1)
+			fatal("creating list", err)
 		}
 
 		printJSON(list)
@@ -89,8 +85,7 @@ var listDeleteCmd = &cobra.Command{
 
 		err := client.DeleteList(frameID, listID)
 		if err != nil {
-			fmt.Printf("Error deleting list: %v\n", err)
-			os.Exit(1)
+			fatal("deleting list", err)
 		}
 
 		fmt.Println("List deleted successfully")
@@ -109,8 +104,7 @@ var listAddItemCmd = &cobra.Command{
 			Title: listItemTitle,
 		})
 		if err != nil {
-			fmt.Printf("Error adding list item: %v\n", err)
-			os.Exit(1)
+			fatal("adding list item", err)
 		}
 
 		printJSON(item)
@@ -127,8 +121,7 @@ var listDeleteItemCmd = &cobra.Command{
 
 		err := client.DeleteListItem(frameID, listID, listItemID)
 		if err != nil {
-			fmt.Printf("Error deleting list item: %v\n", err)
-			os.Exit(1)
+			fatal("deleting list item", err)
 		}
 
 		fmt.Println("List item deleted successfully")
@@ -153,8 +146,7 @@ var listUpdateCmd = &cobra.Command{
 
 		list, err := client.UpdateList(frameID, listID, data)
 		if err != nil {
-			fmt.Printf("Error updating list: %v\n", err)
-			os.Exit(1)
+			fatal("updating list", err)
 		}
 
 		printJSON(list)
@@ -179,8 +171,7 @@ var listUpdateItemCmd = &cobra.Command{
 
 		item, err := client.UpdateListItem(frameID, listID, listItemID, data)
 		if err != nil {
-			fmt.Printf("Error updating list item: %v\n", err)
-			os.Exit(1)
+			fatal("updating list item", err)
 		}
 
 		printJSON(item)

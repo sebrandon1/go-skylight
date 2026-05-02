@@ -121,7 +121,7 @@ func init() {
 
 func requireFrameID() {
 	if frameID == "" {
-		fmt.Println("Error: --frame-id is required")
+		fmt.Fprintln(os.Stderr, "Error: --frame-id is required")
 		os.Exit(1)
 	}
 }
@@ -132,8 +132,7 @@ func getClient() *lib.Client {
 	}
 	client, err := lib.NewClientWithToken(userID, token)
 	if err != nil {
-		fmt.Printf("Error creating client: %v\n", err)
-		os.Exit(1)
+		fatal("creating client", err)
 	}
 	return client
 }

@@ -19,7 +19,7 @@ the refresh token and device fingerprint to the config file. Use --save to
 persist the credentials so subsequent commands authenticate automatically.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if email == "" || password == "" {
-			fmt.Println("Error: --email and --password are required for login")
+			fmt.Fprintln(os.Stderr, "Error: --email and --password are required for login")
 			os.Exit(1)
 		}
 
@@ -32,8 +32,7 @@ persist the credentials so subsequent commands authenticate automatically.`,
 		fmt.Printf("Logging in as %s...\n", email)
 		tok, err := lib.LoginHeadless(email, password, fingerprint)
 		if err != nil {
-			fmt.Printf("Error logging in: %v\n", err)
-			os.Exit(1)
+			fatal("logging in", err)
 		}
 
 		fmt.Println("Login successful!")

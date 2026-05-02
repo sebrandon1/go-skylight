@@ -42,7 +42,7 @@ var choreListCmd = &cobra.Command{
 		}{{"date", choreDate}, {"after", choreAfter}, {"before", choreBefore}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
-					fmt.Println(err)
+					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
 			}
@@ -51,8 +51,7 @@ var choreListCmd = &cobra.Command{
 		if cmd.Flags().Changed("week") {
 			monday, err := weekStart(choreWeek)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-				os.Exit(1)
+				fatal("computing week start", err)
 			}
 			sunday := monday.AddDate(0, 0, 6)
 			chores, err := client.ListChores(frameID, lib.ChoreListOptions{
@@ -61,8 +60,7 @@ var choreListCmd = &cobra.Command{
 				IncludeLate: true,
 			})
 			if err != nil {
-				fmt.Printf("Error listing chores: %v\n", err)
-				os.Exit(1)
+				fatal("listing chores", err)
 			}
 			days := buildWeeklyView(chores, monday)
 			printOutput(days)
@@ -79,8 +77,7 @@ var choreListCmd = &cobra.Command{
 			UpForGrabs:  choreUpForGrabs,
 		})
 		if err != nil {
-			fmt.Printf("Error listing chores: %v\n", err)
-			os.Exit(1)
+			fatal("listing chores", err)
 		}
 
 		printOutput(chores)
@@ -94,7 +91,7 @@ var choreCreateCmd = &cobra.Command{
 		requireFrameID()
 
 		if err := validateDate(choreDate); err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
@@ -118,8 +115,7 @@ var choreCreateCmd = &cobra.Command{
 			})
 		}
 		if err != nil {
-			fmt.Printf("Error creating chore: %v\n", err)
-			os.Exit(1)
+			fatal("creating chore", err)
 		}
 
 		printJSON(chore)
@@ -136,8 +132,7 @@ var choreDeleteCmd = &cobra.Command{
 
 		err := client.DeleteChore(frameID, choreID)
 		if err != nil {
-			fmt.Printf("Error deleting chore: %v\n", err)
-			os.Exit(1)
+			fatal("deleting chore", err)
 		}
 
 		fmt.Println("Chore deleted successfully")
@@ -153,8 +148,7 @@ var choreCompleteCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.CompleteChore(frameID, choreID); err != nil {
-			fmt.Printf("Error completing chore: %v\n", err)
-			os.Exit(1)
+			fatal("completing chore", err)
 		}
 
 		fmt.Println("Chore completed successfully")
@@ -169,7 +163,7 @@ var choreUpdateCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("date") {
 			if err := validateDate(choreDate); err != nil {
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
 		}
@@ -195,8 +189,7 @@ var choreUpdateCmd = &cobra.Command{
 
 		chore, err := client.UpdateChore(frameID, choreID, data)
 		if err != nil {
-			fmt.Printf("Error updating chore: %v\n", err)
-			os.Exit(1)
+			fatal("updating chore", err)
 		}
 
 		printJSON(chore)
@@ -212,8 +205,7 @@ var choreSkipCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.SkipChore(frameID, choreID); err != nil {
-			fmt.Printf("Error skipping chore: %v\n", err)
-			os.Exit(1)
+			fatal("skipping chore", err)
 		}
 
 		fmt.Println("Chore skipped successfully")
@@ -230,8 +222,7 @@ var choreClaimCmd = &cobra.Command{
 
 		chore, err := client.ClaimChore(frameID, choreID, choreAssigneeID)
 		if err != nil {
-			fmt.Printf("Error claiming chore: %v\n", err)
-			os.Exit(1)
+			fatal("claiming chore", err)
 		}
 
 		printJSON(chore)

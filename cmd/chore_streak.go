@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
 	"sort"
 	"sync"
 	"time"
@@ -156,12 +154,10 @@ for a given member are ignored and do not break streaks.`,
 		wg.Wait()
 
 		if catErr != nil {
-			fmt.Printf("Error listing categories: %v\n", catErr)
-			os.Exit(1)
+			fatal("listing categories", catErr)
 		}
 		if choreErr != nil {
-			fmt.Printf("Error listing chores: %v\n", choreErr)
-			os.Exit(1)
+			fatal("listing chores", choreErr)
 		}
 
 		catNames := buildCatNames(categories)

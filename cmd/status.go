@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -21,8 +20,7 @@ var statusCmd = &cobra.Command{
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {
-			fmt.Printf("Error getting frame: %v\n", err)
-			os.Exit(1)
+			fatal("getting frame", err)
 		}
 
 		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
@@ -30,26 +28,22 @@ var statusCmd = &cobra.Command{
 			Status: "pending",
 		})
 		if err != nil {
-			fmt.Printf("Error listing chores: %v\n", err)
-			os.Exit(1)
+			fatal("listing chores", err)
 		}
 
 		events, err := client.ListCalendarEvents(frameID, today, today)
 		if err != nil {
-			fmt.Printf("Error listing calendar events: %v\n", err)
-			os.Exit(1)
+			fatal("listing calendar events", err)
 		}
 
 		categories, err := client.ListCategories(frameID)
 		if err != nil {
-			fmt.Printf("Error listing categories: %v\n", err)
-			os.Exit(1)
+			fatal("listing categories", err)
 		}
 
 		points, err := client.GetRewardPoints(frameID)
 		if err != nil {
-			fmt.Printf("Error getting reward points: %v\n", err)
-			os.Exit(1)
+			fatal("getting reward points", err)
 		}
 
 		catNames := make(map[int]string, len(categories))

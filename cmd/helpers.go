@@ -15,6 +15,11 @@ const (
 	boolNo  = "no"
 )
 
+func fatal(msg string, err error) {
+	fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
+	os.Exit(1)
+}
+
 // validateDate returns an error if date is non-empty and not in YYYY-MM-DD format.
 func validateDate(date string) error {
 	if date == "" {
@@ -37,8 +42,7 @@ func buildCatNames(categories []lib.Category) map[string]string {
 func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		fmt.Printf("Error marshaling JSON: %v\n", err)
-		os.Exit(1)
+		fatal("marshaling JSON", err)
 	}
 	fmt.Println(string(output))
 }
