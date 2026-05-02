@@ -49,6 +49,8 @@ type CalendarEvent struct {
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
+const CalendarEventTypeCountdown = "countdown"
+
 // CalendarEventData holds the event fields for create/update requests.
 // Field names match the Skylight API JSON field names.
 type CalendarEventData struct {
@@ -59,6 +61,7 @@ type CalendarEventData struct {
 	AllDay      bool   `json:"all_day,omitempty"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
+	EventType   string `json:"event_type,omitempty"`
 }
 
 // calendarAPIResponse wraps the JSON-API envelope for calendar event list responses.
