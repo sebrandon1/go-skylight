@@ -102,6 +102,8 @@ func printTableOutputExtended(data any) bool {
 		printMealSittingsTable(v)
 	case []lib.Photo:
 		printPhotosTable(v)
+	case []lib.Routine:
+		printRoutinesTable(v)
 	default:
 		return false
 	}
@@ -265,6 +267,15 @@ func printPhotosTable(photos []lib.Photo) {
 	fmt.Fprintln(w, "ID\tTYPE\tSTATUS\tCREATED")
 	for _, p := range photos {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", p.ID, p.AssetType, p.Status, p.CreatedAt)
+	}
+	w.Flush()
+}
+
+func printRoutinesTable(routines []lib.Routine) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ID\tTITLE\tASSIGNEE\tSTEPS")
+	for _, r := range routines {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", r.ID, r.Title, r.AssigneeID, len(r.Steps))
 	}
 	w.Flush()
 }
