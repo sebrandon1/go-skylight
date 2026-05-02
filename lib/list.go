@@ -5,6 +5,9 @@ import "fmt"
 const listItemStatusCompleted = "completed"
 const listItemStatusPending = "pending"
 
+// ListKindGrocery is the list kind value for grocery lists.
+const ListKindGrocery = "grocery"
+
 // ListLists retrieves all lists for a frame.
 func (c *Client) ListLists(frameID string) ([]List, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID))
@@ -184,6 +187,43 @@ func (c *Client) ClearCompletedListItems(frameID, listID string) (int, error) {
 		}
 	}
 	return deleted, nil
+}
+
+// OrganizeGroceryList deduplicates and sorts a grocery list by aisle.
+func (c *Client) OrganizeGroceryList(frameID, listID string) error {
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/lists/%s/organize", c.effectiveURL(), frameID, listID))
+	if err != nil {
+		return fmt.Errorf("failed to create organize list request: %w", err)
+	}
+
+	var result any
+	if err := c.post(req, &result); err != nil {
+		return fmt.Errorf("failed to organize list: %w", err)
+	}
+
+	return nil
+}
+
+// OrderGroceryList sends the grocery list to an Instacart order.
+// retailer may be empty (default) or a specific retailer slug (e.g. "costco").
+func (c *Client) OrderGroceryList(frameID, listID, retailer string) (string, error) {
+	body := struct {
+		Retailer string `json:"retailer,omitempty"`
+	}{Retailer: retailer}
+
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/order", c.effectiveURL(), frameID, listID), body)
+	if err != nil {
+		return "", fmt.Errorf("failed to create order list request: %w", err)
+	}
+
+	var result struct {
+		RedirectURL string `json:"redirect_url"`
+	}
+	if err := c.post(req, &result); err != nil {
+		return "", fmt.Errorf("failed to order list: %w", err)
+	}
+
+	return result.RedirectURL, nil
 }
 
 // CreateTaskBoxItem creates a new task box item on a frame.
