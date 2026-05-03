@@ -3,6 +3,7 @@
 package lib
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -22,16 +23,26 @@ var (
 func integrationClient(t *testing.T) (*Client, string) {
 	t.Helper()
 
-	refreshToken := os.Getenv("SKYLIGHT_REFRESH_TOKEN")
-	fingerprint := os.Getenv("SKYLIGHT_DEVICE_FINGERPRINT")
+	email := os.Getenv("SKYLIGHT_EMAIL")
+	password := os.Getenv("SKYLIGHT_PASSWORD")
 	frameID := os.Getenv("SKYLIGHT_FRAME_ID")
 
-	if refreshToken == "" || fingerprint == "" || frameID == "" {
-		t.Skip("skipping: SKYLIGHT_REFRESH_TOKEN, SKYLIGHT_DEVICE_FINGERPRINT, and SKYLIGHT_FRAME_ID must be set")
+	if frameID == "" {
+		t.Skip("skipping: SKYLIGHT_FRAME_ID must be set")
+	}
+	if email == "" || password == "" {
+		t.Skip("skipping: SKYLIGHT_EMAIL and SKYLIGHT_PASSWORD must be set")
 	}
 
 	clientOnce.Do(func() {
-		sharedClient, clientErr = NewClientWithRefreshToken(refreshToken, fingerprint,
+		fingerprint := "integration-test-" + frameID
+		tok, err := LoginHeadless(email, password, fingerprint)
+		if err != nil {
+			clientErr = fmt.Errorf("LoginHeadless: %w", err)
+			return
+		}
+
+		sharedClient, clientErr = NewClientWithToken("integration", tok.AccessToken,
 			WithRateLimit(rate.Limit(2), 5),
 			WithRetry(3, 500*time.Millisecond, 10*time.Second),
 		)
@@ -39,7 +50,7 @@ func integrationClient(t *testing.T) (*Client, string) {
 	})
 
 	if clientErr != nil {
-		t.Fatalf("NewClientWithRefreshToken: %v", clientErr)
+		t.Fatalf("integration auth: %v", clientErr)
 	}
 
 	return sharedClient, sharedFrameID

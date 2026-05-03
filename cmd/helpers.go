@@ -26,6 +26,14 @@ func validateDate(date string) error {
 	return nil
 }
 
+func buildCatNames(categories []lib.Category) map[string]string {
+	m := make(map[string]string, len(categories))
+	for _, c := range categories {
+		m[c.ID] = c.Name
+	}
+	return m
+}
+
 func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
