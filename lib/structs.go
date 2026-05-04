@@ -211,13 +211,14 @@ type ChoreData struct {
 
 // List represents a list (e.g., grocery list, todo list).
 type List struct {
-	ID        string     `json:"id,omitempty"`
-	Title     string     `json:"label,omitempty"`
-	Color     string     `json:"color,omitempty"`
-	Kind      string     `json:"kind,omitempty"`
-	Items     []ListItem `json:"list_items,omitempty"`
-	CreatedAt string     `json:"created_at,omitempty"`
-	UpdatedAt string     `json:"updated_at,omitempty"`
+	ID            string     `json:"id,omitempty"`
+	Title         string     `json:"label,omitempty"`
+	Color         string     `json:"color,omitempty"`
+	Kind          string     `json:"kind,omitempty"`
+	HideFromFrame bool       `json:"hide_from_frame"`
+	Items         []ListItem `json:"list_items,omitempty"`
+	CreatedAt     string     `json:"created_at,omitempty"`
+	UpdatedAt     string     `json:"updated_at,omitempty"`
 }
 
 // ListItem represents an item within a list.
@@ -233,9 +234,10 @@ type ListItem struct {
 
 // ListData holds the list fields for create/update requests.
 type ListData struct {
-	Title string `json:"label,omitempty"`
-	Color string `json:"color,omitempty"`
-	Kind  string `json:"kind,omitempty"`
+	Title         string `json:"label,omitempty"`
+	Color         string `json:"color,omitempty"`
+	Kind          string `json:"kind,omitempty"`
+	HideFromFrame *bool  `json:"hide_from_frame,omitempty"`
 }
 
 // ListItemData holds the list item fields for create/update requests.
@@ -267,18 +269,20 @@ type listAPISingleResponse struct {
 type listAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Label string `json:"label"`
-		Color string `json:"color"`
-		Kind  string `json:"kind"`
+		Label         string `json:"label"`
+		Color         string `json:"color"`
+		Kind          string `json:"kind"`
+		HideFromFrame bool   `json:"hide_from_frame"`
 	} `json:"attributes"`
 }
 
 func (e *listAPIEntry) toList() List {
 	return List{
-		ID:    e.ID,
-		Title: e.Attributes.Label,
-		Color: e.Attributes.Color,
-		Kind:  e.Attributes.Kind,
+		ID:            e.ID,
+		Title:         e.Attributes.Label,
+		Color:         e.Attributes.Color,
+		Kind:          e.Attributes.Kind,
+		HideFromFrame: e.Attributes.HideFromFrame,
 	}
 }
 

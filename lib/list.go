@@ -167,6 +167,25 @@ func (c *Client) DeleteListItem(frameID, listID, itemID string) error {
 	return nil
 }
 
+// ClearCompletedListItems deletes all completed items from a list.
+func (c *Client) ClearCompletedListItems(frameID, listID string) (int, error) {
+	list, err := c.GetList(frameID, listID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get list: %w", err)
+	}
+
+	var deleted int
+	for _, item := range list.Items {
+		if item.Completed {
+			if err := c.DeleteListItem(frameID, listID, item.ID); err != nil {
+				return deleted, fmt.Errorf("failed to delete item %s: %w", item.ID, err)
+			}
+			deleted++
+		}
+	}
+	return deleted, nil
+}
+
 // CreateTaskBoxItem creates a new task box item on a frame.
 func (c *Client) CreateTaskBoxItem(frameID string, item TaskBoxItemData) (*TaskBoxItem, error) {
 	reqBody := TaskBoxItemRequest{TaskBoxItem: item}
