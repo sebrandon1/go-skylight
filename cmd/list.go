@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -14,6 +15,7 @@ var (
 	listItemID        string
 	listItemTitle     string
 	listItemCompleted bool
+	listHideFromFrame bool
 )
 
 var listCmd = &cobra.Command{
@@ -63,10 +65,14 @@ var listCreateCmd = &cobra.Command{
 
 		client := getClient()
 
-		list, err := client.CreateList(frameID, lib.ListData{
+		data := lib.ListData{
 			Title: listTitle,
 			Color: listColor,
-		})
+		}
+		if cmd.Flags().Changed("hide-from-frame") {
+			data.HideFromFrame = &listHideFromFrame
+		}
+		list, err := client.CreateList(frameID, data)
 		if err != nil {
 			fatal("creating list", err)
 		}
@@ -143,6 +149,9 @@ var listUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("color") {
 			data.Color = listColor
 		}
+		if cmd.Flags().Changed("hide-from-frame") {
+			data.HideFromFrame = &listHideFromFrame
+		}
 
 		list, err := client.UpdateList(frameID, listID, data)
 		if err != nil {
@@ -178,6 +187,28 @@ var listUpdateItemCmd = &cobra.Command{
 	},
 }
 
+var listClearCompletedCmd = &cobra.Command{
+	Use:   "clear-completed",
+	Short: "Delete all completed items from a list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		deleted, err := client.ClearCompletedListItems(frameID, listID)
+		if err != nil {
+			if deleted > 0 {
+				fmt.Fprintf(os.Stderr, "Deleted %d item(s) before error: %v\n", deleted, err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Error clearing completed items: %v\n", err)
+			}
+			os.Exit(1)
+		}
+
+		fmt.Printf("Deleted %d completed item(s)\n", deleted)
+	},
+}
+
 func init() {
 	listCmd.AddCommand(listListCmd)
 	listCmd.AddCommand(listGetCmd)
@@ -187,12 +218,14 @@ func init() {
 	listCmd.AddCommand(listAddItemCmd)
 	listCmd.AddCommand(listUpdateItemCmd)
 	listCmd.AddCommand(listDeleteItemCmd)
+	listCmd.AddCommand(listClearCompletedCmd)
 
 	listGetCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listGetCmd.MarkFlagRequired("list-id") //nolint:errcheck
 
 	listCreateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
 	listCreateCmd.Flags().StringVar(&listColor, "color", "", "List color")
+	listCreateCmd.Flags().BoolVar(&listHideFromFrame, "hide-from-frame", false, "Hide list from calendar devices")
 	listCreateCmd.MarkFlagRequired("title") //nolint:errcheck
 
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
@@ -201,6 +234,8 @@ func init() {
 	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listUpdateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
 	listUpdateCmd.Flags().StringVar(&listColor, "color", "", "List color")
+	listUpdateCmd.Flags().BoolVar(&listHideFromFrame, "hide-from-frame", false, "Hide list from calendar devices")
+	listUpdateCmd.MarkFlagRequired("list-id") //nolint:errcheck
 
 	listAddItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listAddItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
@@ -218,4 +253,7 @@ func init() {
 	listDeleteItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
 	listDeleteItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
 	listDeleteItemCmd.MarkFlagRequired("item-id") //nolint:errcheck
+
+	listClearCompletedCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listClearCompletedCmd.MarkFlagRequired("list-id") //nolint:errcheck
 }
