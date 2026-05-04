@@ -1,0 +1,41 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.actor == 'sebrandon1' ||
+      github.actor == 'dependabot[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run integration tests
+      env:
+        SKYLIGHT_REFRESH_TOKEN: ${{ secrets.SKYLIGHT_REFRESH_TOKEN }}
+        SKYLIGHT_DEVICE_FINGERPRINT: ${{ secrets.SKYLIGHT_DEVICE_FINGERPRINT }}
+        SKYLIGHT_FRAME_ID: ${{ secrets.SKYLIGHT_FRAME_ID }}
+        SKYLIGHT_EMAIL: ${{ secrets.SKYLIGHT_EMAIL }}
+        SKYLIGHT_PASSWORD: ${{ secrets.SKYLIGHT_PASSWORD }}
+      run: go test -v -tags integration -count=1 -timeout 5m ./lib/...
