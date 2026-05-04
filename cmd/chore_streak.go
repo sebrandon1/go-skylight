@@ -164,10 +164,7 @@ for a given member are ignored and do not break streaks.`,
 			os.Exit(1)
 		}
 
-		catNames := make(map[string]string, len(categories))
-		for _, c := range categories {
-			catNames[c.ID] = c.Name
-		}
+		catNames := buildCatNames(categories)
 
 		dates := make([]string, 0, streakDays)
 		for i := -(streakDays - 1); i <= 0; i++ {

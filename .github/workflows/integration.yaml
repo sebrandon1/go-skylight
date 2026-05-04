@@ -33,9 +33,7 @@ jobs:
 
     - name: Run integration tests
       env:
-        SKYLIGHT_REFRESH_TOKEN: ${{ secrets.SKYLIGHT_REFRESH_TOKEN }}
-        SKYLIGHT_DEVICE_FINGERPRINT: ${{ secrets.SKYLIGHT_DEVICE_FINGERPRINT }}
-        SKYLIGHT_FRAME_ID: ${{ secrets.SKYLIGHT_FRAME_ID }}
         SKYLIGHT_EMAIL: ${{ secrets.SKYLIGHT_EMAIL }}
         SKYLIGHT_PASSWORD: ${{ secrets.SKYLIGHT_PASSWORD }}
+        SKYLIGHT_FRAME_ID: ${{ secrets.SKYLIGHT_FRAME_ID }}
       run: go test -v -tags integration -count=1 -timeout 5m ./lib/...
