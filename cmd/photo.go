@@ -12,6 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	photoExtJPG = ".jpg"
+	photoExtMP4 = ".mp4"
+)
+
 var (
 	photoPageToken   string
 	photoFile        string
@@ -62,7 +67,7 @@ var photoUploadCmd = &cobra.Command{
 
 		ext := strings.TrimPrefix(filepath.Ext(photoFile), ".")
 		if ext == "" {
-			ext = "jpg"
+			ext = photoExtJPG[1:]
 		}
 
 		client := getClient()
@@ -172,9 +177,9 @@ func photoAssetExt(assetURL, assetType string) string {
 		}
 	}
 	if strings.HasPrefix(assetType, "video") {
-		return ".mp4"
+		return photoExtMP4
 	}
-	return ".jpg"
+	return photoExtJPG
 }
 
 func init() {
