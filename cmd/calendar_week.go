@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 	"time"
 
@@ -20,35 +19,14 @@ type WeeklyCalendarDay struct {
 // buildCalendarWeeklyView groups events into Mon–Sun slots for the week starting on monday.
 // Events are grouped by the UTC date of their StartAt field; out-of-range events are silently dropped.
 func buildCalendarWeeklyView(events []lib.CalendarEvent, monday time.Time) []WeeklyCalendarDay {
-	days := make([]WeeklyCalendarDay, 7)
-	for i := 0; i < 7; i++ {
-		d := monday.AddDate(0, 0, i)
-		days[i] = WeeklyCalendarDay{
-			Day:     d.Format("Mon"),
-			Date:    d.Format(lib.DateFormat),
-			Display: d.Format("Jan 02"),
-			Events:  []lib.CalendarEvent{},
-		}
+	slots := buildWeekSlots(events, monday,
+		func(e lib.CalendarEvent) string { return e.StartAt },
+		func(a, b lib.CalendarEvent) bool { return a.StartAt < b.StartAt },
+	)
+	days := make([]WeeklyCalendarDay, len(slots))
+	for i, s := range slots {
+		days[i] = WeeklyCalendarDay{Day: s.day, Date: s.date, Display: s.display, Events: s.items}
 	}
-
-	byDate := make(map[string][]lib.CalendarEvent, 7)
-	for _, e := range events {
-		date := e.StartAt
-		if len(date) >= 10 {
-			date = date[:10]
-		}
-		byDate[date] = append(byDate[date], e)
-	}
-
-	for i, day := range days {
-		if evs, ok := byDate[day.Date]; ok {
-			sort.Slice(evs, func(a, b int) bool {
-				return evs[a].StartAt < evs[b].StartAt
-			})
-			days[i].Events = evs
-		}
-	}
-
 	return days
 }
 
