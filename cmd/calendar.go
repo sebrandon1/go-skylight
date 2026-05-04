@@ -9,14 +9,15 @@ import (
 )
 
 var (
-	calendarStartDate string
-	calendarEndDate   string
-	calendarEventID   string
-	calendarTitle     string
-	calendarStartAt   string
-	calendarEndAt     string
-	calendarAllDay    bool
-	calendarWeekDate  string
+	calendarStartDate     string
+	calendarEndDate       string
+	calendarEventID       string
+	calendarTitle         string
+	calendarStartAt       string
+	calendarEndAt         string
+	calendarAllDay        bool
+	calendarWeekDate      string
+	calendarCountdownDate string
 )
 
 var calendarCmd = &cobra.Command{
@@ -140,6 +141,34 @@ var calendarUpdateCmd = &cobra.Command{
 	},
 }
 
+var calendarCreateCountdownCmd = &cobra.Command{
+	Use:   "create-countdown",
+	Short: "Create a countdown event",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		if err := validateDate(calendarCountdownDate); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		client := getClient()
+
+		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
+			Title:     calendarTitle,
+			StartAt:   calendarCountdownDate,
+			AllDay:    true,
+			EventType: lib.CalendarEventTypeCountdown,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: creating countdown event: %v\n", err)
+			os.Exit(1)
+		}
+
+		printJSON(event)
+	},
+}
+
 var calendarWeekCmd = &cobra.Command{
 	Use:   "week",
 	Short: "Show a 7-day Mon-Sun view of calendar events",
@@ -178,6 +207,7 @@ var calendarWeekCmd = &cobra.Command{
 func init() {
 	calendarCmd.AddCommand(calendarListCmd)
 	calendarCmd.AddCommand(calendarCreateCmd)
+	calendarCmd.AddCommand(calendarCreateCountdownCmd)
 	calendarCmd.AddCommand(calendarUpdateCmd)
 	calendarCmd.AddCommand(calendarDeleteCmd)
 	calendarCmd.AddCommand(sourceCalendarsCmd)
@@ -202,6 +232,11 @@ func init() {
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
 	calendarDeleteCmd.MarkFlagRequired("event-id") //nolint:errcheck
+
+	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, "title", "", "Countdown event title")
+	calendarCreateCountdownCmd.Flags().StringVar(&calendarCountdownDate, "date", "", "Target date (YYYY-MM-DD)")
+	calendarCreateCountdownCmd.MarkFlagRequired("title") //nolint:errcheck
+	calendarCreateCountdownCmd.MarkFlagRequired("date")  //nolint:errcheck
 
 	calendarWeekCmd.Flags().StringVar(&calendarWeekDate, "date", "", "Week containing this date (YYYY-MM-DD, default current week)")
 }
