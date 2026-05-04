@@ -32,7 +32,7 @@ var bountyCreateCmd = &cobra.Command{
 		requireFrameID()
 
 		if err := validateDate(bountyDueDate); err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
@@ -48,8 +48,7 @@ var bountyCreateCmd = &cobra.Command{
 			EmojiIcon:   bountyEmojiIcon,
 		})
 		if err != nil {
-			fmt.Printf("Error creating bounty: %v\n", err)
-			os.Exit(1)
+			fatal("creating bounty", err)
 		}
 
 		printJSON(bounty)
@@ -66,8 +65,7 @@ var bountyListCmd = &cobra.Command{
 
 		bounties, err := client.ListBounties(frameID)
 		if err != nil {
-			fmt.Printf("Error listing bounties: %v\n", err)
-			os.Exit(1)
+			fatal("listing bounties", err)
 		}
 
 		printOutput(bounties)
@@ -83,8 +81,7 @@ var bountyDeleteCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.DeleteBounty(frameID, bountyChoreID, bountyRewardID); err != nil {
-			fmt.Printf("Error deleting bounty: %v\n", err)
-			os.Exit(1)
+			fatal("deleting bounty", err)
 		}
 
 		fmt.Println("Bounty deleted.")
@@ -99,7 +96,7 @@ var bountyUpdateCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("due-date") {
 			if err := validateDate(bountyDueDate); err != nil {
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
 		}
@@ -125,8 +122,7 @@ var bountyUpdateCmd = &cobra.Command{
 
 		bounty, err := client.UpdateBounty(frameID, bountyChoreID, bountyRewardID, data)
 		if err != nil {
-			fmt.Printf("Error updating bounty: %v\n", err)
-			os.Exit(1)
+			fatal("updating bounty", err)
 		}
 
 		printJSON(bounty)

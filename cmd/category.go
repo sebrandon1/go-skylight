@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -17,8 +14,7 @@ var categoryCmd = &cobra.Command{
 
 		categories, err := client.ListCategories(frameID)
 		if err != nil {
-			fmt.Printf("Error listing categories: %v\n", err)
-			os.Exit(1)
+			fatal("listing categories", err)
 		}
 
 		printOutput(categories)

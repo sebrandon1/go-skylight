@@ -37,9 +37,9 @@ var rotationCreateCmd = &cobra.Command{
 			Points:      rotationPoints,
 		})
 		if err != nil {
-			fmt.Printf("Error creating rotation: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: creating rotation: %v\n", err)
 			if result != nil && len(result.Chores) > 0 {
-				fmt.Printf("Partial result (%d chores created):\n", len(result.Chores))
+				fmt.Fprintf(os.Stderr, "Partial result (%d chores created):\n", len(result.Chores))
 				printJSON(result)
 			}
 			os.Exit(1)

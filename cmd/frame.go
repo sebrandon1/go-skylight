@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +17,7 @@ var frameListCmd = &cobra.Command{
 
 		frames, err := client.ListFrames()
 		if err != nil {
-			fmt.Printf("Error listing frames: %v\n", err)
-			os.Exit(1)
+			fatal("listing frames", err)
 		}
 
 		printOutput(frames)
@@ -38,8 +34,7 @@ var frameInfoCmd = &cobra.Command{
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {
-			fmt.Printf("Error getting frame: %v\n", err)
-			os.Exit(1)
+			fatal("getting frame", err)
 		}
 
 		printJSON(frame)
@@ -56,8 +51,7 @@ var frameDevicesCmd = &cobra.Command{
 
 		devices, err := client.ListDevices(frameID)
 		if err != nil {
-			fmt.Printf("Error listing devices: %v\n", err)
-			os.Exit(1)
+			fatal("listing devices", err)
 		}
 
 		printOutput(devices)
@@ -72,8 +66,7 @@ var frameAvatarsCmd = &cobra.Command{
 
 		avatars, err := client.GetAvatars()
 		if err != nil {
-			fmt.Printf("Error getting avatars: %v\n", err)
-			os.Exit(1)
+			fatal("getting avatars", err)
 		}
 
 		printOutput(avatars)
@@ -88,8 +81,7 @@ var frameColorsCmd = &cobra.Command{
 
 		colors, err := client.GetColors()
 		if err != nil {
-			fmt.Printf("Error getting colors: %v\n", err)
-			os.Exit(1)
+			fatal("getting colors", err)
 		}
 
 		printOutput(colors)

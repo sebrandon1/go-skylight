@@ -36,7 +36,7 @@ var calendarListCmd = &cobra.Command{
 		}{{"start-date", calendarStartDate}, {"end-date", calendarEndDate}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
-					fmt.Println(err)
+					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
 			}
@@ -46,8 +46,7 @@ var calendarListCmd = &cobra.Command{
 
 		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate)
 		if err != nil {
-			fmt.Printf("Error listing calendar events: %v\n", err)
-			os.Exit(1)
+			fatal("listing calendar events", err)
 		}
 
 		printOutput(events)
@@ -69,8 +68,7 @@ var calendarCreateCmd = &cobra.Command{
 			AllDay:  calendarAllDay,
 		})
 		if err != nil {
-			fmt.Printf("Error creating calendar event: %v\n", err)
-			os.Exit(1)
+			fatal("creating calendar event", err)
 		}
 
 		printJSON(event)
@@ -87,8 +85,7 @@ var calendarDeleteCmd = &cobra.Command{
 
 		err := client.DeleteCalendarEvent(frameID, calendarEventID)
 		if err != nil {
-			fmt.Printf("Error deleting calendar event: %v\n", err)
-			os.Exit(1)
+			fatal("deleting calendar event", err)
 		}
 
 		fmt.Println("Calendar event deleted successfully")
@@ -105,8 +102,7 @@ var sourceCalendarsCmd = &cobra.Command{
 
 		calendars, err := client.ListSourceCalendars(frameID)
 		if err != nil {
-			fmt.Printf("Error listing source calendars: %v\n", err)
-			os.Exit(1)
+			fatal("listing source calendars", err)
 		}
 
 		printOutput(calendars)
@@ -137,8 +133,7 @@ var calendarUpdateCmd = &cobra.Command{
 
 		event, err := client.UpdateCalendarEvent(frameID, calendarEventID, data)
 		if err != nil {
-			fmt.Printf("Error updating calendar event: %v\n", err)
-			os.Exit(1)
+			fatal("updating calendar event", err)
 		}
 
 		printJSON(event)
@@ -153,15 +148,14 @@ var calendarWeekCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("date") {
 			if err := validateDate(calendarWeekDate); err != nil {
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
 		}
 
 		monday, err := weekStart(calendarWeekDate)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
+			fatal("computing week start", err)
 		}
 		sunday := monday.AddDate(0, 0, 6)
 
@@ -173,8 +167,7 @@ var calendarWeekCmd = &cobra.Command{
 			sunday.Format(lib.DateFormat),
 		)
 		if err != nil {
-			fmt.Printf("Error listing calendar events: %v\n", err)
-			os.Exit(1)
+			fatal("listing calendar events", err)
 		}
 
 		days := buildCalendarWeeklyView(events, monday)

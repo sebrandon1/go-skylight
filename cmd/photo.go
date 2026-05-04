@@ -38,8 +38,7 @@ var photoListCmd = &cobra.Command{
 			PageToken: photoPageToken,
 		})
 		if err != nil {
-			fmt.Printf("Error listing photos: %v\n", err)
-			os.Exit(1)
+			fatal("listing photos", err)
 		}
 
 		printOutput(photos)
@@ -58,8 +57,7 @@ var photoUploadCmd = &cobra.Command{
 
 		data, err := os.ReadFile(photoFile)
 		if err != nil {
-			fmt.Printf("Error reading file: %v\n", err)
-			os.Exit(1)
+			fatal("reading file", err)
 		}
 
 		ext := strings.TrimPrefix(filepath.Ext(photoFile), ".")
@@ -71,8 +69,7 @@ var photoUploadCmd = &cobra.Command{
 
 		result, err := client.UploadPhoto(frameID, ext, data, photoCaption)
 		if err != nil {
-			fmt.Printf("Error uploading photo: %v\n", err)
-			os.Exit(1)
+			fatal("uploading photo", err)
 		}
 
 		printJSON(result)
@@ -89,8 +86,7 @@ var photoDeleteCmd = &cobra.Command{
 		for _, s := range photoMessageID {
 			id, err := strconv.Atoi(s)
 			if err != nil {
-				fmt.Printf("Invalid message ID %q: %v\n", s, err)
-				os.Exit(1)
+				fatal(fmt.Sprintf("invalid message ID %q", s), err)
 			}
 			ids = append(ids, id)
 		}
@@ -99,8 +95,7 @@ var photoDeleteCmd = &cobra.Command{
 
 		err := client.DeletePhotos(frameID, ids)
 		if err != nil {
-			fmt.Printf("Error deleting photos: %v\n", err)
-			os.Exit(1)
+			fatal("deleting photos", err)
 		}
 
 		fmt.Println("Photos deleted successfully")
@@ -114,7 +109,7 @@ var photoDownloadCmd = &cobra.Command{
 		requireFrameID()
 
 		if !photoDownloadAll && len(photoMessageID) == 0 {
-			fmt.Println("Error: specify --message-id or --all")
+			fmt.Fprintln(os.Stderr, "Error: specify --message-id or --all")
 			os.Exit(1)
 		}
 
@@ -130,8 +125,7 @@ var photoDownloadCmd = &cobra.Command{
 		for {
 			photos, nextToken, err := client.ListPhotos(frameID, lib.PhotoListOptions{PageToken: pageToken})
 			if err != nil {
-				fmt.Printf("Error listing photos: %v\n", err)
-				os.Exit(1)
+				fatal("listing photos", err)
 			}
 			for _, p := range photos {
 				if photoDownloadAll || wantIDs[p.ID] {
@@ -150,20 +144,19 @@ var photoDownloadCmd = &cobra.Command{
 		}
 
 		if err := os.MkdirAll(photoOutputDir, 0o755); err != nil {
-			fmt.Printf("Error creating output directory: %v\n", err)
-			os.Exit(1)
+			fatal("creating output directory", err)
 		}
 
 		for _, p := range toDownload {
 			data, err := client.DownloadPhoto(p.AssetURL)
 			if err != nil {
-				fmt.Printf("Error downloading %s: %v\n", p.ID, err)
+				fmt.Fprintf(os.Stderr, "Error: downloading %s: %v\n", p.ID, err)
 				continue
 			}
 			ext := photoAssetExt(p.AssetURL, p.AssetType)
 			filename := filepath.Join(photoOutputDir, p.ID+ext)
 			if err := os.WriteFile(filename, data, 0o600); err != nil {
-				fmt.Printf("Error writing %s: %v\n", filename, err)
+				fmt.Fprintf(os.Stderr, "Error: writing %s: %v\n", filename, err)
 				continue
 			}
 			fmt.Printf("Saved %s\n", filename)

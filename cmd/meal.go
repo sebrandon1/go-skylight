@@ -38,8 +38,7 @@ var mealCategoriesCmd = &cobra.Command{
 
 		categories, err := client.ListMealCategories(frameID)
 		if err != nil {
-			fmt.Printf("Error listing meal categories: %v\n", err)
-			os.Exit(1)
+			fatal("listing meal categories", err)
 		}
 
 		printOutput(categories)
@@ -56,8 +55,7 @@ var mealRecipesCmd = &cobra.Command{
 
 		recipes, err := client.ListRecipes(frameID)
 		if err != nil {
-			fmt.Printf("Error listing recipes: %v\n", err)
-			os.Exit(1)
+			fatal("listing recipes", err)
 		}
 
 		printOutput(recipes)
@@ -74,8 +72,7 @@ var mealRecipeInfoCmd = &cobra.Command{
 
 		recipe, err := client.GetRecipe(frameID, recipeID)
 		if err != nil {
-			fmt.Printf("Error getting recipe: %v\n", err)
-			os.Exit(1)
+			fatal("getting recipe", err)
 		}
 
 		printJSON(recipe)
@@ -98,8 +95,7 @@ var mealCreateRecipeCmd = &cobra.Command{
 			MealCategoryID: recipeCategoryID,
 		})
 		if err != nil {
-			fmt.Printf("Error creating recipe: %v\n", err)
-			os.Exit(1)
+			fatal("creating recipe", err)
 		}
 
 		printJSON(recipe)
@@ -116,8 +112,7 @@ var mealDeleteRecipeCmd = &cobra.Command{
 
 		err := client.DeleteRecipe(frameID, recipeID)
 		if err != nil {
-			fmt.Printf("Error deleting recipe: %v\n", err)
-			os.Exit(1)
+			fatal("deleting recipe", err)
 		}
 
 		fmt.Println("Recipe deleted successfully")
@@ -136,7 +131,7 @@ var mealSittingsCmd = &cobra.Command{
 		}{{"date-min", sittingDateMin}, {"date-max", sittingDateMax}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
-					fmt.Println(err)
+					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
 			}
@@ -149,8 +144,7 @@ var mealSittingsCmd = &cobra.Command{
 			DateMax: sittingDateMax,
 		})
 		if err != nil {
-			fmt.Printf("Error listing meal sittings: %v\n", err)
-			os.Exit(1)
+			fatal("listing meal sittings", err)
 		}
 
 		printOutput(sittings)
@@ -164,7 +158,7 @@ var mealCreateSittingCmd = &cobra.Command{
 		requireFrameID()
 
 		if err := validateDate(sittingDate); err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
@@ -177,8 +171,7 @@ var mealCreateSittingCmd = &cobra.Command{
 			MealCategoryID: mealCategoryID,
 		})
 		if err != nil {
-			fmt.Printf("Error creating meal sitting: %v\n", err)
-			os.Exit(1)
+			fatal("creating meal sitting", err)
 		}
 
 		printJSON(sitting)
@@ -192,7 +185,7 @@ var mealDeleteSittingCmd = &cobra.Command{
 		requireFrameID()
 
 		if err := validateDate(sittingDate); err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
@@ -200,8 +193,7 @@ var mealDeleteSittingCmd = &cobra.Command{
 
 		err := client.DeleteMealSitting(frameID, sittingID, sittingDate)
 		if err != nil {
-			fmt.Printf("Error deleting meal sitting: %v\n", err)
-			os.Exit(1)
+			fatal("deleting meal sitting", err)
 		}
 
 		fmt.Println("Meal sitting deleted successfully")
@@ -218,8 +210,7 @@ var mealAddToGroceryCmd = &cobra.Command{
 
 		err := client.AddRecipeToGroceryList(frameID, recipeID)
 		if err != nil {
-			fmt.Printf("Error adding to grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("adding to grocery list", err)
 		}
 
 		fmt.Println("Recipe added to grocery list successfully")
@@ -250,8 +241,7 @@ var mealUpdateRecipeCmd = &cobra.Command{
 
 		recipe, err := client.UpdateRecipe(frameID, recipeID, data)
 		if err != nil {
-			fmt.Printf("Error updating recipe: %v\n", err)
-			os.Exit(1)
+			fatal("updating recipe", err)
 		}
 
 		printJSON(recipe)

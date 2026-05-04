@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -32,8 +31,7 @@ var rewardListCmd = &cobra.Command{
 
 		rewards, err := client.ListRewards(frameID)
 		if err != nil {
-			fmt.Printf("Error listing rewards: %v\n", err)
-			os.Exit(1)
+			fatal("listing rewards", err)
 		}
 
 		printOutput(rewards)
@@ -64,8 +62,7 @@ var rewardCreateCmd = &cobra.Command{
 		}
 		reward, err := client.CreateReward(frameID, data)
 		if err != nil {
-			fmt.Printf("Error creating reward: %v\n", err)
-			os.Exit(1)
+			fatal("creating reward", err)
 		}
 
 		printJSON(reward)
@@ -82,8 +79,7 @@ var rewardDeleteCmd = &cobra.Command{
 
 		err := client.DeleteReward(frameID, rewardID)
 		if err != nil {
-			fmt.Printf("Error deleting reward: %v\n", err)
-			os.Exit(1)
+			fatal("deleting reward", err)
 		}
 
 		fmt.Println("Reward deleted successfully")
@@ -100,8 +96,7 @@ var rewardRedeemCmd = &cobra.Command{
 
 		err := client.RedeemReward(frameID, rewardID)
 		if err != nil {
-			fmt.Printf("Error redeeming reward: %v\n", err)
-			os.Exit(1)
+			fatal("redeeming reward", err)
 		}
 
 		fmt.Println("Reward redeemed successfully")
@@ -118,8 +113,7 @@ var rewardUnredeemCmd = &cobra.Command{
 
 		err := client.UnredeemReward(frameID, rewardID)
 		if err != nil {
-			fmt.Printf("Error unredeeming reward: %v\n", err)
-			os.Exit(1)
+			fatal("unredeeming reward", err)
 		}
 
 		fmt.Println("Reward unredeemed successfully")
@@ -136,8 +130,7 @@ var rewardPointsCmd = &cobra.Command{
 
 		points, err := client.GetRewardPoints(frameID)
 		if err != nil {
-			fmt.Printf("Error getting reward points: %v\n", err)
-			os.Exit(1)
+			fatal("getting reward points", err)
 		}
 
 		printJSON(points)
@@ -165,8 +158,7 @@ var rewardUpdateCmd = &cobra.Command{
 
 		reward, err := client.UpdateReward(frameID, rewardID, data)
 		if err != nil {
-			fmt.Printf("Error updating reward: %v\n", err)
-			os.Exit(1)
+			fatal("updating reward", err)
 		}
 
 		printJSON(reward)
