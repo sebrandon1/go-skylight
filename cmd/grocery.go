@@ -12,6 +12,8 @@ var (
 	groceryListID   string
 	groceryTitle    string
 	groceryRetailer string
+	groceryItems    []string
+	groceryRecipeID string
 )
 
 var groceryCmd = &cobra.Command{
@@ -104,16 +106,106 @@ var groceryOrderCmd = &cobra.Command{
 	},
 }
 
+var groceryShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Display the current grocery list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		list, err := client.GetList(frameID, groceryListID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting grocery list: %v\n", err)
+			os.Exit(1)
+		}
+
+		printOutput(list)
+	},
+}
+
+var groceryAddCmd = &cobra.Command{
+	Use:   "add",
+	Short: "Add items to a grocery list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		for _, item := range groceryItems {
+			if _, err := client.AddListItem(frameID, groceryListID, lib.ListItemData{Title: item}); err != nil {
+				fmt.Fprintf(os.Stderr, "Error adding item %q: %v\n", item, err)
+				os.Exit(1)
+			}
+		}
+
+		fmt.Printf("Added %d item(s) to grocery list\n", len(groceryItems))
+	},
+}
+
+var groceryAddRecipeCmd = &cobra.Command{
+	Use:   "add-recipe",
+	Short: "Add all ingredients from a recipe to the grocery list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		if err := client.AddRecipeToGroceryList(frameID, groceryRecipeID); err != nil {
+			fmt.Fprintf(os.Stderr, "Error adding recipe to grocery list: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Recipe added to grocery list successfully")
+	},
+}
+
+var groceryClearCmd = &cobra.Command{
+	Use:   "clear",
+	Short: "Clear completed items from a grocery list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		n, err := client.ClearCompletedListItems(frameID, groceryListID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error clearing grocery list: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Cleared %d completed item(s) from grocery list\n", n)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(groceryCmd)
 
 	groceryCmd.AddCommand(groceryListCmd)
 	groceryCmd.AddCommand(groceryCreateCmd)
+	groceryCmd.AddCommand(groceryShowCmd)
+	groceryCmd.AddCommand(groceryAddCmd)
+	groceryCmd.AddCommand(groceryAddRecipeCmd)
+	groceryCmd.AddCommand(groceryClearCmd)
 	groceryCmd.AddCommand(groceryOrganizeCmd)
 	groceryCmd.AddCommand(groceryOrderCmd)
 
 	groceryCreateCmd.Flags().StringVar(&groceryTitle, "title", "", "Grocery list title")
 	groceryCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+
+	groceryShowCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
+	groceryShowCmd.MarkFlagRequired("list-id") //nolint:errcheck
+
+	groceryAddCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
+	groceryAddCmd.Flags().StringSliceVar(&groceryItems, "items", nil, "Items to add (comma-separated)")
+	groceryAddCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	groceryAddCmd.MarkFlagRequired("items")   //nolint:errcheck
+
+	groceryAddRecipeCmd.Flags().StringVar(&groceryRecipeID, "recipe-id", "", "Recipe ID")
+	groceryAddRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+
+	groceryClearCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
+	groceryClearCmd.MarkFlagRequired("list-id") //nolint:errcheck
 
 	groceryOrganizeCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
 	groceryOrganizeCmd.MarkFlagRequired("list-id") //nolint:errcheck
