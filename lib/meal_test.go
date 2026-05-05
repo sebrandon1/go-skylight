@@ -586,3 +586,36 @@ func TestCreateMealSittingSummary(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteMealSitting(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		wantErr bool
+	}{
+		{"deletes with 204", http.StatusNoContent, false},
+		{"server error returns error", http.StatusInternalServerError, true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete {
+					t.Errorf("expected DELETE, got %s", r.Method)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.DeleteMealSitting("frame1", "sitting1", "2026-04-28")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
