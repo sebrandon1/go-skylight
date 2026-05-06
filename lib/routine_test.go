@@ -9,17 +9,19 @@ import (
 
 func TestListRoutines(t *testing.T) {
 	tests := []struct {
-		name     string
-		status   int
-		response string
-		wantLen  int
-		wantErr  bool
+		name           string
+		status         int
+		response       string
+		wantLen        int
+		wantFirstTitle string
+		wantErr        bool
 	}{
 		{
-			name:     "returns routines",
-			status:   http.StatusOK,
-			response: `{"data":[{"id":"1","attributes":{"title":"Morning","assignee_id":"a1","steps":[]}},{"id":"2","attributes":{"title":"Bedtime","assignee_id":"a2","steps":[]}}]}`,
-			wantLen:  2,
+			name:           "returns routines",
+			status:         http.StatusOK,
+			response:       `{"data":[{"id":"1","attributes":{"title":"Morning","assignee_id":"a1","steps":[]}},{"id":"2","attributes":{"title":"Bedtime","assignee_id":"a2","steps":[]}}]}`,
+			wantLen:        2,
+			wantFirstTitle: "Morning",
 		},
 		{
 			name:    "server error returns error",
@@ -67,6 +69,9 @@ func TestListRoutines(t *testing.T) {
 			}
 			if len(routines) != tc.wantLen {
 				t.Errorf("wantLen=%d got %d", tc.wantLen, len(routines))
+			}
+			if tc.wantFirstTitle != "" && len(routines) > 0 && routines[0].Title != tc.wantFirstTitle {
+				t.Errorf("Title: want %q got %q", tc.wantFirstTitle, routines[0].Title)
 			}
 		})
 	}
