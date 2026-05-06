@@ -551,8 +551,8 @@ func TestCompleteChore(t *testing.T) {
 				if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 					t.Errorf("decode body: %v", err)
 				}
-				if raw["status"] != "completed" {
-					t.Errorf("status: want %q got %v", "completed", raw["status"])
+				if raw["status"] != ChoreStatusComplete {
+					t.Errorf("status: want %q got %v", ChoreStatusComplete, raw["status"])
 				}
 				if instanceDate != "" && raw["instance_date"] != instanceDate {
 					t.Errorf("instance_date: want %q got %v", instanceDate, raw["instance_date"])
@@ -560,7 +560,7 @@ func TestCompleteChore(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
 				if tc.status == http.StatusOK {
-					if _, err := w.Write([]byte(`{"data":{"id":"` + baseID + `","attributes":{"status":"completed"}}}`)); err != nil {
+					if _, err := w.Write([]byte(`{"data":{"id":"` + baseID + `","attributes":{"status":"` + ChoreStatusComplete + `"}}}`)); err != nil {
 						t.Errorf("write: %v", err)
 					}
 				}

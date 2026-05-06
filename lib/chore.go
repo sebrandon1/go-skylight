@@ -161,7 +161,7 @@ func (c *Client) SkipChore(frameID, choreID string) error {
 
 // CompleteChore marks a chore instance as completed via the completions endpoint.
 func (c *Client) CompleteChore(frameID, choreID string) error {
-	return c.setCompletion(frameID, choreID, "completed")
+	return c.setCompletion(frameID, choreID, ChoreStatusComplete)
 }
 
 // ClaimChore assigns an up-for-grabs chore to the given assignee.
