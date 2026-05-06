@@ -4,6 +4,7 @@ package lib
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -20,10 +21,20 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 	prefix := testPrefix()
 	title := prefix + "-chore"
 
+	categories, err := client.ListCategories(frameID)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	if len(categories) == 0 {
+		t.Skip("no categories available — cannot create chore")
+	}
+	categoryID := categories[0].ID
+
 	// Create
 	chore, err := client.CreateChore(frameID, ChoreData{
-		Title:   title,
-		DueDate: time.Now().Format(DateFormat),
+		Title:      title,
+		DueDate:    time.Now().Format(DateFormat),
+		AssigneeID: categoryID,
 	})
 	if err != nil {
 		t.Fatalf("CreateChore: %v", err)
@@ -85,10 +96,23 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	prefix := testPrefix()
 	title := prefix + "-reward"
 
+	categories, err := client.ListCategories(frameID)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	if len(categories) == 0 {
+		t.Skip("no categories available — cannot create reward")
+	}
+	catIDInt, err := strconv.Atoi(categories[0].ID)
+	if err != nil {
+		t.Fatalf("category ID is not an integer: %v", err)
+	}
+
 	// Create
 	reward, err := client.CreateReward(frameID, RewardData{
-		Title:  title,
-		Points: 10,
+		Title:       title,
+		Points:      10,
+		CategoryIDs: []int{catIDInt},
 	})
 	if err != nil {
 		t.Fatalf("CreateReward: %v", err)
@@ -221,7 +245,6 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	// Create list
 	list, err := client.CreateList(frameID, ListData{
 		Title: prefix + "-list",
-		Color: "blue",
 	})
 	if err != nil {
 		t.Fatalf("CreateList: %v", err)
@@ -307,11 +330,21 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 
 	prefix := testPrefix()
 
+	mealCategories, err := client.ListMealCategories(frameID)
+	if err != nil {
+		t.Fatalf("ListMealCategories: %v", err)
+	}
+	if len(mealCategories) == 0 {
+		t.Skip("no meal categories available — cannot create recipe")
+	}
+	mealCategoryID := mealCategories[0].ID
+
 	// Create
 	recipe, err := client.CreateRecipe(frameID, RecipeData{
-		Title:       prefix + "-recipe",
-		Description: "integration test recipe",
-		Ingredients: []string{"flour", "eggs", "milk"},
+		Title:          prefix + "-recipe",
+		Description:    "integration test recipe",
+		Ingredients:    []string{"flour", "eggs", "milk"},
+		MealCategoryID: mealCategoryID,
 	})
 	if err != nil {
 		t.Fatalf("CreateRecipe: %v", err)
@@ -361,8 +394,18 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	date := time.Now().AddDate(0, 0, 2).Format(DateFormat)
 
 	// Need a recipe and a meal category to create a sitting
+	mealCategories, err := client.ListMealCategories(frameID)
+	if err != nil {
+		t.Fatalf("ListMealCategories: %v", err)
+	}
+	if len(mealCategories) == 0 {
+		t.Skip("no meal categories available — cannot create meal sitting")
+	}
+	categoryID := mealCategories[0].ID
+
 	recipe, err := client.CreateRecipe(frameID, RecipeData{
-		Title: prefix + "-recipe-for-sitting",
+		Title:          prefix + "-recipe-for-sitting",
+		MealCategoryID: categoryID,
 	})
 	if err != nil {
 		t.Fatalf("CreateRecipe (for sitting): %v", err)
@@ -373,15 +416,6 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 			t.Logf("cleanup DeleteRecipe (for sitting): %v", err)
 		}
 	})
-
-	categories, err := client.ListMealCategories(frameID)
-	if err != nil {
-		t.Fatalf("ListMealCategories: %v", err)
-	}
-	if len(categories) == 0 {
-		t.Skip("no meal categories available — cannot create meal sitting")
-	}
-	categoryID := categories[0].ID
 
 	// Create sitting
 	sitting, err := client.CreateMealSitting(frameID, MealSittingData{
