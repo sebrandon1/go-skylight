@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -31,8 +30,7 @@ var groceryListCmd = &cobra.Command{
 
 		all, err := client.ListLists(frameID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error listing lists: %v\n", err)
-			os.Exit(1)
+			fatal("listing lists", err)
 		}
 
 		grocery := []lib.List{}
@@ -59,8 +57,7 @@ var groceryCreateCmd = &cobra.Command{
 			Kind:  lib.ListKindGrocery,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("creating grocery list", err)
 		}
 
 		printJSON(list)
@@ -76,8 +73,7 @@ var groceryOrganizeCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.OrganizeGroceryList(frameID, groceryListID); err != nil {
-			fmt.Fprintf(os.Stderr, "Error organizing grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("organizing grocery list", err)
 		}
 
 		fmt.Println("Grocery list organized successfully")
@@ -94,8 +90,7 @@ var groceryOrderCmd = &cobra.Command{
 
 		url, err := client.OrderGroceryList(frameID, groceryListID, groceryRetailer)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error ordering grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("ordering grocery list", err)
 		}
 
 		if url != "" {
@@ -116,8 +111,7 @@ var groceryShowCmd = &cobra.Command{
 
 		list, err := client.GetList(frameID, groceryListID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("getting grocery list", err)
 		}
 
 		printOutput(list)
@@ -134,8 +128,7 @@ var groceryAddCmd = &cobra.Command{
 
 		for _, item := range groceryItems {
 			if _, err := client.AddListItem(frameID, groceryListID, lib.ListItemData{Title: item}); err != nil {
-				fmt.Fprintf(os.Stderr, "Error adding item %q: %v\n", item, err)
-				os.Exit(1)
+				fatal(fmt.Sprintf("adding item %q", item), err)
 			}
 		}
 
@@ -152,8 +145,7 @@ var groceryAddRecipeCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.AddRecipeToGroceryList(frameID, groceryRecipeID); err != nil {
-			fmt.Fprintf(os.Stderr, "Error adding recipe to grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("adding recipe to grocery list", err)
 		}
 
 		fmt.Println("Recipe added to grocery list successfully")
@@ -170,8 +162,7 @@ var groceryClearCmd = &cobra.Command{
 
 		n, err := client.ClearCompletedListItems(frameID, groceryListID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error clearing grocery list: %v\n", err)
-			os.Exit(1)
+			fatal("clearing grocery list", err)
 		}
 
 		fmt.Printf("Cleared %d completed item(s) from grocery list\n", n)
