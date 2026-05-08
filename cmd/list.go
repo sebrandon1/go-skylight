@@ -187,6 +187,25 @@ var listUpdateItemCmd = &cobra.Command{
 	},
 }
 
+var taskBoxItemCreateCmd = &cobra.Command{
+	Use:   "task-box-item",
+	Short: "Create a task box item",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		item, err := client.CreateTaskBoxItem(frameID, lib.TaskBoxItemData{
+			Title: listItemTitle,
+		})
+		if err != nil {
+			fatal("creating task box item", err)
+		}
+
+		printJSON(item)
+	},
+}
+
 var listClearCompletedCmd = &cobra.Command{
 	Use:   "clear-completed",
 	Short: "Delete all completed items from a list",
@@ -219,6 +238,10 @@ func init() {
 	listCmd.AddCommand(listUpdateItemCmd)
 	listCmd.AddCommand(listDeleteItemCmd)
 	listCmd.AddCommand(listClearCompletedCmd)
+	listCmd.AddCommand(taskBoxItemCreateCmd)
+
+	taskBoxItemCreateCmd.Flags().StringVar(&listItemTitle, "title", "", "Task box item title")
+	taskBoxItemCreateCmd.MarkFlagRequired("title") //nolint:errcheck
 
 	listGetCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listGetCmd.MarkFlagRequired("list-id") //nolint:errcheck
