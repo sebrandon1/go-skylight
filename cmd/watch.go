@@ -21,6 +21,7 @@ const (
 var (
 	watchInterval  int
 	watchResources string
+	watchPersist   bool
 
 	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar}
 
@@ -42,6 +43,10 @@ Tracks previously-seen IDs in memory and emits only newly-observed changes:
   - rewards: newly redeemed rewards
   - chores:  chores newly marked complete
   - calendar: events starting within the next hour
+
+Use --persist to persist reward deduplication state to disk
+(~/.skylight/poller-state.json) so restarts do not re-emit already-seen
+reward redemptions. Has no effect unless rewards is in --resources.
 
 Press Ctrl+C to stop.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -67,13 +72,39 @@ Press Ctrl+C to stop.`,
 			seenEventIDs:  make(map[string]struct{}),
 		}
 
-		// Seed state silently so existing items aren't reported as new.
+		// pollResources is what the ticker loop covers. When --persist is
+		// active, rewards are handled by the RewardsPoller instead.
+		pollResources := resources
+
+		var poller *lib.RewardsPoller
+		if watchPersist {
+			if containsResource(resources, watchResourceRewards) {
+				poller = lib.NewRewardsPoller(client, frameID, time.Duration(watchInterval)*time.Second, "")
+				poller.Start(ctx)
+				defer poller.Stop()
+				pollResources = filterOutResource(resources, watchResourceRewards)
+			} else {
+				fmt.Fprintln(os.Stderr, "Warning: --persist has no effect without rewards in --resources")
+			}
+		}
+
+		// Seed in-memory state silently so existing items aren't reported as new.
 		state.seeding = true
-		poll(client, state, resources)
+		poll(client, state, pollResources)
 		state.seeding = false
 
-		fmt.Printf("Watching %s (interval: %ds). Press Ctrl+C to stop.\n\n",
-			strings.Join(resources, ", "), watchInterval)
+		fmt.Printf("Watching %s (interval: %ds", strings.Join(resources, ", "), watchInterval)
+		if poller != nil {
+			fmt.Print(", rewards persisted")
+		}
+		fmt.Print("). Press Ctrl+C to stop.\n\n")
+
+		// pollerEvents is nil when the poller is not active; selecting on a
+		// nil channel blocks forever, which is what we want.
+		var pollerEvents <-chan lib.RedemptionEvent
+		if poller != nil {
+			pollerEvents = poller.Events()
+		}
 
 		for {
 			select {
@@ -81,7 +112,9 @@ Press Ctrl+C to stop.`,
 				fmt.Println("\nStopped.")
 				return
 			case <-ticker.C:
-				poll(client, state, resources)
+				poll(client, state, pollResources)
+			case e := <-pollerEvents:
+				printRedemptionEvent(e)
 			}
 		}
 	},
@@ -92,6 +125,41 @@ type watchState struct {
 	seenChoreIDs  map[string]struct{}
 	seenEventIDs  map[string]struct{}
 	seeding       bool
+}
+
+func containsResource(resources []string, target string) bool {
+	for _, r := range resources {
+		if r == target {
+			return true
+		}
+	}
+	return false
+}
+
+func filterOutResource(resources []string, target string) []string {
+	out := make([]string, 0, len(resources))
+	for _, r := range resources {
+		if r != target {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func printRedemptionEvent(e lib.RedemptionEvent) {
+	ts := e.ObservedAt.Format("15:04:05")
+	if outputFormat == outputJSON {
+		printJSON(map[string]any{
+			"type": "reward_redeemed", "id": e.RewardID, "title": e.RewardName,
+			"points": e.Points, "category_id": e.CategoryID, "child_name": e.ChildName, "ts": ts,
+		})
+	} else {
+		name := e.ChildName
+		if name == "" {
+			name = e.CategoryID
+		}
+		fmt.Printf("[%s] REWARD REDEEMED  %s (%d pts) — %s\n", ts, e.RewardName, e.Points, name)
+	}
 }
 
 func parseWatchResources(s string) []string {
@@ -230,4 +298,5 @@ func init() {
 	rootCmd.AddCommand(watchCmd)
 	watchCmd.Flags().IntVar(&watchInterval, "interval", 60, "Poll interval in seconds")
 	watchCmd.Flags().StringVar(&watchResources, "resources", "all", "Comma-separated resources to watch: rewards,chores,calendar")
+	watchCmd.Flags().BoolVar(&watchPersist, "persist", false, "Persist reward deduplication state to disk across restarts (~/.skylight/poller-state.json)")
 }
