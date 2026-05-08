@@ -72,8 +72,6 @@ Press Ctrl+C to stop.`,
 			seenEventIDs:  make(map[string]struct{}),
 		}
 
-		// pollResources is what the ticker loop covers. When --persist is
-		// active, rewards are handled by the RewardsPoller instead.
 		pollResources := resources
 
 		var poller *lib.RewardsPoller
@@ -93,18 +91,16 @@ Press Ctrl+C to stop.`,
 		poll(client, state, pollResources)
 		state.seeding = false
 
-		fmt.Printf("Watching %s (interval: %ds", strings.Join(resources, ", "), watchInterval)
-		if poller != nil {
-			fmt.Print(", rewards persisted")
-		}
-		fmt.Print("). Press Ctrl+C to stop.\n\n")
-
-		// pollerEvents is nil when the poller is not active; selecting on a
-		// nil channel blocks forever, which is what we want.
+		// nil channel is never selected in a select statement — used when poller is inactive.
 		var pollerEvents <-chan lib.RedemptionEvent
+		persistLabel := ""
 		if poller != nil {
 			pollerEvents = poller.Events()
+			persistLabel = ", rewards persisted"
 		}
+
+		fmt.Printf("Watching %s (interval: %ds%s). Press Ctrl+C to stop.\n\n",
+			strings.Join(resources, ", "), watchInterval, persistLabel)
 
 		for {
 			select {
