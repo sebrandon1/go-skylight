@@ -16,6 +16,7 @@ func TestListChores(t *testing.T) {
 		wantLen    int
 		wantTitle  string
 		wantAssign string
+		wantDesc   string
 		wantErr    bool
 	}{
 		{
@@ -24,6 +25,14 @@ func TestListChores(t *testing.T) {
 			response:  `{"data":[{"id":"1","attributes":{"summary":"Clean room","status":"pending"}},{"id":"2","attributes":{"summary":"Do homework","status":"completed"}}]}`,
 			wantLen:   2,
 			wantTitle: "Clean room",
+		},
+		{
+			name:      "returns chore with description",
+			status:    http.StatusOK,
+			response:  `{"data":[{"id":"1","attributes":{"summary":"Clean room","description":"Vacuum and mop","status":"pending"}}]}`,
+			wantLen:   1,
+			wantTitle: "Clean room",
+			wantDesc:  "Vacuum and mop",
 		},
 		{
 			name:     "passes date filter",
@@ -114,6 +123,9 @@ func TestListChores(t *testing.T) {
 			if tc.wantAssign != "" && len(chores) > 0 && chores[0].AssigneeID != tc.wantAssign {
 				t.Errorf("AssigneeID: want %q got %q", tc.wantAssign, chores[0].AssigneeID)
 			}
+			if tc.wantDesc != "" && len(chores) > 0 && chores[0].Description != tc.wantDesc {
+				t.Errorf("Description: want %q got %q", tc.wantDesc, chores[0].Description)
+			}
 		})
 	}
 }
@@ -140,6 +152,13 @@ func TestCreateChore(t *testing.T) {
 			status:    http.StatusCreated,
 			response:  `{"data":{"id":"c1","attributes":{"summary":"Walk the dog"}}}`,
 			wantTitle: "Walk the dog",
+		},
+		{
+			name:      "sends description in request body",
+			input:     ChoreData{Title: "Clean room", Description: "Vacuum and mop the floor"},
+			status:    http.StatusCreated,
+			response:  `{"data":{"id":"c2","attributes":{"summary":"Clean room","description":"Vacuum and mop the floor"}}}`,
+			wantTitle: "Clean room",
 		},
 		{
 			name:    "server error returns error",

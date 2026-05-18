@@ -26,14 +26,7 @@ func TestCreateChoreRotation(t *testing.T) {
 		if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 			Data: choreAPIEntry{
 				ID: fmt.Sprintf("ch%d", idx),
-				Attributes: struct {
-					Summary      string `json:"summary"`
-					Status       string `json:"status"`
-					Start        string `json:"start"`
-					RewardPoints int    `json:"reward_points"`
-					Recurring    bool   `json:"recurring"`
-					UpForGrabs   bool   `json:"up_for_grabs"`
-				}{
+				Attributes: choreAPIAttributes{
 					Summary: body["summary"].(string),
 					Start:   body["start"].(string),
 				},
@@ -108,15 +101,8 @@ func TestCreateChoreRotationPartialFailure(t *testing.T) {
 		w.WriteHeader(http.StatusCreated)
 		if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 			Data: choreAPIEntry{
-				ID: "ch1",
-				Attributes: struct {
-					Summary      string `json:"summary"`
-					Status       string `json:"status"`
-					Start        string `json:"start"`
-					RewardPoints int    `json:"reward_points"`
-					Recurring    bool   `json:"recurring"`
-					UpForGrabs   bool   `json:"up_for_grabs"`
-				}{Summary: "Task"},
+				ID:         "ch1",
+				Attributes: choreAPIAttributes{Summary: "Task"},
 			},
 		}); err != nil {
 			t.Errorf("encode: %v", err)

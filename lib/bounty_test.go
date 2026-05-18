@@ -29,14 +29,7 @@ func TestCreateBounty(t *testing.T) {
 				case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/chores":
 					w.WriteHeader(http.StatusCreated)
 					if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
-						Data: choreAPIEntry{ID: "ch1", Attributes: struct {
-							Summary      string `json:"summary"`
-							Status       string `json:"status"`
-							Start        string `json:"start"`
-							RewardPoints int    `json:"reward_points"`
-							Recurring    bool   `json:"recurring"`
-							UpForGrabs   bool   `json:"up_for_grabs"`
-						}{Summary: "Task", RewardPoints: 5}},
+						Data: choreAPIEntry{ID: "ch1", Attributes: choreAPIAttributes{Summary: "Task", RewardPoints: 5}},
 					}); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 					}
@@ -82,14 +75,7 @@ func TestCreateBounty(t *testing.T) {
 				case r.Method == http.MethodPost && r.URL.Path == "/api/frames/frame1/chores":
 					w.WriteHeader(http.StatusCreated)
 					if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
-						Data: choreAPIEntry{ID: "ch1", Attributes: struct {
-							Summary      string `json:"summary"`
-							Status       string `json:"status"`
-							Start        string `json:"start"`
-							RewardPoints int    `json:"reward_points"`
-							Recurring    bool   `json:"recurring"`
-							UpForGrabs   bool   `json:"up_for_grabs"`
-						}{Summary: "Task", RewardPoints: 5}},
+						Data: choreAPIEntry{ID: "ch1", Attributes: choreAPIAttributes{Summary: "Task", RewardPoints: 5}},
 					}); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 					}
@@ -133,15 +119,8 @@ func TestCreateBounty(t *testing.T) {
 					w.WriteHeader(http.StatusCreated)
 					if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 						Data: choreAPIEntry{
-							ID: "ch1",
-							Attributes: struct {
-								Summary      string `json:"summary"`
-								Status       string `json:"status"`
-								Start        string `json:"start"`
-								RewardPoints int    `json:"reward_points"`
-								Recurring    bool   `json:"recurring"`
-								UpForGrabs   bool   `json:"up_for_grabs"`
-							}{Summary: "Do dishes", RewardPoints: 10},
+							ID:         "ch1",
+							Attributes: choreAPIAttributes{Summary: "Do dishes", RewardPoints: 10},
 						},
 					}); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -210,15 +189,8 @@ func TestCreateBountyCleanupOnRewardFailure(t *testing.T) {
 			w.WriteHeader(http.StatusCreated)
 			if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 				Data: choreAPIEntry{
-					ID: "ch1",
-					Attributes: struct {
-						Summary      string `json:"summary"`
-						Status       string `json:"status"`
-						Start        string `json:"start"`
-						RewardPoints int    `json:"reward_points"`
-						Recurring    bool   `json:"recurring"`
-						UpForGrabs   bool   `json:"up_for_grabs"`
-					}{Summary: "Test"},
+					ID:         "ch1",
+					Attributes: choreAPIAttributes{Summary: "Test"},
 				},
 			}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -386,22 +358,8 @@ func TestListBounties(t *testing.T) {
 				case "/api/frames/frame1/chores":
 					if err := json.NewEncoder(w).Encode(choreAPIResponse{
 						Data: []choreAPIEntry{
-							{ID: "ch1", Attributes: struct {
-								Summary      string `json:"summary"`
-								Status       string `json:"status"`
-								Start        string `json:"start"`
-								RewardPoints int    `json:"reward_points"`
-								Recurring    bool   `json:"recurring"`
-								UpForGrabs   bool   `json:"up_for_grabs"`
-							}{Summary: "Task A", Status: "pending", RewardPoints: 10}},
-							{ID: "ch2", Attributes: struct {
-								Summary      string `json:"summary"`
-								Status       string `json:"status"`
-								Start        string `json:"start"`
-								RewardPoints int    `json:"reward_points"`
-								Recurring    bool   `json:"recurring"`
-								UpForGrabs   bool   `json:"up_for_grabs"`
-							}{Summary: "Task B", Status: "pending", RewardPoints: 0}},
+							{ID: "ch1", Attributes: choreAPIAttributes{Summary: "Task A", Status: "pending", RewardPoints: 10}},
+							{ID: "ch2", Attributes: choreAPIAttributes{Summary: "Task B", Status: "pending"}},
 						},
 					}); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
