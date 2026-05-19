@@ -20,6 +20,14 @@ func fatal(msg string, err error) {
 	os.Exit(1)
 }
 
+func getFrameOrFail(client *lib.Client, id string) *lib.Frame {
+	frame, err := client.GetFrame(id)
+	if err != nil {
+		fatal("getting frame info", err)
+	}
+	return frame
+}
+
 // validateDate returns an error if date is non-empty and not in YYYY-MM-DD format.
 func validateDate(date string) error {
 	if date == "" {

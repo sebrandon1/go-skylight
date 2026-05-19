@@ -64,10 +64,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 		start := now.AddDate(0, 0, -exportDays).Format(lib.DateFormat)
 		end := now.AddDate(0, 0, exportDays).Format(lib.DateFormat)
 
-		frame, err := client.GetFrame(frameID)
-		if err != nil {
-			fatal("getting frame info", err)
-		}
+		frame := getFrameOrFail(client, frameID)
 
 		data := ExportData{
 			ExportedAt: now.Format(time.RFC3339),
