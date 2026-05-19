@@ -27,7 +27,6 @@ func integrationClient(t *testing.T) (*Client, string) {
 	password := os.Getenv("SKYLIGHT_PASSWORD")
 	frameID := os.Getenv("SKYLIGHT_FRAME_ID")
 
-	// Fall back to ~/.skylight/config for any values not set in the environment.
 	loadSkylightConfig(&email, &password, &frameID)
 
 	if frameID == "" {

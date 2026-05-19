@@ -11,7 +11,6 @@ import (
 
 // loadSkylightConfig reads ~/.skylight/config and populates the provided
 // pointers only when the corresponding value is currently empty.
-// Env vars take precedence — call this after os.Getenv.
 func loadSkylightConfig(email, password, frameID *string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
