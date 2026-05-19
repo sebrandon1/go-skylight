@@ -80,3 +80,31 @@ make vet          # go vet
 make build        # CLI binary
 make build-trigger # alpaca-trigger binary
 ```
+
+## Running Integration Tests
+
+Integration tests call the live Skylight API. They require credentials and a frame ID.
+
+### Setup (one-time)
+
+Add your credentials to `~/.skylight/config` (same file used by the CLI):
+
+```
+SKYLIGHT_EMAIL=you@example.com
+SKYLIGHT_PASSWORD=yourpassword
+SKYLIGHT_FRAME_ID=your-frame-id
+```
+
+`SKYLIGHT_FRAME_ID` is already written by `skylight login --save`. You only need
+to add `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD`. Environment variables override
+the config file if set.
+
+### Running
+
+```bash
+make integration-read   # read-only tests — safe to run repeatedly
+make integration        # all tests including CRUD — creates and deletes real data
+```
+
+CRUD tests always clean up after themselves via `t.Cleanup`, but prefer
+`integration-read` for routine local verification.
