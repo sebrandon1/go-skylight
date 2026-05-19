@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -26,34 +25,4 @@ func buildCalendarWeeklyView(events []lib.CalendarEvent, monday time.Time) []Wee
 		days[i] = WeeklyCalendarDay{Day: s.day, Date: s.date, Display: s.display, Events: s.items}
 	}
 	return days
-}
-
-func printCalendarWeekTable(days []WeeklyCalendarDay) {
-	w := newTableWriter()
-	fmt.Fprintln(w, "DAY\tDATE\tTITLE\tTIME\tALL DAY")
-	for _, d := range days {
-		if len(d.Events) == 0 {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", d.Day, d.Display, "(no events)", "—", "—")
-			continue
-		}
-		for i, e := range d.Events {
-			dayCol, dateCol := d.Day, d.Display
-			if i > 0 {
-				dayCol, dateCol = "", ""
-			}
-			timeCol := "All day"
-			if !e.AllDay {
-				timeCol = "—"
-				if len(e.StartAt) >= 16 {
-					timeCol = e.StartAt[11:16]
-				}
-			}
-			allDayCol := boolNo
-			if e.AllDay {
-				allDayCol = boolYes
-			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", dayCol, dateCol, e.Title, timeCol, allDayCol)
-		}
-	}
-	w.Flush()
 }

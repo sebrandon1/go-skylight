@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -26,27 +25,4 @@ func buildWeeklyView(chores []lib.Chore, monday time.Time) []WeeklyChoreDay {
 		days[i] = WeeklyChoreDay{Day: s.day, Date: s.date, Display: s.display, Chores: s.items}
 	}
 	return days
-}
-
-func printChoreWeekTable(days []WeeklyChoreDay) {
-	w := newTableWriter()
-	fmt.Fprintln(w, "DAY\tDATE\tTITLE\tSTATUS")
-	for _, d := range days {
-		if len(d.Chores) == 0 {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", d.Day, d.Display, "(no chores)", "—")
-			continue
-		}
-		for i, c := range d.Chores {
-			dayCol, dateCol := d.Day, d.Display
-			if i > 0 {
-				dayCol, dateCol = "", ""
-			}
-			status := "✗"
-			if c.Status == lib.ChoreStatusComplete {
-				status = "✓"
-			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", dayCol, dateCol, c.Title, status)
-		}
-	}
-	w.Flush()
 }
