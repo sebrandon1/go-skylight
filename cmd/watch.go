@@ -66,10 +66,7 @@ Press Ctrl+C to stop.`,
 		ticker := time.NewTicker(time.Duration(watchInterval) * time.Second)
 		defer ticker.Stop()
 
-		frame, err := client.GetFrame(frameID)
-		if err != nil {
-			fatal("getting frame info", err)
-		}
+		frame := getFrameOrFail(client, frameID)
 
 		state := &watchState{
 			seenRewardIDs: make(map[string]struct{}),

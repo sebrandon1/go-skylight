@@ -26,10 +26,7 @@ var analyticsCmd = &cobra.Command{
 		startStr := start.Format(lib.DateFormat)
 		endStr := now.Format(lib.DateFormat)
 
-		frame, err := client.GetFrame(frameID)
-		if err != nil {
-			fatal("getting frame info", err)
-		}
+		frame := getFrameOrFail(client, frameID)
 
 		var (
 			categories []lib.Category

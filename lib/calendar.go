@@ -3,7 +3,6 @@ package lib
 import "fmt"
 
 // ListCalendarEvents retrieves calendar events for a frame within a date range.
-// dateMin and dateMax are YYYY-MM-DD strings; timezone is an IANA timezone name (e.g. "America/Chicago").
 func (c *Client) ListCalendarEvents(frameID, dateMin, dateMax, timezone string) ([]CalendarEvent, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), frameID))
 	if err != nil {

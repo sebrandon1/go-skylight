@@ -27,10 +27,7 @@ var homeCmd = &cobra.Command{
 
 		client := getClient()
 
-		frame, err := client.GetFrame(frameID)
-		if err != nil {
-			fatal("getting frame info", err)
-		}
+		frame := getFrameOrFail(client, frameID)
 
 		var (
 			events   []lib.CalendarEvent
