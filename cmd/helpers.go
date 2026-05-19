@@ -118,8 +118,12 @@ func printTableOutputExtended(data any) bool {
 	return true
 }
 
+func newTableWriter() *tabwriter.Writer {
+	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+}
+
 func printChoresTable(chores []lib.Chore) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tDUE DATE\tPOINTS\tASSIGNEE")
 	for _, c := range chores {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\n",
@@ -129,7 +133,7 @@ func printChoresTable(chores []lib.Chore) {
 }
 
 func printRewardsTable(rewards []lib.Reward) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tPOINTS\tEMOJI\tREDEEMED\tCATEGORY")
 	for _, r := range rewards {
 		redeemed := boolNo
@@ -143,7 +147,7 @@ func printRewardsTable(rewards []lib.Reward) {
 }
 
 func printFramesTable(frames []lib.Frame) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tTIMEZONE")
 	for _, f := range frames {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", f.ID, f.Name, f.TimeZone)
@@ -152,7 +156,7 @@ func printFramesTable(frames []lib.Frame) {
 }
 
 func printCalendarTable(events []lib.CalendarEvent) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tSTART\tEND\tALL DAY")
 	for _, e := range events {
 		allDay := boolNo
@@ -166,7 +170,7 @@ func printCalendarTable(events []lib.CalendarEvent) {
 }
 
 func printCategoriesTable(cats []lib.Category) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tCOLOR")
 	for _, c := range cats {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", c.ID, c.Name, c.Color)
@@ -175,7 +179,7 @@ func printCategoriesTable(cats []lib.Category) {
 }
 
 func printChoreStreakTable(stats []ChoreStreakStats) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "NAME\tCURRENT STREAK\tLONGEST STREAK\tCOMPLETED\tTOTAL\tRATE")
 	for _, s := range stats {
 		fmt.Fprintf(w, "%s\t%d days\t%d days\t%d\t%d\t%.1f%%\n",
@@ -185,7 +189,7 @@ func printChoreStreakTable(stats []ChoreStreakStats) {
 }
 
 func printBountiesTable(bounties []lib.Bounty) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "CHORE ID\tCHORE TITLE\tPOINTS\tDUE DATE\tREWARD ID\tREWARD TITLE")
 	for _, b := range bounties {
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\n",
@@ -195,7 +199,7 @@ func printBountiesTable(bounties []lib.Bounty) {
 }
 
 func printSourceCalendarsTable(cals []lib.SourceCalendar) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tPROVIDER\tCOLOR")
 	for _, c := range cals {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", c.ID, c.Name, c.Provider, c.Color)
@@ -204,7 +208,7 @@ func printSourceCalendarsTable(cals []lib.SourceCalendar) {
 }
 
 func printDevicesTable(devices []lib.Device) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tONLINE")
 	for _, d := range devices {
 		online := boolNo
@@ -217,7 +221,7 @@ func printDevicesTable(devices []lib.Device) {
 }
 
 func printAvatarsTable(avatars []lib.Avatar) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tIMAGE URL")
 	for _, a := range avatars {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", a.ID, a.Name, a.ImageURL)
@@ -226,7 +230,7 @@ func printAvatarsTable(avatars []lib.Avatar) {
 }
 
 func printColorsTable(colors []lib.Color) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "NAME\tHEX")
 	for _, c := range colors {
 		fmt.Fprintf(w, "%s\t%s\n", c.Name, c.Hex)
@@ -235,7 +239,7 @@ func printColorsTable(colors []lib.Color) {
 }
 
 func printListsTable(lists []lib.List) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tCOLOR\tKIND\tITEMS")
 	for _, l := range lists {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\n", l.ID, l.Title, l.Color, l.Kind, len(l.Items))
@@ -244,7 +248,7 @@ func printListsTable(lists []lib.List) {
 }
 
 func printMealCategoriesTable(cats []lib.MealCategory) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tCOLOR")
 	for _, c := range cats {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", c.ID, c.Name, c.Color)
@@ -253,7 +257,7 @@ func printMealCategoriesTable(cats []lib.MealCategory) {
 }
 
 func printRecipesTable(recipes []lib.Recipe) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tCATEGORY\tURL")
 	for _, r := range recipes {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.ID, r.Title, r.MealCategoryID, r.URL)
@@ -262,7 +266,7 @@ func printRecipesTable(recipes []lib.Recipe) {
 }
 
 func printMealSittingsTable(sittings []lib.MealSitting) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tSUMMARY\tDATE\tRECIPE ID\tCATEGORY ID")
 	for _, s := range sittings {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.Summary, s.Date, s.RecipeID, s.MealCategoryID)
@@ -271,7 +275,7 @@ func printMealSittingsTable(sittings []lib.MealSitting) {
 }
 
 func printPhotosTable(photos []lib.Photo) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTYPE\tSTATUS\tCREATED")
 	for _, p := range photos {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", p.ID, p.AssetType, p.Status, p.CreatedAt)
@@ -280,7 +284,7 @@ func printPhotosTable(photos []lib.Photo) {
 }
 
 func printRoutinesTable(routines []lib.Routine) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tASSIGNEE\tSTEPS")
 	for _, r := range routines {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", r.ID, r.Title, r.AssigneeID, len(r.Steps))

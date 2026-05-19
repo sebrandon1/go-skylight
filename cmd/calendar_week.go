@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -31,7 +29,7 @@ func buildCalendarWeeklyView(events []lib.CalendarEvent, monday time.Time) []Wee
 }
 
 func printCalendarWeekTable(days []WeeklyCalendarDay) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "DAY\tDATE\tTITLE\tTIME\tALL DAY")
 	for _, d := range days {
 		if len(d.Events) == 0 {
