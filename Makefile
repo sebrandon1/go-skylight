@@ -20,4 +20,10 @@ build-trigger:
 clean:
 	rm -f $(APP_NAME) alpaca-trigger
 
-.PHONY: vet build build-trigger lint test clean
+integration:
+	go test -v -tags integration -count=1 -timeout 5m ./lib/...
+
+integration-read:
+	go test -v -tags integration -count=1 -timeout 5m -run 'TestIntegration_(Get|List[A-Z])' ./lib/...
+
+.PHONY: vet build build-trigger lint test clean integration integration-read
