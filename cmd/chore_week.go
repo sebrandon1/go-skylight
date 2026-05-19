@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -31,7 +29,7 @@ func buildWeeklyView(chores []lib.Chore, monday time.Time) []WeeklyChoreDay {
 }
 
 func printChoreWeekTable(days []WeeklyChoreDay) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := newTableWriter()
 	fmt.Fprintln(w, "DAY\tDATE\tTITLE\tSTATUS")
 	for _, d := range days {
 		if len(d.Chores) == 0 {
