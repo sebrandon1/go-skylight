@@ -142,14 +142,15 @@ func (e *sourceCalendarAPIEntry) toSourceCalendar() SourceCalendar {
 
 // Chore represents a chore/task (flattened from JSON-API response).
 type Chore struct {
-	ID         string `json:"id,omitempty"`
-	Title      string `json:"title,omitempty"`
-	Status     string `json:"status,omitempty"`
-	DueDate    string `json:"due_date,omitempty"`
-	Points     int    `json:"points,omitempty"`
-	Recurring  bool   `json:"recurring"`
-	AssigneeID string `json:"assignee_id,omitempty"`
-	UpForGrabs bool   `json:"up_for_grabs,omitempty"`
+	ID          string `json:"id,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Status      string `json:"status,omitempty"`
+	DueDate     string `json:"due_date,omitempty"`
+	Points      int    `json:"points,omitempty"`
+	Recurring   bool   `json:"recurring"`
+	AssigneeID  string `json:"assignee_id,omitempty"`
+	UpForGrabs  bool   `json:"up_for_grabs,omitempty"`
 }
 
 // choreAPIResponse wraps the JSON-API envelope for chore list responses.
@@ -157,17 +158,20 @@ type choreAPIResponse struct {
 	Data []choreAPIEntry `json:"data"`
 }
 
+type choreAPIAttributes struct {
+	Summary      string `json:"summary"`
+	Description  string `json:"description"`
+	Status       string `json:"status"`
+	Start        string `json:"start"`
+	RewardPoints int    `json:"reward_points"`
+	Recurring    bool   `json:"recurring"`
+	UpForGrabs   bool   `json:"up_for_grabs"`
+}
+
 // choreAPIEntry represents a single chore in JSON-API format.
 type choreAPIEntry struct {
-	ID         string `json:"id"`
-	Attributes struct {
-		Summary      string `json:"summary"`
-		Status       string `json:"status"`
-		Start        string `json:"start"`
-		RewardPoints int    `json:"reward_points"`
-		Recurring    bool   `json:"recurring"`
-		UpForGrabs   bool   `json:"up_for_grabs"`
-	} `json:"attributes"`
+	ID            string             `json:"id"`
+	Attributes    choreAPIAttributes `json:"attributes"`
 	Relationships struct {
 		Category struct {
 			Data *apiRelationshipData `json:"data"`
@@ -183,13 +187,14 @@ type choreAPISingleResponse struct {
 // toChore converts a JSON-API chore entry to a flat Chore struct.
 func (e *choreAPIEntry) toChore() Chore {
 	c := Chore{
-		ID:         e.ID,
-		Title:      e.Attributes.Summary,
-		Status:     e.Attributes.Status,
-		DueDate:    e.Attributes.Start,
-		Points:     e.Attributes.RewardPoints,
-		Recurring:  e.Attributes.Recurring,
-		UpForGrabs: e.Attributes.UpForGrabs,
+		ID:          e.ID,
+		Title:       e.Attributes.Summary,
+		Description: e.Attributes.Description,
+		Status:      e.Attributes.Status,
+		DueDate:     e.Attributes.Start,
+		Points:      e.Attributes.RewardPoints,
+		Recurring:   e.Attributes.Recurring,
+		UpForGrabs:  e.Attributes.UpForGrabs,
 	}
 	if e.Relationships.Category.Data != nil {
 		c.AssigneeID = e.Relationships.Category.Data.ID
@@ -200,13 +205,14 @@ func (e *choreAPIEntry) toChore() Chore {
 // ChoreData holds the chore fields for create/update requests.
 // JSON tags match the Skylight API field names.
 type ChoreData struct {
-	Title      string `json:"summary,omitempty"`
-	DueDate    string `json:"start,omitempty"`
-	Points     int    `json:"reward_points,omitempty"`
-	Status     string `json:"status,omitempty"`
-	AssigneeID string `json:"category_id,omitempty"`
-	Recurring  bool   `json:"recurring,omitempty"`
-	UpForGrabs bool   `json:"up_for_grabs,omitempty"`
+	Title       string `json:"summary,omitempty"`
+	Description string `json:"description,omitempty"`
+	DueDate     string `json:"start,omitempty"`
+	Points      int    `json:"reward_points,omitempty"`
+	Status      string `json:"status,omitempty"`
+	AssigneeID  string `json:"category_id,omitempty"`
+	Recurring   bool   `json:"recurring,omitempty"`
+	UpForGrabs  bool   `json:"up_for_grabs,omitempty"`
 }
 
 // List represents a list (e.g., grocery list, todo list).

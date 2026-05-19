@@ -14,6 +14,7 @@ var (
 	choreAssigneeID  string
 	choreID          string
 	choreTitle       string
+	choreDescription string
 	chorePoints      int
 	choreAfter       string
 	choreBefore      string
@@ -97,22 +98,20 @@ var choreCreateCmd = &cobra.Command{
 
 		client := getClient()
 
+		data := lib.ChoreData{
+			Title:       choreTitle,
+			Description: choreDescription,
+			DueDate:     choreDate,
+			Points:      chorePoints,
+		}
 		var chore *lib.Chore
 		var err error
 		if choreUpForGrabs {
-			chore, err = client.CreateUpForGrabsChore(frameID, lib.ChoreData{
-				Title:   choreTitle,
-				DueDate: choreDate,
-				Points:  chorePoints,
-			})
+			chore, err = client.CreateUpForGrabsChore(frameID, data)
 		} else {
-			chore, err = client.CreateChore(frameID, lib.ChoreData{
-				Title:      choreTitle,
-				DueDate:    choreDate,
-				AssigneeID: choreAssigneeID,
-				Points:     chorePoints,
-				Recurring:  choreRecurring,
-			})
+			data.AssigneeID = choreAssigneeID
+			data.Recurring = choreRecurring
+			chore, err = client.CreateChore(frameID, data)
 		}
 		if err != nil {
 			fatal("creating chore", err)
@@ -186,6 +185,9 @@ var choreUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("date") {
 			data.DueDate = choreDate
 		}
+		if cmd.Flags().Changed("description") {
+			data.Description = choreDescription
+		}
 
 		chore, err := client.UpdateChore(frameID, choreID, data)
 		if err != nil {
@@ -250,6 +252,7 @@ func init() {
 	choreListCmd.Flags().Lookup("week").NoOptDefVal = "current"
 
 	choreCreateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
+	choreCreateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
 	choreCreateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreCreateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
@@ -259,6 +262,7 @@ func init() {
 
 	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
 	choreUpdateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
+	choreUpdateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
 	choreUpdateCmd.Flags().StringVar(&choreStatus, "status", "", "Chore status")
 	choreUpdateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
