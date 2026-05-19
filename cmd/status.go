@@ -31,7 +31,7 @@ var statusCmd = &cobra.Command{
 			fatal("listing chores", err)
 		}
 
-		events, err := client.ListCalendarEvents(frameID, today, today)
+		events, err := client.ListCalendarEvents(frameID, today, today, frame.TimeZone)
 		if err != nil {
 			fatal("listing calendar events", err)
 		}

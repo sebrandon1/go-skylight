@@ -3,17 +3,8 @@ package lib
 import "testing"
 
 func TestToCalendarEventNilCategory(t *testing.T) {
-	entry := calendarAPIEntry{
-		ID: "e1",
-		Attributes: struct {
-			Summary     string `json:"summary"`
-			Description string `json:"description"`
-			StartsAt    string `json:"starts_at"`
-			EndsAt      string `json:"ends_at"`
-			AllDay      bool   `json:"all_day"`
-			Color       string `json:"color"`
-		}{Summary: "Test"},
-	}
+	entry := calendarAPIEntry{ID: "e1"}
+	entry.Attributes.Summary = "Test"
 	ev := entry.toCalendarEvent()
 	if ev.CategoryID != "" {
 		t.Errorf("CategoryID should be empty, got %q", ev.CategoryID)
@@ -26,7 +17,7 @@ func TestToCalendarEventNilCategory(t *testing.T) {
 func TestToCalendarEventWithCategory(t *testing.T) {
 	entry := calendarAPIEntry{ID: "e1"}
 	entry.Attributes.Summary = "Event"
-	entry.Relationships.Category.Data = &apiRelationshipData{ID: "cat1"}
+	entry.Relationships.Categories.Data = []apiRelationshipData{{ID: "cat1"}}
 	ev := entry.toCalendarEvent()
 	if ev.CategoryID != "cat1" {
 		t.Errorf("CategoryID = %q, want %q", ev.CategoryID, "cat1")

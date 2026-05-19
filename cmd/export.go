@@ -64,6 +64,11 @@ centered on today. Use --resources to limit which resource types are included.`,
 		start := now.AddDate(0, 0, -exportDays).Format(lib.DateFormat)
 		end := now.AddDate(0, 0, exportDays).Format(lib.DateFormat)
 
+		frame, err := client.GetFrame(frameID)
+		if err != nil {
+			fatal("getting frame info", err)
+		}
+
 		data := ExportData{
 			ExportedAt: now.Format(time.RFC3339),
 			FrameID:    frameID,
@@ -149,7 +154,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				events, err := client.ListCalendarEvents(frameID, start, end)
+				events, err := client.ListCalendarEvents(frameID, start, end, frame.TimeZone)
 				if err == nil {
 					mu.Lock()
 					data.CalendarEvents = events

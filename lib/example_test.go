@@ -40,7 +40,7 @@ func ExampleClient_ListCalendarEvents() {
 	defer func() { lib.SkylightURL = old }()
 
 	client, _ := lib.NewClientWithToken("u", "t")
-	events, err := client.ListCalendarEvents("frame1", "", "")
+	events, err := client.ListCalendarEvents("frame1", "", "", "")
 	if err != nil {
 		fmt.Println("error:", err)
 		return

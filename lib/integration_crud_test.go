@@ -205,7 +205,7 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 	// Verify in list
 	start := now.Format(DateFormat)
 	end := now.AddDate(0, 0, 7).Format(DateFormat)
-	events, err := client.ListCalendarEvents(frameID, start, end)
+	events, err := client.ListCalendarEvents(frameID, start, end, "")
 	if err != nil {
 		if strings.Contains(err.Error(), "500") || strings.Contains(err.Error(), "Internal Server Error") {
 			t.Skipf("ListCalendarEvents: skipping due to API instability: %v", err)

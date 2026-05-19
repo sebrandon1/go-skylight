@@ -66,10 +66,16 @@ Press Ctrl+C to stop.`,
 		ticker := time.NewTicker(time.Duration(watchInterval) * time.Second)
 		defer ticker.Stop()
 
+		frame, err := client.GetFrame(frameID)
+		if err != nil {
+			fatal("getting frame info", err)
+		}
+
 		state := &watchState{
 			seenRewardIDs: make(map[string]struct{}),
 			seenChoreIDs:  make(map[string]struct{}),
 			seenEventIDs:  make(map[string]struct{}),
+			timezone:      frame.TimeZone,
 		}
 
 		pollResources := resources
@@ -121,6 +127,7 @@ type watchState struct {
 	seenChoreIDs  map[string]struct{}
 	seenEventIDs  map[string]struct{}
 	seeding       bool
+	timezone      string
 }
 
 func containsResource(resources []string, target string) bool {
@@ -254,7 +261,7 @@ func pollChores(client *lib.Client, state *watchState, now time.Time, ts string)
 
 func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts string) {
 	today := now.Format(lib.DateFormat)
-	events, err := client.ListCalendarEvents(frameID, today, today)
+	events, err := client.ListCalendarEvents(frameID, today, today, state.timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing calendar events: %v\n", ts, err)
 		return

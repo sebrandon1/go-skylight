@@ -9,37 +9,36 @@ import (
 func TestListCalendarEvents(t *testing.T) {
 	tests := []struct {
 		name           string
-		startDate      string
-		endDate        string
+		dateMin        string
+		dateMax        string
+		timezone       string
 		status         int
 		response       string
 		wantLen        int
 		wantFirstTitle string
+		wantCategoryID string
 		wantErr        bool
 	}{
 		{
 			name:           "returns events",
 			status:         http.StatusOK,
-			response:       `{"data":[{"id":"1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2024-01-15T10:00:00Z","ends_at":"2024-01-15T11:00:00Z","all_day":false}},{"id":"2","type":"calendar_event","attributes":{"summary":"Lunch","starts_at":"2024-01-15T12:00:00Z","ends_at":"2024-01-15T13:00:00Z","all_day":false}}]}`,
+			response:       `{"data":[{"id":"1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2024-01-15T10:00:00-06:00","ends_at":"2024-01-15T11:00:00-06:00","all_day":false},"relationships":{"categories":{"data":[]}}},{"id":"2","type":"calendar_event","attributes":{"summary":"Lunch","starts_at":"2024-01-15T12:00:00-06:00","ends_at":"2024-01-15T13:00:00-06:00","all_day":false},"relationships":{"categories":{"data":[]}}}]}`,
 			wantLen:        2,
 			wantFirstTitle: "Meeting",
 		},
 		{
-			name:      "passes date range params",
-			startDate: "2024-01-01",
-			endDate:   "2024-01-31",
-			status:    http.StatusOK,
-			response:  `{"data":[]}`,
+			name:           "parses category from categories relationship",
+			status:         http.StatusOK,
+			response:       `{"data":[{"id":"1","type":"calendar_event","attributes":{"summary":"Party","starts_at":"2024-06-01T10:00:00-05:00","all_day":false},"relationships":{"categories":{"data":[{"id":"cat42","type":"category"}]}}}]}`,
+			wantLen:        1,
+			wantFirstTitle: "Party",
+			wantCategoryID: "cat42",
 		},
 		{
-			name:      "passes start date only",
-			startDate: "2024-01-01",
-			status:    http.StatusOK,
-			response:  `{"data":[]}`,
-		},
-		{
-			name:     "passes end date only",
-			endDate:  "2024-01-31",
+			name:     "passes date range and timezone params",
+			dateMin:  "2024-01-01",
+			dateMax:  "2024-01-31",
+			timezone: "America/Chicago",
 			status:   http.StatusOK,
 			response: `{"data":[]}`,
 		},
@@ -71,11 +70,14 @@ func TestListCalendarEvents(t *testing.T) {
 					t.Errorf("unexpected path: %s", r.URL.Path)
 				}
 				q := r.URL.Query()
-				if tc.startDate != "" && q.Get("start_date") != tc.startDate {
-					t.Errorf("start_date: want %q got %q", tc.startDate, q.Get("start_date"))
+				if tc.dateMin != "" && q.Get("date_min") != tc.dateMin {
+					t.Errorf("date_min: want %q got %q", tc.dateMin, q.Get("date_min"))
 				}
-				if tc.endDate != "" && q.Get("end_date") != tc.endDate {
-					t.Errorf("end_date: want %q got %q", tc.endDate, q.Get("end_date"))
+				if tc.dateMax != "" && q.Get("date_max") != tc.dateMax {
+					t.Errorf("date_max: want %q got %q", tc.dateMax, q.Get("date_max"))
+				}
+				if tc.timezone != "" && q.Get("timezone") != tc.timezone {
+					t.Errorf("timezone: want %q got %q", tc.timezone, q.Get("timezone"))
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
@@ -92,7 +94,7 @@ func TestListCalendarEvents(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			events, err := client.ListCalendarEvents("frame1", tc.startDate, tc.endDate)
+			events, err := client.ListCalendarEvents("frame1", tc.dateMin, tc.dateMax, tc.timezone)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -104,6 +106,9 @@ func TestListCalendarEvents(t *testing.T) {
 			}
 			if tc.wantFirstTitle != "" && len(events) > 0 && events[0].Title != tc.wantFirstTitle {
 				t.Errorf("events[0].Title: want %q got %q", tc.wantFirstTitle, events[0].Title)
+			}
+			if tc.wantCategoryID != "" && len(events) > 0 && events[0].CategoryID != tc.wantCategoryID {
+				t.Errorf("events[0].CategoryID: want %q got %q", tc.wantCategoryID, events[0].CategoryID)
 			}
 		})
 	}
@@ -120,16 +125,16 @@ func TestCreateCalendarEvent(t *testing.T) {
 	}{
 		{
 			name:      "creates event",
-			input:     CalendarEventData{Title: "New Event", StartAt: "2024-01-16T09:00:00Z"},
+			input:     CalendarEventData{Title: "New Event", StartAt: "2024-01-16T09:00:00-06:00"},
 			status:    http.StatusCreated,
-			response:  `{"data":{"id":"3","type":"calendar_event","attributes":{"summary":"New Event","starts_at":"2024-01-16T09:00:00Z","ends_at":"","all_day":false}}}`,
+			response:  `{"data":{"id":"3","type":"calendar_event","attributes":{"summary":"New Event","starts_at":"2024-01-16T09:00:00-06:00","ends_at":"","all_day":false},"relationships":{"categories":{"data":[]}}}}`,
 			wantTitle: "New Event",
 		},
 		{
 			name:      "sends all fields in request body",
-			input:     CalendarEventData{Title: "Birthday Party", Description: "Fun party", StartAt: "2024-06-15T14:00:00Z", EndAt: "2024-06-15T18:00:00Z"},
+			input:     CalendarEventData{Title: "Birthday Party", Description: "Fun party", StartAt: "2024-06-15T14:00:00-05:00", EndAt: "2024-06-15T18:00:00-05:00"},
 			status:    http.StatusCreated,
-			response:  `{"data":{"id":"evt1","type":"calendar_event","attributes":{"summary":"Birthday Party","starts_at":"2024-06-15T14:00:00Z","ends_at":"2024-06-15T18:00:00Z","all_day":false}}}`,
+			response:  `{"data":{"id":"evt1","type":"calendar_event","attributes":{"summary":"Birthday Party","starts_at":"2024-06-15T14:00:00-05:00","ends_at":"2024-06-15T18:00:00-05:00","all_day":false},"relationships":{"categories":{"data":[]}}}}`,
 			wantTitle: "Birthday Party",
 		},
 		{
@@ -190,7 +195,7 @@ func TestUpdateCalendarEvent(t *testing.T) {
 			eventID:   "evt1",
 			input:     CalendarEventData{Title: "Updated Event"},
 			status:    http.StatusOK,
-			response:  `{"data":{"id":"1","type":"calendar_event","attributes":{"summary":"Updated Event","starts_at":"","ends_at":"","all_day":false}}}`,
+			response:  `{"data":{"id":"1","type":"calendar_event","attributes":{"summary":"Updated Event","starts_at":"","ends_at":"","all_day":false},"relationships":{"categories":{"data":[]}}}}`,
 			wantTitle: "Updated Event",
 		},
 		{

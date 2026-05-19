@@ -26,6 +26,11 @@ var analyticsCmd = &cobra.Command{
 		startStr := start.Format(lib.DateFormat)
 		endStr := now.Format(lib.DateFormat)
 
+		frame, err := client.GetFrame(frameID)
+		if err != nil {
+			fatal("getting frame info", err)
+		}
+
 		var (
 			categories []lib.Category
 			chores     []lib.Chore
@@ -64,7 +69,7 @@ var analyticsCmd = &cobra.Command{
 		}()
 		go func() {
 			defer wg.Done()
-			events, eventErr = client.ListCalendarEvents(frameID, startStr, endStr)
+			events, eventErr = client.ListCalendarEvents(frameID, startStr, endStr, frame.TimeZone)
 		}()
 		wg.Wait()
 
