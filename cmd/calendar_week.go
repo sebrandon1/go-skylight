@@ -17,7 +17,7 @@ type WeeklyCalendarDay struct {
 }
 
 // buildCalendarWeeklyView groups events into Mon–Sun slots for the week starting on monday.
-// Events are grouped by the UTC date of their StartAt field; out-of-range events are silently dropped.
+// Events are grouped by the date of their StartAt field; out-of-range events are silently dropped.
 func buildCalendarWeeklyView(events []lib.CalendarEvent, monday time.Time) []WeeklyCalendarDay {
 	slots := buildWeekSlots(events, monday,
 		func(e lib.CalendarEvent) string { return e.StartAt },

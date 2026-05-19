@@ -404,7 +404,7 @@ func TestBadURLNewRequestErrors(t *testing.T) {
 		fn   func(*Client) error
 	}{
 		// GET-based
-		{"ListCalendarEvents", func(c *Client) error { _, err := c.ListCalendarEvents("f", "", ""); return err }},
+		{"ListCalendarEvents", func(c *Client) error { _, err := c.ListCalendarEvents("f", "", "", ""); return err }},
 		{"ListSourceCalendars", func(c *Client) error { _, err := c.ListSourceCalendars("f"); return err }},
 		{"ListCategories", func(c *Client) error { _, err := c.ListCategories("f"); return err }},
 		{"ListChores", func(c *Client) error { _, err := c.ListChores("f", ChoreListOptions{}); return err }},

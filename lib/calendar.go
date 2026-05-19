@@ -3,18 +3,22 @@ package lib
 import "fmt"
 
 // ListCalendarEvents retrieves calendar events for a frame within a date range.
-func (c *Client) ListCalendarEvents(frameID, startDate, endDate string) ([]CalendarEvent, error) {
+// dateMin and dateMax are YYYY-MM-DD strings; timezone is an IANA timezone name (e.g. "America/Chicago").
+func (c *Client) ListCalendarEvents(frameID, dateMin, dateMax, timezone string) ([]CalendarEvent, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), frameID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list calendar events request: %w", err)
 	}
 
 	params := map[string]string{}
-	if startDate != "" {
-		params["start_date"] = startDate
+	if dateMin != "" {
+		params["date_min"] = dateMin
 	}
-	if endDate != "" {
-		params["end_date"] = endDate
+	if dateMax != "" {
+		params["date_max"] = dateMax
+	}
+	if timezone != "" {
+		params["timezone"] = timezone
 	}
 	if len(params) > 0 {
 		addQueryParams(req, params)

@@ -86,9 +86,9 @@ type calendarAPIEntry struct {
 		Color       string `json:"color"`
 	} `json:"attributes"`
 	Relationships struct {
-		Category struct {
-			Data *apiRelationshipData `json:"data"`
-		} `json:"category"`
+		Categories struct {
+			Data []apiRelationshipData `json:"data"`
+		} `json:"categories"`
 	} `json:"relationships"`
 }
 
@@ -102,8 +102,8 @@ func (e *calendarAPIEntry) toCalendarEvent() CalendarEvent {
 		AllDay:      e.Attributes.AllDay,
 		Color:       e.Attributes.Color,
 	}
-	if e.Relationships.Category.Data != nil {
-		ev.CategoryID = e.Relationships.Category.Data.ID
+	if len(e.Relationships.Categories.Data) > 0 {
+		ev.CategoryID = e.Relationships.Categories.Data[0].ID
 	}
 	return ev
 }

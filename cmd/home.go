@@ -27,6 +27,11 @@ var homeCmd = &cobra.Command{
 
 		client := getClient()
 
+		frame, err := client.GetFrame(frameID)
+		if err != nil {
+			fatal("getting frame info", err)
+		}
+
 		var (
 			events   []lib.CalendarEvent
 			chores   []lib.Chore
@@ -40,7 +45,7 @@ var homeCmd = &cobra.Command{
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			events, evtErr = client.ListCalendarEvents(frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat))
+			events, evtErr = client.ListCalendarEvents(frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
 		}()
 
 		if !homeNoTasks {

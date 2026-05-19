@@ -45,7 +45,12 @@ var calendarListCmd = &cobra.Command{
 
 		client := getClient()
 
-		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate)
+		frame, err := client.GetFrame(frameID)
+		if err != nil {
+			fatal("getting frame info", err)
+		}
+
+		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate, frame.TimeZone)
 		if err != nil {
 			fatal("listing calendar events", err)
 		}
@@ -190,10 +195,16 @@ var calendarWeekCmd = &cobra.Command{
 
 		client := getClient()
 
+		frame, err := client.GetFrame(frameID)
+		if err != nil {
+			fatal("getting frame info", err)
+		}
+
 		events, err := client.ListCalendarEvents(
 			frameID,
 			monday.Format(lib.DateFormat),
 			sunday.Format(lib.DateFormat),
+			frame.TimeZone,
 		)
 		if err != nil {
 			fatal("listing calendar events", err)
