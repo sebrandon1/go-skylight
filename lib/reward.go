@@ -100,6 +100,23 @@ func (c *Client) UnredeemReward(frameID, rewardID string) error {
 	return nil
 }
 
+// RemoveStars removes stars from a category/profile balance.
+func (c *Client) RemoveStars(frameID, categoryID string, points int) error {
+	req, err := newRequestWithBody("DELETE", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID), removeStarsRequest{
+		CategoryID: categoryID,
+		Points:     points,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create remove stars request: %w", err)
+	}
+
+	if err := c.doDelete(req); err != nil {
+		return fmt.Errorf("failed to remove stars: %w", err)
+	}
+
+	return nil
+}
+
 // GetRewardPoints retrieves reward points for a frame.
 func (c *Client) GetRewardPoints(frameID string) ([]RewardPointEntry, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID))
