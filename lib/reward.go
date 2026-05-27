@@ -101,7 +101,7 @@ func (c *Client) UnredeemReward(frameID, rewardID string) error {
 }
 
 // RemoveStars removes stars from a category/profile balance.
-func (c *Client) RemoveStars(frameID, categoryID string, points int) error {
+func (c *Client) RemoveStars(frameID string, categoryID, points int) error {
 	req, err := newRequestWithBody("DELETE", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID), removeStarsRequest{
 		CategoryID: categoryID,
 		Points:     points,
