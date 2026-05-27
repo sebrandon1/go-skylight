@@ -173,6 +173,7 @@ func init() {
 	rewardCmd.AddCommand(rewardRedeemCmd)
 	rewardCmd.AddCommand(rewardUnredeemCmd)
 	rewardCmd.AddCommand(rewardPointsCmd)
+	rewardCmd.AddCommand(rewardRemoveStarsCmd)
 
 	rewardCreateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardCreateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
