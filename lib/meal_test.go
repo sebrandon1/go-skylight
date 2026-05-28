@@ -587,6 +587,158 @@ func TestCreateMealSittingSummary(t *testing.T) {
 	}
 }
 
+func TestGetMealSitting(t *testing.T) {
+	tests := []struct {
+		name       string
+		sittingID  string
+		status     int
+		response   string
+		wantID     string
+		wantRecipe string
+		wantErr    bool
+	}{
+		{
+			name:       "returns sitting with recipe",
+			sittingID:  "s1",
+			status:     http.StatusOK,
+			response:   `{"data":{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}}`,
+			wantID:     "s1",
+			wantRecipe: "r1",
+		},
+		{
+			name:      "returns sitting without recipe",
+			sittingID: "s2",
+			status:    http.StatusOK,
+			response:  `{"data":{"id":"s2","type":"meal_sitting","attributes":{"summary":"Lunch"},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}}`,
+			wantID:    "s2",
+		},
+		{
+			name:      "not found returns error",
+			sittingID: "nonexistent",
+			status:    http.StatusNotFound,
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			sitting, err := client.GetMealSitting("frame1", tc.sittingID)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if sitting.ID != tc.wantID {
+				t.Errorf("ID: want %q got %q", tc.wantID, sitting.ID)
+			}
+			if sitting.RecipeID != tc.wantRecipe {
+				t.Errorf("RecipeID: want %q got %q", tc.wantRecipe, sitting.RecipeID)
+			}
+		})
+	}
+}
+
+func TestGetSittingRecipe(t *testing.T) {
+	tests := []struct {
+		name          string
+		sittingResp   string
+		sittingStatus int
+		recipeResp    string
+		recipeStatus  int
+		wantRecipe    bool
+		wantErr       bool
+	}{
+		{
+			name:          "returns sitting with linked recipe",
+			sittingResp:   `{"data":{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}}`,
+			sittingStatus: http.StatusOK,
+			recipeResp:    `{"data":{"id":"r1","type":"meal_recipe","attributes":{"summary":"Pasta","description":"Classic dish"}}}`,
+			recipeStatus:  http.StatusOK,
+			wantRecipe:    true,
+		},
+		{
+			name:          "returns sitting with no linked recipe",
+			sittingResp:   `{"data":{"id":"s2","type":"meal_sitting","attributes":{"summary":"Lunch"},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}}`,
+			sittingStatus: http.StatusOK,
+			wantRecipe:    false,
+		},
+		{
+			name:          "sitting not found returns error",
+			sittingStatus: http.StatusNotFound,
+			wantErr:       true,
+		},
+		{
+			name:          "recipe fetch error returns error",
+			sittingResp:   `{"data":{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}}`,
+			sittingStatus: http.StatusOK,
+			recipeStatus:  http.StatusInternalServerError,
+			wantErr:       true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			callCount := 0
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				callCount++
+				w.Header().Set("Content-Type", "application/json")
+				if callCount == 1 {
+					w.WriteHeader(tc.sittingStatus)
+					if tc.sittingResp != "" {
+						if _, err := w.Write([]byte(tc.sittingResp)); err != nil {
+							t.Errorf("write: %v", err)
+						}
+					}
+				} else {
+					w.WriteHeader(tc.recipeStatus)
+					if tc.recipeResp != "" {
+						if _, err := w.Write([]byte(tc.recipeResp)); err != nil {
+							t.Errorf("write: %v", err)
+						}
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			result, err := client.GetSittingRecipe("frame1", "s1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if (result.Recipe != nil) != tc.wantRecipe {
+				t.Errorf("wantRecipe=%v got recipe=%v", tc.wantRecipe, result.Recipe)
+			}
+		})
+	}
+}
+
 func TestDeleteMealSitting(t *testing.T) {
 	tests := []struct {
 		name    string
