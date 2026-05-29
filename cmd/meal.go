@@ -217,6 +217,28 @@ var mealAddToGroceryCmd = &cobra.Command{
 	},
 }
 
+var mealSittingRecipeCmd = &cobra.Command{
+	Use:   "sitting-recipe",
+	Short: "View recipe details from a meal sitting",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		result, err := client.GetSittingRecipe(frameID, sittingID)
+		if err != nil {
+			fatal("getting sitting recipe", err)
+		}
+
+		if result.Recipe == nil {
+			fmt.Println("No recipe linked to this meal sitting")
+			return
+		}
+
+		printJSON(result)
+	},
+}
+
 var mealUpdateRecipeCmd = &cobra.Command{
 	Use:   "update-recipe",
 	Short: "Update a recipe",
@@ -259,6 +281,7 @@ func init() {
 	mealCmd.AddCommand(mealCreateSittingCmd)
 	mealCmd.AddCommand(mealDeleteSittingCmd)
 	mealCmd.AddCommand(mealAddToGroceryCmd)
+	mealCmd.AddCommand(mealSittingRecipeCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealRecipeInfoCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
@@ -297,4 +320,7 @@ func init() {
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealAddToGroceryCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+
+	mealSittingRecipeCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealSittingRecipeCmd.MarkFlagRequired("sitting-id") //nolint:errcheck
 }

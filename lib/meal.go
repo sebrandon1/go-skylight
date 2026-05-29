@@ -169,6 +169,45 @@ func (c *Client) DeleteMealSitting(frameID, sittingID, date string) error {
 	return nil
 }
 
+// GetMealSitting retrieves a single meal sitting by ID.
+func (c *Client) GetMealSitting(frameID, sittingID string) (*MealSitting, error) {
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), frameID, sittingID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get meal sitting request: %w", err)
+	}
+
+	var apiResp mealSittingAPISingleResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to get meal sitting: %w", err)
+	}
+
+	result := apiResp.Data.toMealSitting()
+	return &result, nil
+}
+
+// GetSittingRecipe fetches a meal sitting and its linked recipe in one call.
+// Returns a result with a nil Recipe field if the sitting has no linked recipe.
+func (c *Client) GetSittingRecipe(frameID, sittingID string) (*SittingWithRecipe, error) {
+	sitting, err := c.GetMealSitting(frameID, sittingID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &SittingWithRecipe{Sitting: *sitting}
+
+	if sitting.RecipeID == "" {
+		return result, nil
+	}
+
+	recipe, err := c.GetRecipe(frameID, sitting.RecipeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recipe for sitting: %w", err)
+	}
+	result.Recipe = recipe
+
+	return result, nil
+}
+
 // AddRecipeToGroceryList adds a recipe's ingredients to the grocery list.
 func (c *Client) AddRecipeToGroceryList(frameID, recipeID string) error {
 	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), frameID, recipeID))

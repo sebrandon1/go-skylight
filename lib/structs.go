@@ -514,6 +514,17 @@ type mealSittingAPIResponse struct {
 	Data []mealSittingAPIEntry `json:"data"`
 }
 
+// mealSittingAPISingleResponse wraps the JSON-API envelope for single meal sitting responses.
+type mealSittingAPISingleResponse struct {
+	Data mealSittingAPIEntry `json:"data"`
+}
+
+// SittingWithRecipe holds a meal sitting and its linked recipe details.
+type SittingWithRecipe struct {
+	Sitting MealSitting `json:"sitting"`
+	Recipe  *Recipe     `json:"recipe,omitempty"`
+}
+
 // mealSittingAPIEntry represents a single meal sitting in JSON-API format.
 type mealSittingAPIEntry struct {
 	ID         string `json:"id"`
