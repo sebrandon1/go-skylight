@@ -21,6 +21,10 @@ var (
 	sittingDateMin    string
 	sittingDateMax    string
 	mealCategoryID    string
+
+	mealPlanRecipeIDs   []string
+	mealPlanCategoryIDs []string
+	mealPlanStartDate   string
 )
 
 var mealCmd = &cobra.Command{
@@ -239,6 +243,37 @@ var mealSittingRecipeCmd = &cobra.Command{
 	},
 }
 
+var mealPlanCmd = &cobra.Command{
+	Use:   "plan",
+	Short: "Schedule a batch of meals from a recipe list",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		if err := validateDate(mealPlanStartDate); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		client := getClient()
+
+		result, err := client.PlanMeals(frameID, lib.MealPlanData{
+			RecipeIDs:   mealPlanRecipeIDs,
+			CategoryIDs: mealPlanCategoryIDs,
+			StartDate:   mealPlanStartDate,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: planning meals: %v\n", err)
+			if result != nil && len(result.Sittings) > 0 {
+				fmt.Fprintf(os.Stderr, "Partial result (%d sittings created):\n", len(result.Sittings))
+				printJSON(result)
+			}
+			os.Exit(1)
+		}
+
+		printJSON(result)
+	},
+}
+
 var mealUpdateRecipeCmd = &cobra.Command{
 	Use:   "update-recipe",
 	Short: "Update a recipe",
@@ -282,6 +317,7 @@ func init() {
 	mealCmd.AddCommand(mealDeleteSittingCmd)
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 	mealCmd.AddCommand(mealSittingRecipeCmd)
+	mealCmd.AddCommand(mealPlanCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealRecipeInfoCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
@@ -323,4 +359,11 @@ func init() {
 
 	mealSittingRecipeCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealSittingRecipeCmd.MarkFlagRequired("sitting-id") //nolint:errcheck
+
+	mealPlanCmd.Flags().StringSliceVar(&mealPlanRecipeIDs, "recipes", nil, "Recipe IDs (comma-separated)")
+	mealPlanCmd.Flags().StringSliceVar(&mealPlanCategoryIDs, "categories", nil, "Meal category IDs (comma-separated)")
+	mealPlanCmd.Flags().StringVar(&mealPlanStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
+	mealPlanCmd.MarkFlagRequired("recipes")    //nolint:errcheck
+	mealPlanCmd.MarkFlagRequired("categories") //nolint:errcheck
+	mealPlanCmd.MarkFlagRequired("start-date") //nolint:errcheck
 }
