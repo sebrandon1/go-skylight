@@ -763,6 +763,18 @@ type RotationResult struct {
 	Chores []Chore `json:"chores"`
 }
 
+// MealPlanData holds the input for scheduling meals from a recipe list.
+type MealPlanData struct {
+	RecipeIDs   []string
+	CategoryIDs []string
+	StartDate   string
+}
+
+// MealPlanResult holds the sittings created by a meal plan.
+type MealPlanResult struct {
+	Sittings []MealSitting `json:"sittings"`
+}
+
 // Photo represents a photo (or video) message on a Skylight frame.
 type Photo struct {
 	ID           string `json:"id"`

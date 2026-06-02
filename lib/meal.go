@@ -1,6 +1,10 @@
 package lib
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"time"
+)
 
 // ListMealCategories retrieves meal categories for a frame.
 func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
@@ -206,6 +210,44 @@ func (c *Client) GetSittingRecipe(frameID, sittingID string) (*SittingWithRecipe
 	result.Recipe = recipe
 
 	return result, nil
+}
+
+// PlanMeals schedules a list of recipes as meal sittings starting from a given date,
+// rotating through the provided meal categories across consecutive days.
+func (c *Client) PlanMeals(frameID string, data MealPlanData) (*MealPlanResult, error) {
+	if len(data.RecipeIDs) == 0 {
+		return nil, errors.New("at least one recipe is required")
+	}
+	if len(data.CategoryIDs) == 0 {
+		return nil, errors.New("at least one category is required")
+	}
+
+	startDate, err := time.Parse(DateFormat, data.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start_date format (expected YYYY-MM-DD): %w", err)
+	}
+
+	numCategories := len(data.CategoryIDs)
+	var created []MealSitting
+
+	for i, recipeID := range data.RecipeIDs {
+		dayOffset, catIdx := i/numCategories, i%numCategories
+		categoryID := data.CategoryIDs[catIdx]
+		date := startDate.AddDate(0, 0, dayOffset).Format(DateFormat)
+
+		sitting, err := c.CreateMealSitting(frameID, MealSittingData{
+			RecipeID:       recipeID,
+			Date:           date,
+			MealCategoryID: categoryID,
+		})
+		if err != nil {
+			return &MealPlanResult{Sittings: created}, fmt.Errorf("failed scheduling recipe %q on %s: %w", recipeID, date, err)
+		}
+
+		created = append(created, *sitting)
+	}
+
+	return &MealPlanResult{Sittings: created}, nil
 }
 
 // AddRecipeToGroceryList adds a recipe's ingredients to the grocery list.

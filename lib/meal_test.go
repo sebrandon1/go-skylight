@@ -2,8 +2,10 @@ package lib
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 )
 
@@ -769,5 +771,168 @@ func TestDeleteMealSitting(t *testing.T) {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestPlanMeals(t *testing.T) {
+	var n int
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		n++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(mealSittingAPIResponse{
+			Data: []mealSittingAPIEntry{
+				{ID: fmt.Sprintf("s%d", n)},
+			},
+		}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	result, err := client.PlanMeals("frame1", MealPlanData{
+		RecipeIDs:   []string{"r1", "r2", "r3", "r4", "r5"},
+		CategoryIDs: []string{"cat-lunch", "cat-dinner"},
+		StartDate:   "2026-04-21",
+	})
+	if err != nil {
+		t.Fatalf("PlanMeals failed: %v", err)
+	}
+
+	if len(result.Sittings) != 5 {
+		t.Errorf("want 5 sittings, got %d", len(result.Sittings))
+	}
+}
+
+func TestPlanMealsValidation(t *testing.T) {
+	client, _ := NewClientWithToken("u", "t")
+
+	tests := []struct {
+		name string
+		data MealPlanData
+	}{
+		{"no recipes", MealPlanData{CategoryIDs: []string{"cat1"}, StartDate: "2026-04-21"}},
+		{"no categories", MealPlanData{RecipeIDs: []string{"r1"}, StartDate: "2026-04-21"}},
+		{"bad date", MealPlanData{RecipeIDs: []string{"r1"}, CategoryIDs: []string{"cat1"}, StartDate: "not-a-date"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := client.PlanMeals("frame1", tc.data)
+			if err == nil {
+				t.Error("expected validation error, got nil")
+			}
+		})
+	}
+}
+
+func TestPlanMealsDayRotation(t *testing.T) {
+	type call struct {
+		recipeID   string
+		categoryID string
+		date       string
+	}
+	var calls []call
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		calls = append(calls, call{
+			recipeID:   fmt.Sprint(body["meal_recipe_id"]),
+			categoryID: fmt.Sprint(body["meal_category_id"]),
+			date:       fmt.Sprint(body["date"]),
+		})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if _, err := w.Write([]byte(`{"data":[{"id":"s1","attributes":{},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}]}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.PlanMeals("frame1", MealPlanData{
+		RecipeIDs:   []string{"r1", "r2", "r3", "r4"},
+		CategoryIDs: []string{"lunch", "dinner"},
+		StartDate:   "2026-04-21",
+	})
+	if err != nil {
+		t.Fatalf("PlanMeals: %v", err)
+	}
+
+	want := []call{
+		{"r1", "lunch", "2026-04-21"},
+		{"r2", "dinner", "2026-04-21"},
+		{"r3", "lunch", "2026-04-22"},
+		{"r4", "dinner", "2026-04-22"},
+	}
+
+	if len(calls) != len(want) {
+		t.Fatalf("want %d calls, got %d", len(want), len(calls))
+	}
+	for i, w := range want {
+		if calls[i] != w {
+			t.Errorf("call[%d]: want %+v, got %+v", i, w, calls[i])
+		}
+	}
+}
+
+func TestPlanMealsPartialFailure(t *testing.T) {
+	var callCount atomic.Int32
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		idx := callCount.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		if idx >= 3 {
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(mealSittingAPIResponse{
+			Data: []mealSittingAPIEntry{{ID: fmt.Sprintf("s%d", idx)}},
+		}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	result, err := client.PlanMeals("frame1", MealPlanData{
+		RecipeIDs:   []string{"r1", "r2", "r3"},
+		CategoryIDs: []string{"cat1"},
+		StartDate:   "2026-04-21",
+	})
+	if err == nil {
+		t.Fatal("expected error for partial failure, got nil")
+	}
+	if result == nil {
+		t.Fatal("expected partial result, got nil")
+	}
+	if len(result.Sittings) != 2 {
+		t.Errorf("want 2 partial sittings, got %d", len(result.Sittings))
 	}
 }
