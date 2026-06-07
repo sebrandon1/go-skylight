@@ -364,27 +364,27 @@ func TestUnredeemReward(t *testing.T) {
 func TestRemoveStars(t *testing.T) {
 	tests := []struct {
 		name       string
-		categoryID string
+		categoryID int
 		points     int
 		status     int
 		wantErr    bool
 	}{
 		{
 			name:       "removes stars",
-			categoryID: "cat123",
+			categoryID: 123,
 			points:     5,
 			status:     http.StatusOK,
 		},
 		{
 			name:       "not found returns error",
-			categoryID: "nonexistent",
+			categoryID: 999,
 			points:     1,
 			status:     http.StatusNotFound,
 			wantErr:    true,
 		},
 		{
 			name:       "server error returns error",
-			categoryID: "cat1",
+			categoryID: 1,
 			points:     3,
 			status:     http.StatusInternalServerError,
 			wantErr:    true,
@@ -419,7 +419,7 @@ func TestRemoveStars(t *testing.T) {
 			}
 			if !tc.wantErr {
 				if gotBody.CategoryID != tc.categoryID {
-					t.Errorf("CategoryID: want %q got %q", tc.categoryID, gotBody.CategoryID)
+					t.Errorf("CategoryID: want %d got %d", tc.categoryID, gotBody.CategoryID)
 				}
 				if gotBody.Points != tc.points {
 					t.Errorf("Points: want %d got %d", tc.points, gotBody.Points)
