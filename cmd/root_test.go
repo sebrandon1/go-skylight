@@ -605,8 +605,8 @@ func TestCategoryCommandExists(t *testing.T) {
 	if categoryCmd.Use != "category" {
 		t.Errorf("Expected Use 'category', got '%s'", categoryCmd.Use)
 	}
-	if categoryCmd.Run == nil {
-		t.Error("categoryCmd should have a Run function")
+	if !categoryCmd.HasSubCommands() {
+		t.Error("categoryCmd should have subcommands")
 	}
 }
 
@@ -685,6 +685,9 @@ func TestAllCommandsHaveShortDescriptions(t *testing.T) {
 		"meal create-sitting": mealCreateSittingCmd,
 		"meal add-to-grocery": mealAddToGroceryCmd,
 		"category":            categoryCmd,
+		"category list":       categoryListCmd,
+		"category delete":     categoryDeleteCmd,
+		"category update":     categoryUpdateCmd,
 		"frame":               frameCmd,
 		"frame info":          frameInfoCmd,
 		"frame devices":       frameDevicesCmd,
@@ -738,7 +741,9 @@ func TestLeafCommandsHaveRunFunctions(t *testing.T) {
 		"meal sittings":       mealSittingsCmd,
 		"meal create-sitting": mealCreateSittingCmd,
 		"meal add-to-grocery": mealAddToGroceryCmd,
-		"category":            categoryCmd,
+		"category list":       categoryListCmd,
+		"category delete":     categoryDeleteCmd,
+		"category update":     categoryUpdateCmd,
 		"frame info":          frameInfoCmd,
 		"frame devices":       frameDevicesCmd,
 		"frame avatars":       frameAvatarsCmd,

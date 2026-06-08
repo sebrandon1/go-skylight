@@ -609,6 +609,17 @@ type categoryAPIEntry struct {
 	} `json:"attributes"`
 }
 
+// categoryAPISingleResponse wraps the JSON-API envelope for single category responses.
+type categoryAPISingleResponse struct {
+	Data categoryAPIEntry `json:"data"`
+}
+
+// CategoryData holds the category fields for update requests.
+type CategoryData struct {
+	Name  string `json:"label,omitempty"`
+	Color string `json:"color,omitempty"`
+}
+
 func (e *categoryAPIEntry) toCategory() Category {
 	c := Category{
 		ID:    e.ID,

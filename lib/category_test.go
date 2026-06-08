@@ -124,3 +124,124 @@ func TestListCategoriesRequestBody(t *testing.T) {
 		t.Errorf("expected color #FF0000, got %s", categories[0].Color)
 	}
 }
+
+func TestDeleteCategory(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		wantErr bool
+	}{
+		{"deletes with 204", http.StatusNoContent, false},
+		{"deletes with 200", http.StatusOK, false},
+		{"server error returns error", http.StatusInternalServerError, true},
+		{"not found returns error", http.StatusNotFound, true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete {
+					t.Errorf("expected DELETE, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/categories/cat1" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.DeleteCategory("frame1", "cat1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestUpdateCategory(t *testing.T) {
+	tests := []struct {
+		name     string
+		catID    string
+		input    CategoryData
+		status   int
+		response string
+		wantName string
+		wantErr  bool
+	}{
+		{
+			name:     "updates category name",
+			catID:    "cat1",
+			input:    CategoryData{Name: "Updated Name"},
+			status:   http.StatusOK,
+			response: `{"data":{"id":"cat1","attributes":{"label":"Updated Name","color":"#FF0000"}}}`,
+			wantName: "Updated Name",
+		},
+		{
+			name:   "204 no content succeeds",
+			catID:  "cat1",
+			input:  CategoryData{Color: "#00FF00"},
+			status: http.StatusNoContent,
+		},
+		{
+			name:    "bad request returns error",
+			catID:   "cat1",
+			input:   CategoryData{Name: "Test"},
+			status:  http.StatusBadRequest,
+			wantErr: true,
+		},
+		{
+			name:    "server error returns error",
+			catID:   "cat1",
+			input:   CategoryData{Name: "Test"},
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+		{
+			name:     "invalid JSON returns error",
+			catID:    "cat1",
+			input:    CategoryData{Name: "Test"},
+			status:   http.StatusOK,
+			response: `{invalid json`,
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch {
+					t.Errorf("expected PATCH, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/categories/"+tc.catID {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			category, err := client.UpdateCategory("frame1", tc.catID, tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && tc.wantName != "" && category != nil && category.Name != tc.wantName {
+				t.Errorf("Name: want %q got %q", tc.wantName, category.Name)
+			}
+		})
+	}
+}
