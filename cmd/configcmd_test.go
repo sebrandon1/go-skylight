@@ -119,10 +119,11 @@ func TestConfigGetEmptyValue(t *testing.T) {
 	}
 }
 
-func TestConfigGetKnownValue(t *testing.T) {
+func TestConfigGetMasksSensitiveKeys(t *testing.T) {
 	resetGlobals(t)
 	token = "plaintext-value"
-	t.Cleanup(func() { token = "" })
+	configGetReveal = false
+	t.Cleanup(func() { token = ""; configGetReveal = false })
 
 	var buf bytes.Buffer
 	configGetCmd.SetOut(&buf)
@@ -130,9 +131,45 @@ func TestConfigGetKnownValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// get must return plaintext (no masking) for scripting use
+	out := strings.TrimSpace(buf.String())
+	if strings.Contains(out, "plaintext-value") {
+		t.Errorf("config get should mask sensitive value, got %q", out)
+	}
+	if !strings.Contains(out, masked) {
+		t.Errorf("config get should contain mask marker %q, got %q", masked, out)
+	}
+}
+
+func TestConfigGetRevealFlag(t *testing.T) {
+	resetGlobals(t)
+	token = "plaintext-value"
+	configGetReveal = true
+	t.Cleanup(func() { token = ""; configGetReveal = false })
+
+	var buf bytes.Buffer
+	configGetCmd.SetOut(&buf)
+	err := configGetCmd.RunE(configGetCmd, []string{"SKYLIGHT_TOKEN"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if strings.TrimSpace(buf.String()) != "plaintext-value" {
-		t.Errorf("expected %q, got %q", "plaintext-value", buf.String())
+		t.Errorf("config get --reveal should print full value, got %q", buf.String())
+	}
+}
+
+func TestConfigGetNonSensitiveUnmasked(t *testing.T) {
+	resetGlobals(t)
+	frameID = "frame-abc-123"
+	t.Cleanup(func() { frameID = "" })
+
+	var buf bytes.Buffer
+	configGetCmd.SetOut(&buf)
+	err := configGetCmd.RunE(configGetCmd, []string{"SKYLIGHT_FRAME_ID"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.TrimSpace(buf.String()) != "frame-abc-123" {
+		t.Errorf("config get for non-sensitive key should print full value, got %q", buf.String())
 	}
 }
 

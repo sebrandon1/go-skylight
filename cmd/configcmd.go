@@ -78,6 +78,8 @@ var configShowCmd = &cobra.Command{
 	},
 }
 
+var configGetReveal bool
+
 var configGetCmd = &cobra.Command{
 	Use:   "get <key>",
 	Short: "Get the value of a configuration key",
@@ -91,8 +93,12 @@ var configGetCmd = &cobra.Command{
 		}
 		if *ptr == "" {
 			fmt.Fprintln(cmd.OutOrStdout(), notSet)
-		} else {
+			return nil
+		}
+		if configGetReveal {
 			fmt.Fprintln(cmd.OutOrStdout(), *ptr)
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), maskValue(key, *ptr))
 		}
 		return nil
 	},
@@ -192,6 +198,7 @@ var configEditCmd = &cobra.Command{
 }
 
 func init() {
+	configGetCmd.Flags().BoolVar(&configGetReveal, "reveal", false, "Print the full value of sensitive keys instead of masking")
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configSetCmd)
