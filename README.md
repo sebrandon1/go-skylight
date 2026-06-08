@@ -162,6 +162,14 @@ go-skylight get photo upload --file PATH [--caption TEXT]
 go-skylight get photo delete --message-id ID [--message-id ID ...]
 ```
 
+### Categories (Profiles & Labels)
+
+```bash
+go-skylight category list
+go-skylight category update --category-id ID [--name NAME] [--color COLOR]
+go-skylight category delete --category-id ID
+```
+
 ### Bounties & Rotations
 
 ```bash
@@ -237,7 +245,7 @@ if errors.As(err, &authErr) {
 | Rewards | ✓ | ✓ | ✓ | ✓ | redeem, unredeem, points |
 | Lists | ✓ | ✓ | ✓ | ✓ | items CRUD, task box |
 | Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |
-| Categories | ✓ | — | — | — | family members |
+| Categories | ✓ | — | ✓ | ✓ | profiles & labels |
 | Frame | — | — | — | — | info, devices, avatars, colors |
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), bulk delete |
 | Bounties | ✓ | ✓ | — | — | chore + reward pairs |
