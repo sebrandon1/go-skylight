@@ -21,6 +21,22 @@ func (c *Client) ListCategories(frameID string) ([]Category, error) {
 	return categories, nil
 }
 
+// CreateCategory creates a new category (profile/label) on a frame.
+func (c *Client) CreateCategory(frameID string, data CategoryData) (*Category, error) {
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), frameID), data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create category request: %w", err)
+	}
+
+	var apiResp categoryAPISingleResponse
+	if err := c.post(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to create category: %w", err)
+	}
+
+	result := apiResp.Data.toCategory()
+	return &result, nil
+}
+
 // UpdateCategory updates an existing category (profile/label).
 func (c *Client) UpdateCategory(frameID, categoryID string, data CategoryData) (*Category, error) {
 	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/categories/%s", c.effectiveURL(), frameID, categoryID), data)
