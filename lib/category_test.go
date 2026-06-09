@@ -125,6 +125,87 @@ func TestListCategoriesRequestBody(t *testing.T) {
 	}
 }
 
+func TestCreateCategory(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     CategoryData
+		status    int
+		response  string
+		wantName  string
+		wantColor string
+		wantErr   bool
+	}{
+		{
+			name:      "creates category",
+			input:     CategoryData{Name: "Test Profile", Color: "#FF0000"},
+			status:    http.StatusCreated,
+			response:  `{"data":{"id":"99","attributes":{"label":"Test Profile","color":"#FF0000"}}}`,
+			wantName:  "Test Profile",
+			wantColor: "#FF0000",
+		},
+		{
+			name:    "server error returns error",
+			input:   CategoryData{Name: "Test"},
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+		{
+			name:     "invalid JSON returns error",
+			input:    CategoryData{Name: "Test"},
+			status:   http.StatusCreated,
+			response: `{invalid json`,
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/categories" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				var raw map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				if raw["label"] != tc.input.Name {
+					t.Errorf("label: want %q got %v", tc.input.Name, raw["label"])
+				}
+				if tc.input.Color != "" && raw["color"] != tc.input.Color {
+					t.Errorf("color: want %q got %v", tc.input.Color, raw["color"])
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			category, err := client.CreateCategory("frame1", tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && category.Name != tc.wantName {
+				t.Errorf("Name: want %q got %q", tc.wantName, category.Name)
+			}
+			if !tc.wantErr && tc.wantColor != "" && category.Color != tc.wantColor {
+				t.Errorf("Color: want %q got %q", tc.wantColor, category.Color)
+			}
+		})
+	}
+}
+
 func TestDeleteCategory(t *testing.T) {
 	tests := []struct {
 		name    string
