@@ -394,7 +394,7 @@ type RewardData struct {
 // removeStarsRequest is the request body for removing stars from a profile.
 type removeStarsRequest struct {
 	CategoryID int `json:"category_id"`
-	Points     int     `json:"points"`
+	Points     int    `json:"points"`
 }
 
 // ChoreCompletionData is the request body for the chore completions endpoint.
