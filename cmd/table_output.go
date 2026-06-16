@@ -146,13 +146,18 @@ func printSourceCalendarsTable(cals []lib.SourceCalendar) {
 
 func printDevicesTable(devices []lib.Device) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tNAME\tONLINE")
+	fmt.Fprintln(w, "ID\tNAME\tONLINE\tBRIGHTNESS\tSLEEP SCHEDULE\tNIGHTLIGHT")
 	for _, d := range devices {
 		online := boolNo
 		if d.Online {
 			online = boolYes
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", d.ID, d.Name, online)
+		nightlight := boolNo
+		if d.Nightlight {
+			nightlight = boolYes
+		}
+		sleepSchedule := fmt.Sprintf("%s-%s", d.SleepsAt, d.WakesAt)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\t%s\n", d.ID, d.Name, online, d.Brightness, sleepSchedule, nightlight)
 	}
 	w.Flush()
 }

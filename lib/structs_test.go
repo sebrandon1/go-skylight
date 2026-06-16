@@ -209,13 +209,40 @@ func TestToFrame(t *testing.T) {
 	}
 }
 
+const (
+	testDeviceTimezone   = "America/Chicago"
+	testDeviceBrightness = 200
+	testDeviceSleepsAt   = "00:00"
+	testDeviceWakesAt    = "06:00"
+)
+
 func TestToDevice(t *testing.T) {
 	entry := deviceAPIEntry{ID: "d1"}
 	entry.Attributes.Name = "Frame"
 	entry.Attributes.Activated = true
+	entry.Attributes.Timezone = testDeviceTimezone
+	entry.Attributes.Brightness = testDeviceBrightness
+	entry.Attributes.SleepsAt = testDeviceSleepsAt
+	entry.Attributes.WakesAt = testDeviceWakesAt
+	entry.Attributes.Nightlight = true
 	d := entry.toDevice()
 	if !d.Online {
 		t.Error("Online should be true when Activated is true")
+	}
+	if d.Timezone != entry.Attributes.Timezone {
+		t.Errorf("Timezone = %q, want %q", d.Timezone, entry.Attributes.Timezone)
+	}
+	if d.Brightness != entry.Attributes.Brightness {
+		t.Errorf("Brightness = %d, want %d", d.Brightness, entry.Attributes.Brightness)
+	}
+	if d.SleepsAt != entry.Attributes.SleepsAt {
+		t.Errorf("SleepsAt = %q, want %q", d.SleepsAt, entry.Attributes.SleepsAt)
+	}
+	if d.WakesAt != entry.Attributes.WakesAt {
+		t.Errorf("WakesAt = %q, want %q", d.WakesAt, entry.Attributes.WakesAt)
+	}
+	if !d.Nightlight {
+		t.Error("Nightlight should be true")
 	}
 }
 
