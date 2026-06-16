@@ -51,7 +51,7 @@ No Go toolchain required — pull the image and run any command directly:
 ```bash
 docker run --rm \
   sebrandon1/go-skylight:latest \
-  get chore create \
+  chore create \
   --user-id YOUR_UID \
   --token YOUR_TOKEN \
   --frame-id FRAME_ID \
@@ -67,7 +67,7 @@ docker run --rm \
   -e SKYLIGHT_TOKEN=YOUR_TOKEN \
   -e SKYLIGHT_FRAME_ID=FRAME_ID \
   sebrandon1/go-skylight:latest \
-  get chore create --title "Take out the trash" --points 5
+  chore create --title "Take out the trash" --points 5
 ```
 
 Images are published to [Docker Hub](https://hub.docker.com/r/sebrandon1/go-skylight) on every release for `linux/amd64` and `linux/arm64`.
@@ -75,93 +75,108 @@ Images are published to [Docker Hub](https://hub.docker.com/r/sebrandon1/go-skyl
 ### Authenticate
 
 ```bash
-# Option 1: interactive login (saves credentials to ~/.skylight/config)
+# Option 1: headless OAuth2 login (saves refresh token + device fingerprint to ~/.skylight/config)
 skylight login --email user@example.com --password yourpassword --save
 
-# Option 2: supply credentials directly on every command
-skylight get chore list --user-id YOUR_UID --token YOUR_TOKEN --frame-id FRAME_ID
+# Option 2: supply a refresh token directly on every command
+skylight chore list --refresh-token YOUR_REFRESH_TOKEN --frame-id FRAME_ID
+
+# Option 3 (legacy): pre-existing bearer token
+skylight chore list --user-id YOUR_UID --token YOUR_TOKEN --frame-id FRAME_ID
 ```
 
-After `login --save`, credentials are stored in `~/.skylight/config` and loaded automatically.
+After `login --save`, the refresh token is stored in `~/.skylight/config` and loaded automatically; it rotates on use and the new token is persisted back to the config file.
 
 ## Authentication Modes
 
 | Mode | Flags / Config Keys |
 |------|---------------------|
-| Email + password | `--email` / `--password` |
-| Pre-existing token | `--user-id` / `--token` |
-| Config file | `SKYLIGHT_EMAIL`, `SKYLIGHT_PASSWORD`, `SKYLIGHT_TOKEN`, `SKYLIGHT_USER_ID`, `SKYLIGHT_FRAME_ID` |
+| OAuth2 refresh token (recommended) | `--refresh-token` / `SKYLIGHT_REFRESH_TOKEN`, `--device-fingerprint` / `SKYLIGHT_DEVICE_FINGERPRINT` |
+| Pre-existing bearer token | `--user-id` / `--token` / `SKYLIGHT_USER_ID` / `SKYLIGHT_TOKEN` |
+| Email + password (deprecated) | `--email` / `--password` / `SKYLIGHT_EMAIL` / `SKYLIGHT_PASSWORD` |
+| Frame ID | `--frame-id` / `SKYLIGHT_FRAME_ID` |
 
 Config file location: `~/.skylight/config` (override with `--config`). CLI flags take precedence.
 
 ## CLI Reference
 
-All commands accept `--user-id`, `--token`, `--frame-id`, and `--config` as persistent flags.
+All commands accept `--user-id`/`--token`, `--refresh-token`, `--frame-id`, `--config`, and `--output (json|table)` as persistent flags. Resource commands are top-level (e.g. `skylight chore list`) — the legacy `skylight get <resource> ...` nesting was flattened and is no longer used.
 
 ### Calendar
 
 ```bash
-skylight get calendar list [--start-date DATE] [--end-date DATE]
-skylight get calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day]
-skylight get calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME]
-skylight get calendar delete --event-id ID
-skylight get calendar sources
+skylight calendar list [--start-date DATE] [--end-date DATE]
+skylight calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day]
+skylight calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME]
+skylight calendar delete --event-id ID
+skylight calendar sources
+skylight calendar create-countdown --title TITLE --date DATE
+skylight calendar week [--date DATE]
 ```
 
 ### Chores
 
 ```bash
-skylight get chore list [--date DATE] [--assignee-id ID] [--status STATUS]
-skylight get chore create --title TITLE [--points N] [--assignee-id ID] [--date DATE]
-skylight get chore update --chore-id ID [--title T] [--status S] [--points N]
-skylight get chore delete --chore-id ID
+skylight chore list [--date DATE] [--assignee-id ID] [--status S] [--after DATE] [--before DATE] [--include-late] [--up-for-grabs] [--week [DATE]]
+skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID] [--date DATE] [--recurring] [--up-for-grabs]
+skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE]
+skylight chore delete --chore-id ID
+skylight chore complete --chore-id ID
+skylight chore skip --chore-id ID
+skylight chore claim --chore-id ID --assignee-id ID
+skylight chore streak [--days N]
 ```
 
 ### Rewards
 
 ```bash
-skylight get reward list
-skylight get reward create --title TITLE --points N [--emoji-icon EMOJI]
-skylight get reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI]
-skylight get reward delete --reward-id ID
-skylight get reward redeem   --reward-id ID
-skylight get reward unredeem --reward-id ID
-skylight get reward points
+skylight reward list
+skylight reward create --title TITLE --points N [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
+skylight reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI]
+skylight reward delete --reward-id ID
+skylight reward redeem   --reward-id ID
+skylight reward unredeem --reward-id ID
+skylight reward points
 ```
 
 ### Lists
 
 ```bash
-skylight get list all
-skylight get list info       --list-id ID
-skylight get list create     --title TITLE [--color COLOR]
-skylight get list update     --list-id ID [--title T] [--color C]
-skylight get list delete     --list-id ID
-skylight get list add-item   --list-id ID --title TITLE
-skylight get list update-item --list-id ID --item-id ITEM_ID [--title T] [--completed]
-skylight get list delete-item --list-id ID --item-id ITEM_ID
+skylight list all
+skylight list info       --list-id ID
+skylight list create     --title TITLE [--color COLOR] [--hide-from-frame]
+skylight list update     --list-id ID [--title T] [--color C] [--hide-from-frame]
+skylight list delete     --list-id ID
+skylight list add-item   --list-id ID --title TITLE
+skylight list update-item --list-id ID --item-id ITEM_ID [--title T] [--completed]
+skylight list delete-item --list-id ID --item-id ITEM_ID
+skylight list clear-completed --list-id ID
 ```
 
 ### Meals
 
 ```bash
-skylight get meal categories
-skylight get meal recipes
-skylight get meal recipe-info --recipe-id ID
-skylight get meal create-recipe --title TITLE [--description D] [--ingredients a,b] [--url URL]
-skylight get meal update-recipe --recipe-id ID [--title T] [--description D]
-skylight get meal delete-recipe --recipe-id ID
-skylight get meal sittings
-skylight get meal create-sitting --recipe-id ID --date DATE
-skylight get meal add-to-grocery --recipe-id ID
+skylight meal categories
+skylight meal recipes
+skylight meal recipe-info --recipe-id ID
+skylight meal create-recipe --title TITLE [--description D] [--ingredients a,b] [--url URL] [--meal-category-id ID]
+skylight meal update-recipe --recipe-id ID [--title T] [--description D] [--ingredients a,b] [--url URL]
+skylight meal delete-recipe --recipe-id ID
+skylight meal sittings [--date-min DATE] [--date-max DATE]
+skylight meal create-sitting --recipe-id ID --date DATE [--summary S] [--meal-category-id ID]
+skylight meal delete-sitting --sitting-id ID [--date DATE]
+skylight meal sitting-recipe --sitting-id ID
+skylight meal add-to-grocery --recipe-id ID
+skylight meal plan --recipes ID,ID --start-date DATE [--categories ID,ID]
 ```
 
 ### Photos
 
 ```bash
-skylight get photo list [--page-token TOKEN]
-skylight get photo upload --file PATH [--caption TEXT]
-skylight get photo delete --message-id ID [--message-id ID ...]
+skylight photo list [--page-token TOKEN]
+skylight photo upload --file PATH [--caption TEXT]
+skylight photo delete --message-id ID [--message-id ID ...]
+skylight photo download [--message-id ID ...] [--all] [--output-dir DIR]
 ```
 
 ### Categories (Profiles & Labels)
@@ -173,19 +188,65 @@ skylight category update --category-id ID [--name NAME] [--color COLOR]
 skylight category delete --category-id ID
 ```
 
+### Frame
+
+```bash
+skylight frame list
+skylight frame info
+skylight frame devices
+skylight frame avatars
+skylight frame colors
+```
+
 ### Bounties & Rotations
 
 ```bash
-skylight bounty create --title TITLE --points N --reward-title R [--emoji-icon EMOJI]
+skylight bounty create --title TITLE --points N --reward-title R [--assignee-id ID] [--due-date DATE] [--emoji-icon EMOJI] [--recurring]
 skylight bounty list
-skylight rotation create --chores "Dishes,Vacuum" --assignees "id1,id2" \
+skylight bounty update --chore-id ID --reward-id ID [--title T] [--reward-title R] [--points N] [--due-date DATE] [--emoji-icon EMOJI]
+skylight bounty delete --chore-id ID --reward-id ID
+
+skylight rotation create --chores "Dishes,Vacuum" --assignee-ids "id1,id2" \
     --start-date DATE --weeks N --points N
 ```
 
-### Dashboard
+### Routines
 
 ```bash
-skylight today   # or: skylight dashboard
+skylight routine list
+skylight routine create --title TITLE [--assignee-id ID] [--steps "Step 1,Step 2"]
+skylight routine update --routine-id ID [--title T] [--assignee-id ID] [--steps "..."]
+skylight routine delete --routine-id ID
+skylight routine reorder --routine-ids "id1,id2,id3"
+```
+
+### Grocery
+
+```bash
+skylight grocery list
+skylight grocery show     --list-id ID
+skylight grocery create   --title TITLE
+skylight grocery add      --list-id ID --items "Milk,Eggs"
+skylight grocery add-recipe --recipe-id ID
+skylight grocery organize --list-id ID
+skylight grocery order    --list-id ID --retailer costco
+skylight grocery clear    --list-id ID
+```
+
+### Status, Home, Analytics & Watch
+
+```bash
+skylight status                     # quick overview of the connected frame
+skylight home [--no-tasks] [--no-lists]   # weekly combined view of events, tasks, and lists
+skylight analytics [--days N]       # family activity statistics over a time period
+skylight watch [--interval SECONDS] [--resources rewards,chores,calendar] [--persist]
+```
+
+### Export & Import
+
+```bash
+skylight export [--output-file PATH] [--resources chores,rewards,lists,recipes,sittings,calendar] [--days N]
+skylight import --file PATH [--dry-run] [--resources all]
 ```
 
 ## Library Usage
@@ -249,11 +310,13 @@ if errors.As(err, &authErr) {
 | Lists | ✓ | ✓ | ✓ | ✓ | items CRUD, task box |
 | Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |
 | Categories | ✓ | ✓ | ✓ | ✓ | profiles & labels |
-| Frame | — | — | — | — | info, devices, avatars, colors |
-| Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), bulk delete |
-| Bounties | ✓ | ✓ | — | — | chore + reward pairs |
-| Rotations | — | ✓ | — | — | rotating assignments |
-| Dashboard | — | — | — | — | today aggregate |
+| Frame | ✓ | — | — | — | info, devices, avatars, colors |
+| Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
+| Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |
+| Rotations | — | ✓ | — | — | rotating chore assignments |
+| Routines | ✓ | ✓ | ✓ | ✓ | reorder |
+| Grocery | ✓ | ✓ | — | — | organize, order (Instacart), clear completed |
+| Status / Home / Analytics / Watch | — | — | — | — | dashboards, stats, and live polling |
 
 ## Alpaca Integration
 
