@@ -396,7 +396,7 @@ func TestPrintOutputDevicesTable(t *testing.T) {
 	outputFormat = outputTable
 	t.Cleanup(func() { outputFormat = outputJSON })
 	devices := []lib.Device{
-		{ID: "d1", Name: "Kitchen Frame", Online: true},
+		{ID: "d1", Name: "Kitchen Frame", Online: true, Brightness: 200, SleepsAt: "00:00", WakesAt: "06:00", Nightlight: true},
 		{ID: "d2", Name: "Bedroom Frame", Online: false},
 	}
 	output := captureStdout(func() { printOutput(devices) })
@@ -408,6 +408,9 @@ func TestPrintOutputDevicesTable(t *testing.T) {
 	}
 	if !strings.Contains(output, boolNo) {
 		t.Errorf("Expected 'no' for offline device, got: %s", output)
+	}
+	if !strings.Contains(output, "00:00-06:00") {
+		t.Errorf("Expected sleep schedule in output, got: %s", output)
 	}
 }
 

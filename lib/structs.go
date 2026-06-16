@@ -670,14 +670,20 @@ func (e *frameAPIEntry) toFrame() Frame {
 
 // Device represents a physical Skylight device.
 type Device struct {
-	ID           string `json:"id,omitempty"`
-	Name         string `json:"name,omitempty"`
-	Model        string `json:"model,omitempty"`
-	FirmwareVer  string `json:"firmware_version,omitempty"`
-	LastOnlineAt string `json:"last_online_at,omitempty"`
-	Online       bool   `json:"online,omitempty"`
-	CreatedAt    string `json:"created_at,omitempty"`
-	UpdatedAt    string `json:"updated_at,omitempty"`
+	ID                   string `json:"id,omitempty"`
+	Name                 string `json:"name,omitempty"`
+	Online               bool   `json:"online,omitempty"`
+	Timezone             string `json:"timezone,omitempty"`
+	Role                 string `json:"role,omitempty"`
+	CategoryID           string `json:"category_id,omitempty"`
+	Brightness           int    `json:"brightness,omitempty"`
+	SleepsAt             string `json:"sleeps_at,omitempty"`
+	WakesAt              string `json:"wakes_at,omitempty"`
+	CurrentlySleeping    bool   `json:"currently_sleeping,omitempty"`
+	SleepModeOn          bool   `json:"sleep_mode_on,omitempty"`
+	SleepMode            string `json:"sleep_mode,omitempty"`
+	Nightlight           bool   `json:"nightlight,omitempty"`
+	NightlightBrightness int    `json:"nightlight_brightness,omitempty"`
 }
 
 // deviceAPIResponse wraps the JSON-API envelope for device list responses.
@@ -689,16 +695,38 @@ type deviceAPIResponse struct {
 type deviceAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Name      string `json:"name"`
-		Activated bool   `json:"activated"`
+		Name                 string `json:"name"`
+		Activated            bool   `json:"activated"`
+		Timezone             string `json:"timezone"`
+		Role                 string `json:"role"`
+		CategoryID           string `json:"category_id"`
+		Brightness           int    `json:"brightness"`
+		SleepsAt             string `json:"sleeps_at"`
+		WakesAt              string `json:"wakes_at"`
+		CurrentlySleeping    bool   `json:"currently_sleeping"`
+		SleepModeOn          bool   `json:"sleep_mode_on"`
+		SleepMode            string `json:"sleep_mode"`
+		Nightlight           bool   `json:"nightlight"`
+		NightlightBrightness int    `json:"nightlight_brightness"`
 	} `json:"attributes"`
 }
 
 func (e *deviceAPIEntry) toDevice() Device {
 	return Device{
-		ID:     e.ID,
-		Name:   e.Attributes.Name,
-		Online: e.Attributes.Activated,
+		ID:                   e.ID,
+		Name:                 e.Attributes.Name,
+		Online:               e.Attributes.Activated,
+		Timezone:             e.Attributes.Timezone,
+		Role:                 e.Attributes.Role,
+		CategoryID:           e.Attributes.CategoryID,
+		Brightness:           e.Attributes.Brightness,
+		SleepsAt:             e.Attributes.SleepsAt,
+		WakesAt:              e.Attributes.WakesAt,
+		CurrentlySleeping:    e.Attributes.CurrentlySleeping,
+		SleepModeOn:          e.Attributes.SleepModeOn,
+		SleepMode:            e.Attributes.SleepMode,
+		Nightlight:           e.Attributes.Nightlight,
+		NightlightBrightness: e.Attributes.NightlightBrightness,
 	}
 }
 

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -148,19 +149,22 @@ func TestGetFrame(t *testing.T) {
 
 func TestListDevices(t *testing.T) {
 	tests := []struct {
-		name       string
-		status     int
-		response   string
-		wantLen    int
-		wantOnline bool
-		wantErr    bool
+		name         string
+		status       int
+		response     string
+		wantLen      int
+		wantOnline   bool
+		wantTimezone string
+		wantErr      bool
 	}{
 		{
-			name:       "returns devices",
-			status:     http.StatusOK,
-			response:   `{"data":[{"id":"dev1","type":"device","attributes":{"name":"Kitchen","activated":true}},{"id":"dev2","type":"device","attributes":{"name":"Living Room","activated":false}}]}`,
-			wantLen:    2,
-			wantOnline: true,
+			name:   "returns devices",
+			status: http.StatusOK,
+			response: fmt.Sprintf(`{"data":[{"id":"dev1","type":"device","attributes":{"name":"Kitchen","activated":true,"timezone":%q,"brightness":%d,"sleeps_at":%q,"wakes_at":%q,"nightlight":true}},{"id":"dev2","type":"device","attributes":{"name":"Living Room","activated":false}}]}`,
+				testDeviceTimezone, testDeviceBrightness, testDeviceSleepsAt, testDeviceWakesAt),
+			wantLen:      2,
+			wantOnline:   true,
+			wantTimezone: testDeviceTimezone,
 		},
 		{
 			name:    "not found returns error",
@@ -210,6 +214,9 @@ func TestListDevices(t *testing.T) {
 			}
 			if len(devices) > 0 && devices[0].Online != tc.wantOnline {
 				t.Errorf("devices[0].Online: want %v got %v", tc.wantOnline, devices[0].Online)
+			}
+			if tc.wantTimezone != "" && devices[0].Timezone != tc.wantTimezone {
+				t.Errorf("devices[0].Timezone: want %q got %q", tc.wantTimezone, devices[0].Timezone)
 			}
 		})
 	}
