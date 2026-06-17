@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -188,16 +189,31 @@ func parseWatchResources(s string) []string {
 func poll(client *lib.Client, state *watchState, resources []string) {
 	now := time.Now()
 	ts := now.Format("15:04:05")
+
+	var wg sync.WaitGroup
 	for _, r := range resources {
 		switch r {
 		case watchResourceRewards:
-			pollRewards(client, state, ts)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollRewards(client, state, ts)
+			}()
 		case watchResourceChores:
-			pollChores(client, state, now, ts)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollChores(client, state, now, ts)
+			}()
 		case watchResourceCalendar:
-			pollCalendar(client, state, now, ts)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollCalendar(client, state, now, ts)
+			}()
 		}
 	}
+	wg.Wait()
 }
 
 func pollRewards(client *lib.Client, state *watchState, ts string) {
