@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"log/slog"
 	"fmt"
 	"strconv"
 	"sync"
@@ -25,7 +26,9 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 	if len(categoryIDs) == 0 && data.AssigneeID != "" {
 		id, err := strconv.Atoi(data.AssigneeID)
 		if err != nil {
-			_ = c.DeleteChore(frameID, chore.ID)
+			if delErr := c.DeleteChore(frameID, chore.ID); delErr != nil {
+				c.logger.Warn("failed to clean up chore after assignee parse failure", "chore_id", chore.ID, "error", delErr)
+			}
 			return nil, fmt.Errorf("assignee_id %q is not a valid numeric category ID: %w", data.AssigneeID, err)
 		}
 		categoryIDs = []int{id}
@@ -38,7 +41,9 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 	})
 	if err != nil {
 		// Best-effort cleanup
-		_ = c.DeleteChore(frameID, chore.ID)
+		if delErr := c.DeleteChore(frameID, chore.ID); delErr != nil {
+			c.logger.Warn("failed to clean up chore after reward creation failure", "chore_id", chore.ID, "error", delErr)
+		}
 		return nil, fmt.Errorf("failed to create bounty reward: %w", err)
 	}
 
