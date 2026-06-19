@@ -1,8 +1,8 @@
 package lib
 
 import (
-	"log/slog"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
