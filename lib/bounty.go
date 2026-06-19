@@ -27,7 +27,7 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 		id, err := strconv.Atoi(data.AssigneeID)
 		if err != nil {
 			if delErr := c.DeleteChore(frameID, chore.ID); delErr != nil {
-				c.logger.Warn("failed to clean up chore after assignee parse failure", "chore_id", chore.ID, "error", delErr)
+				slog.Warn("failed to clean up chore after assignee parse failure", "chore_id", chore.ID, "error", delErr)
 			}
 			return nil, fmt.Errorf("assignee_id %q is not a valid numeric category ID: %w", data.AssigneeID, err)
 		}
@@ -42,7 +42,7 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 	if err != nil {
 		// Best-effort cleanup
 		if delErr := c.DeleteChore(frameID, chore.ID); delErr != nil {
-			c.logger.Warn("failed to clean up chore after reward creation failure", "chore_id", chore.ID, "error", delErr)
+			slog.Warn("failed to clean up chore after reward creation failure", "chore_id", chore.ID, "error", delErr)
 		}
 		return nil, fmt.Errorf("failed to create bounty reward: %w", err)
 	}
