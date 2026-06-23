@@ -92,6 +92,9 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 	chores := make([]Chore, 0, len(apiResp.Data))
 	for i := range apiResp.Data {
 		c := apiResp.Data[i].toChore()
+		if opts.Status != "" && c.Status != opts.Status {
+			continue
+		}
 		if opts.UpForGrabs && !c.UpForGrabs {
 			continue
 		}
