@@ -108,6 +108,7 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(bountyCmd)
 	rootCmd.AddCommand(rotationCmd)
+	rootCmd.AddCommand(addonCmd)
 	rootCmd.AddCommand(calendarCmd)
 	rootCmd.AddCommand(choreCmd)
 	rootCmd.AddCommand(listCmd)

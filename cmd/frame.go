@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
+
+var currentAlbumID int
 
 var frameCmd = &cobra.Command{
 	Use:   "frame",
@@ -88,10 +92,30 @@ var frameColorsCmd = &cobra.Command{
 	},
 }
 
+var frameSetAlbumCmd = &cobra.Command{
+	Use:   "set-album",
+	Short: "Set the active slideshow album by album ID (-1 for all photos)",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		if err := client.SetCurrentAlbum(frameID, currentAlbumID); err != nil {
+			fatal("setting current album", err)
+		}
+
+		fmt.Printf("Current album set to %d\n", currentAlbumID)
+	},
+}
+
 func init() {
 	frameCmd.AddCommand(frameListCmd)
 	frameCmd.AddCommand(frameInfoCmd)
 	frameCmd.AddCommand(frameDevicesCmd)
 	frameCmd.AddCommand(frameAvatarsCmd)
 	frameCmd.AddCommand(frameColorsCmd)
+	frameCmd.AddCommand(frameSetAlbumCmd)
+
+	frameSetAlbumCmd.Flags().IntVar(&currentAlbumID, "album-id", 0, "Album ID to display (-1 for all photos)")
+	frameSetAlbumCmd.MarkFlagRequired("album-id") //nolint:errcheck
 }
