@@ -1,6 +1,8 @@
 package lib
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ListFrames retrieves all frames accessible to the authenticated user.
 func (c *Client) ListFrames() ([]Frame, error) {
@@ -73,6 +75,27 @@ func (c *Client) GetAvatars() ([]Avatar, error) {
 		avatars[i] = apiResp.Data[i].toAvatar()
 	}
 	return avatars, nil
+}
+
+// SetCurrentAlbum sets the active slideshow album for a frame by album ID.
+// Use -1 to revert to the default (all photos) album.
+func (c *Client) SetCurrentAlbum(frameID string, albumID int) error {
+	body := struct {
+		Frame struct {
+			CurrentAlbumID int `json:"current_album_id"`
+		} `json:"frame"`
+	}{}
+	body.Frame.CurrentAlbumID = albumID
+
+	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), frameID), body)
+	if err != nil {
+		return fmt.Errorf("failed to create set album request: %w", err)
+	}
+
+	if err := c.patch(req, nil); err != nil {
+		return fmt.Errorf("failed to set current album: %w", err)
+	}
+	return nil
 }
 
 // GetColors retrieves available colors.

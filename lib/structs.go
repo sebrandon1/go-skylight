@@ -1,5 +1,7 @@
 package lib
 
+import "encoding/json"
+
 // apiRelationshipData is the JSON-API "data" object inside a to-one relationship.
 type apiRelationshipData struct {
 	ID string `json:"id"`
@@ -633,12 +635,19 @@ func (e *categoryAPIEntry) toCategory() Category {
 }
 
 // Frame represents a Skylight frame/device group.
+// FeatureState represents the enabled/disabled state of a single frame feature.
+type FeatureState struct {
+	Enabled bool `json:"enabled"`
+}
+
 type Frame struct {
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"name,omitempty"`
-	TimeZone  string `json:"timezone,omitempty"`
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
+	ID            string                  `json:"id,omitempty"`
+	Name          string                  `json:"name,omitempty"`
+	TimeZone      string                  `json:"timezone,omitempty"`
+	Plus          bool                    `json:"plus,omitempty"`
+	FeatureBundle map[string]FeatureState `json:"feature_bundle,omitempty"`
+	CreatedAt     string                  `json:"created_at,omitempty"`
+	UpdatedAt     string                  `json:"updated_at,omitempty"`
 }
 
 // frameAPIResponse wraps the JSON-API envelope for single frame responses.
@@ -655,16 +664,27 @@ type framesAPIResponse struct {
 type frameAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Name     string `json:"name"`
-		TimeZone string `json:"timezone"`
+		Name          string                     `json:"name"`
+		TimeZone      string                     `json:"timezone"`
+		Plus          bool                       `json:"plus"`
+		FeatureBundle map[string]json.RawMessage `json:"feature_bundle"`
 	} `json:"attributes"`
 }
 
 func (e *frameAPIEntry) toFrame() Frame {
+	bundle := make(map[string]FeatureState, len(e.Attributes.FeatureBundle))
+	for k, raw := range e.Attributes.FeatureBundle {
+		var fs FeatureState
+		if err := json.Unmarshal(raw, &fs); err == nil {
+			bundle[k] = fs
+		}
+	}
 	return Frame{
-		ID:       e.ID,
-		Name:     e.Attributes.Name,
-		TimeZone: e.Attributes.TimeZone,
+		ID:            e.ID,
+		Name:          e.Attributes.Name,
+		TimeZone:      e.Attributes.TimeZone,
+		Plus:          e.Attributes.Plus,
+		FeatureBundle: bundle,
 	}
 }
 
