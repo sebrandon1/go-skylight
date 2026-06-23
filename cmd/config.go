@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,29 @@ func defaultConfigPath() string {
 		return ""
 	}
 	return filepath.Join(home, ".skylight", "config")
+}
+
+// parseConfigFile reads KEY=VALUE entries from r, skipping blank lines and # comments.
+// Returns the parsed values and the keys in file order.
+func parseConfigFile(r io.Reader) (map[string]string, []string, error) {
+	values := make(map[string]string)
+	var keys []string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		values[key] = val
+		keys = append(keys, key)
+	}
+	return values, keys, scanner.Err()
 }
 
 func loadConfig() {
@@ -43,24 +67,14 @@ func loadConfig() {
 		"SKYLIGHT_DEVICE_FINGERPRINT": &deviceFingerprint,
 	}
 
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		key = strings.TrimSpace(key)
-		value = strings.TrimSpace(value)
+	values, _, err := parseConfigFile(f)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: error reading config file: %v\n", err)
+	}
+	for key, value := range values {
 		if ptr, exists := vars[key]; exists && *ptr == "" {
 			*ptr = value
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: error reading config file: %v\n", err)
 	}
 }
 
@@ -82,24 +96,11 @@ func saveConfig(values map[string]string) error {
 	existing := make(map[string]string)
 	var orderedKeys []string
 	if f, err := os.Open(path); err == nil {
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			key, val, ok := strings.Cut(line, "=")
-			if !ok {
-				continue
-			}
-			key = strings.TrimSpace(key)
-			val = strings.TrimSpace(val)
-			existing[key] = val
-			orderedKeys = append(orderedKeys, key)
-		}
+		var scanErr error
+		existing, orderedKeys, scanErr = parseConfigFile(f)
 		f.Close()
-		if err := scanner.Err(); err != nil {
-			return fmt.Errorf("reading existing config: %w", err)
+		if scanErr != nil {
+			return fmt.Errorf("reading existing config: %w", scanErr)
 		}
 	}
 
