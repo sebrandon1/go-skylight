@@ -59,6 +59,9 @@ func loadConfig() {
 			*ptr = value
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: error reading config file: %v\n", err)
+	}
 }
 
 func saveConfig(values map[string]string) error {
@@ -95,6 +98,9 @@ func saveConfig(values map[string]string) error {
 			orderedKeys = append(orderedKeys, key)
 		}
 		f.Close()
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("reading existing config: %w", err)
+		}
 	}
 
 	// Merge new values
@@ -155,6 +161,9 @@ func deleteFromConfig(key string) (bool, error) {
 		lines = append(lines, line)
 	}
 	f.Close()
+	if err := scanner.Err(); err != nil {
+		return false, fmt.Errorf("reading config: %w", err)
+	}
 
 	if !found {
 		return false, nil
