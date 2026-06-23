@@ -80,85 +80,91 @@ centered on today. Use --resources to limit which resource types are included.`,
 		var mu sync.Mutex
 		var wg sync.WaitGroup
 
+		// launch runs fn in a goroutine, recovering any panic as an error.
+		// It sends the result before decrementing wg so the closer never
+		// closes the channel before all sends complete.
+		launch := func(name string, fn func() error) {
+			wg.Add(1)
+			go func() {
+				var err error
+				defer func() {
+					if r := recover(); r != nil {
+						err = fmt.Errorf("panic: %v", r)
+					}
+					results <- result{name, err}
+					wg.Done()
+				}()
+				err = fn()
+			}()
+		}
+
 		want := toWantMap(resources)
 
 		if want[exportResourceChores] {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			launch(exportResourceChores, func() error {
 				chores, err := client.ListChores(frameID, lib.ChoreListOptions{After: start, Before: end, IncludeLate: true})
 				if err == nil {
 					mu.Lock()
 					data.Chores = chores
 					mu.Unlock()
 				}
-				results <- result{exportResourceChores, err}
-			}()
+				return err
+			})
 		}
 		if want[exportResourceRewards] {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			launch(exportResourceRewards, func() error {
 				rewards, err := client.ListRewards(frameID)
 				if err == nil {
 					mu.Lock()
 					data.Rewards = rewards
 					mu.Unlock()
 				}
-				results <- result{exportResourceRewards, err}
-			}()
+				return err
+			})
 		}
 		if want[exportResourceLists] {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			launch(exportResourceLists, func() error {
 				lists, err := client.ListLists(frameID)
 				if err == nil {
 					mu.Lock()
 					data.Lists = lists
 					mu.Unlock()
 				}
-				results <- result{exportResourceLists, err}
-			}()
+				return err
+			})
 		}
 		if want[exportResourceRecipes] {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			launch(exportResourceRecipes, func() error {
 				recipes, err := client.ListRecipes(frameID)
 				if err == nil {
 					mu.Lock()
 					data.Recipes = recipes
 					mu.Unlock()
 				}
-				results <- result{exportResourceRecipes, err}
-			}()
+				return err
+			})
 		}
 		if want[exportResourceSittings] {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			launch(exportResourceSittings, func() error {
 				sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{DateMin: start, DateMax: end})
 				if err == nil {
 					mu.Lock()
 					data.MealSittings = sittings
 					mu.Unlock()
 				}
-				results <- result{exportResourceSittings, err}
-			}()
+				return err
+			})
 		}
 		if want[exportResourceCalendar] {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			launch(exportResourceCalendar, func() error {
 				events, err := client.ListCalendarEvents(frameID, start, end, frame.TimeZone)
 				if err == nil {
 					mu.Lock()
 					data.CalendarEvents = events
 					mu.Unlock()
 				}
-				results <- result{exportResourceCalendar, err}
-			}()
+				return err
+			})
 		}
 
 		go func() {
