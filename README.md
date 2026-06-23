@@ -58,6 +58,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 
 | Document | Description |
 |----------|-------------|
+| [Examples](docs/examples.md) | Common scenarios: deleting profiles/labels, managing chores, scripting |
 | [CLI Reference](docs/cli-reference.md) | Full command listing for all resources |
 | [Library Usage](docs/library-usage.md) | Go client API, examples, typed errors, and coverage matrix |
 | [Alpaca Integration](docs/alpaca-trigger.md) | Reward-triggered stock purchases via Alpaca Markets |
