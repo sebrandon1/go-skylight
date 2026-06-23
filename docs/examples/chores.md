@@ -6,6 +6,11 @@
 # All pending chores
 skylight chore list --status pending
 
+# Completed chores this week (--after/--before are required for status=complete)
+skylight chore list --status complete \
+  --after $(date -d 'last monday' +%Y-%m-%d) \
+  --before $(date +%Y-%m-%d)
+
 # Only up-for-grabs (unassigned) chores
 skylight chore list --up-for-grabs
 ```
