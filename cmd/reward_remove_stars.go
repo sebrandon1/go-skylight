@@ -17,6 +17,10 @@ var rewardRemoveStarsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		if removeStarsAssigneeID <= 0 {
+			fatal("removing stars", fmt.Errorf("--assignee-id must be a positive integer"))
+		}
+
 		if removeStarsPoints <= 0 {
 			fatal("removing stars", fmt.Errorf("--points must be a positive integer"))
 		}
