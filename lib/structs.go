@@ -391,10 +391,12 @@ type RewardData struct {
 	CategoryIDs         []int  `json:"category_ids,omitempty"`
 }
 
-// removeStarsRequest is the request body for removing stars from a profile.
+// removeStarsRequest is the request body for updating reward points.
+// The Skylight API uses POST /frames/{id}/reward_points with category_ids array
+// and a negative points value to deduct stars.
 type removeStarsRequest struct {
-	CategoryID int `json:"category_id"`
-	Points	int	`json:"points"`
+	CategoryIDs []int `json:"category_ids"`
+	Points      int   `json:"points"`
 }
 
 // ChoreCompletionData is the request body for the chore completions endpoint.

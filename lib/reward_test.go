@@ -395,8 +395,8 @@ func TestRemoveStars(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var gotBody removeStarsRequest
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodDelete {
-					t.Errorf("expected DELETE, got %s", r.Method)
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
 				}
 				if r.URL.Path != "/api/frames/frame1/reward_points" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
@@ -418,11 +418,11 @@ func TestRemoveStars(t *testing.T) {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
 			if !tc.wantErr {
-				if gotBody.CategoryID != tc.categoryID {
-					t.Errorf("CategoryID: want %d got %d", tc.categoryID, gotBody.CategoryID)
+				if len(gotBody.CategoryIDs) != 1 || gotBody.CategoryIDs[0] != tc.categoryID {
+					t.Errorf("CategoryIDs: want [%d] got %v", tc.categoryID, gotBody.CategoryIDs)
 				}
-				if gotBody.Points != tc.points {
-					t.Errorf("Points: want %d got %d", tc.points, gotBody.Points)
+				if gotBody.Points != -tc.points {
+					t.Errorf("Points: want %d (negative) got %d", -tc.points, gotBody.Points)
 				}
 			}
 		})
