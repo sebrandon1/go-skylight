@@ -361,6 +361,74 @@ func TestUnredeemReward(t *testing.T) {
 	}
 }
 
+func TestRemoveStars(t *testing.T) {
+	tests := []struct {
+		name       string
+		categoryID int
+		points     int
+		status     int
+		wantErr    bool
+	}{
+		{
+			name:       "removes stars",
+			categoryID: 123,
+			points:     5,
+			status:     http.StatusOK,
+		},
+		{
+			name:       "not found returns error",
+			categoryID: 999,
+			points:     1,
+			status:     http.StatusNotFound,
+			wantErr:    true,
+		},
+		{
+			name:       "server error returns error",
+			categoryID: 1,
+			points:     3,
+			status:     http.StatusInternalServerError,
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotBody removeStarsRequest
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/reward_points" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.RemoveStars("frame1", tc.categoryID, tc.points)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr {
+				if len(gotBody.CategoryIDs) != 1 || gotBody.CategoryIDs[0] != tc.categoryID {
+					t.Errorf("CategoryIDs: want [%d] got %v", tc.categoryID, gotBody.CategoryIDs)
+				}
+				if gotBody.Points != -tc.points {
+					t.Errorf("Points: want %d (negative) got %d", -tc.points, gotBody.Points)
+				}
+			}
+		})
+	}
+}
+
 func TestGetRewardPoints(t *testing.T) {
 	tests := []struct {
 		name     string

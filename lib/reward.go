@@ -100,6 +100,25 @@ func (c *Client) UnredeemReward(frameID, rewardID string) error {
 	return nil
 }
 
+// RemoveStars removes stars from a category/profile balance.
+// It calls POST /api/frames/{id}/reward_points with negative points,
+// which is the same endpoint used by the Skylight web app's "Remove Stars" feature.
+func (c *Client) RemoveStars(frameID string, categoryID, points int) error {
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID), removeStarsRequest{
+		CategoryIDs: []int{categoryID},
+		Points:      -points, // negative to deduct
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create remove stars request: %w", err)
+	}
+
+	if err := c.post(req, nil); err != nil {
+		return fmt.Errorf("failed to remove stars: %w", err)
+	}
+
+	return nil
+}
+
 // GetRewardPoints retrieves reward points for a frame.
 func (c *Client) GetRewardPoints(frameID string) ([]RewardPointEntry, error) {
 	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), frameID))
