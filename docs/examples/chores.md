@@ -53,6 +53,24 @@ skylight chore claim --chore-id CHORE_ID --assignee-id YOUR_CATEGORY_ID
 skylight chore skip --chore-id CHORE_ID
 ```
 
+## Skip an up-for-grabs chore instance
+
+Skylight's app UI does not show a skip button for up-for-grabs (unassigned)
+chores, but the API accepts a `skipped` status for them. Use the CLI to skip
+a specific instance without deleting and recreating the chore.
+
+```bash
+# List up-for-grabs chores to find the instance ID
+skylight chore list --up-for-grabs
+
+# Skip today's instance — the date suffix targets only this occurrence
+skylight chore skip --chore-id 12345678-2026-06-25
+```
+
+The chore continues repeating on its normal schedule; only the targeted
+instance is skipped. This is useful for weather-dependent chores (e.g. skip
+"water outside plants" on a rainy day) without losing the recurring pattern.
+
 ## Delete a chore
 
 ```bash

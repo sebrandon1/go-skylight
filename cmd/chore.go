@@ -201,6 +201,22 @@ var choreUpdateCmd = &cobra.Command{
 var choreSkipCmd = &cobra.Command{
 	Use:   "skip",
 	Short: "Skip a recurring chore instance",
+	Long: `Skip a single instance of a recurring chore without deleting it.
+
+The chore continues to repeat on its normal schedule — only the specified
+instance is marked skipped. This works for both assigned chores and
+up-for-grabs (unassigned) chores.
+
+Note: Skylight's app UI does not expose a skip button for up-for-grabs
+chores, but the API accepts a skipped status for them. Use this command
+to skip an up-for-grabs instance without deleting and recreating the chore.
+
+  # Skip today's instance of an up-for-grabs chore
+  skylight chore list --up-for-grabs        # find the chore ID
+  skylight chore skip --chore-id 12345678-2026-06-25
+
+The date suffix in the chore ID identifies the specific instance; omit it
+to skip a non-recurring chore entirely.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
