@@ -201,6 +201,17 @@ var choreUpdateCmd = &cobra.Command{
 var choreSkipCmd = &cobra.Command{
 	Use:   "skip",
 	Short: "Skip a recurring chore instance",
+	Long: `Skip a single instance of a recurring chore without deleting it.
+
+The chore continues to repeat on its normal schedule — only the specified
+instance is marked skipped. The API requires the chore to be both assigned
+and recurring; up-for-grabs or non-recurring chores cannot be skipped.
+
+  # Skip today's instance of an assigned recurring chore
+  skylight chore list --status pending      # find the chore ID
+  skylight chore skip --chore-id 12345678-2026-06-25
+
+The date suffix in the chore ID identifies the specific instance.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 

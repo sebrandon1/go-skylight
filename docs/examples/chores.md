@@ -53,6 +53,7 @@ skylight chore claim --chore-id CHORE_ID --assignee-id YOUR_CATEGORY_ID
 skylight chore skip --chore-id CHORE_ID
 ```
 
+
 ## Delete a chore
 
 ```bash
