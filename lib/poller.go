@@ -59,8 +59,13 @@ type RewardsPoller struct {
 // NewRewardsPoller constructs a RewardsPoller. stateFile may be empty, in
 // which case it defaults to ~/.skylight/poller-state.json.
 func NewRewardsPoller(client *Client, frameID string, interval time.Duration, stateFile string) *RewardsPoller {
+	var homeDirErr error
 	if stateFile == "" {
-		home, _ := os.UserHomeDir()
+		home, err := os.UserHomeDir()
+		if err != nil {
+			homeDirErr = err
+			home = os.TempDir()
+		}
 		stateFile = filepath.Join(home, ".skylight", "poller-state.json")
 	}
 	p := &RewardsPoller{
@@ -73,6 +78,10 @@ func NewRewardsPoller(client *Client, frameID string, interval time.Duration, st
 		stop:      make(chan struct{}),
 		done:      make(chan struct{}),
 		seen:      make(map[string]struct{}),
+	}
+	if homeDirErr != nil && p.logger != nil {
+		p.logger.Warn("poller: home directory unavailable, state file in temp dir and may be lost on reboot",
+			slog.String("path", stateFile), slog.String("error", homeDirErr.Error()))
 	}
 	p.loadState()
 	return p
