@@ -334,6 +334,7 @@ func init() {
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealUpdateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
+	mealUpdateRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
 
 	mealDeleteRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealDeleteRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
