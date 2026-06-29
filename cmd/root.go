@@ -69,10 +69,7 @@ func init() {
 			autoClient = c
 			// Persist the rotated refresh token back to config.
 			if c.RefreshToken != "" && c.RefreshToken != refreshToken {
-				_ = saveConfig(map[string]string{
-					"SKYLIGHT_REFRESH_TOKEN":      c.RefreshToken,
-					"SKYLIGHT_DEVICE_FINGERPRINT": fingerprint,
-				})
+				persistRotatedToken(c.RefreshToken, fingerprint)
 				refreshToken = c.RefreshToken
 			}
 			return nil
@@ -136,6 +133,17 @@ func getClient() *lib.Client {
 		fatal("creating client", err)
 	}
 	return client
+}
+
+// persistRotatedToken writes a newly rotated refresh token back to the config
+// file. Auth has already succeeded at this point, so failure is non-fatal.
+func persistRotatedToken(newToken, fingerprint string) {
+	if err := saveConfig(map[string]string{
+		"SKYLIGHT_REFRESH_TOKEN":      newToken,
+		"SKYLIGHT_DEVICE_FINGERPRINT": fingerprint,
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: refresh token rotated but failed to persist: %v\n", err)
+	}
 }
 
 // defaultFingerprint returns a stable UUID derived from the hostname,
