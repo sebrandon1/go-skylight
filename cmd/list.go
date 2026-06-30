@@ -241,42 +241,42 @@ func init() {
 	listCmd.AddCommand(taskBoxItemCreateCmd)
 
 	taskBoxItemCreateCmd.Flags().StringVar(&listItemTitle, "title", "", "Task box item title")
-	taskBoxItemCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+	markFlagRequired(taskBoxItemCreateCmd, "title")
 
 	listGetCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
-	listGetCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(listGetCmd, "list-id")
 
 	listCreateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
 	listCreateCmd.Flags().StringVar(&listColor, "color", "", "List color")
 	listCreateCmd.Flags().BoolVar(&listHideFromFrame, "hide-from-frame", false, "Hide list from calendar devices")
-	listCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+	markFlagRequired(listCreateCmd, "title")
 
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
-	listDeleteCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(listDeleteCmd, "list-id")
 
 	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listUpdateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
 	listUpdateCmd.Flags().StringVar(&listColor, "color", "", "List color")
 	listUpdateCmd.Flags().BoolVar(&listHideFromFrame, "hide-from-frame", false, "Hide list from calendar devices")
-	listUpdateCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(listUpdateCmd, "list-id")
 
 	listAddItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listAddItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
-	listAddItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
-	listAddItemCmd.MarkFlagRequired("title")   //nolint:errcheck
+	markFlagRequired(listAddItemCmd, "list-id")
+	markFlagRequired(listAddItemCmd, "title")
 
 	listUpdateItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listUpdateItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
 	listUpdateItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
 	listUpdateItemCmd.Flags().BoolVar(&listItemCompleted, "completed", false, "Mark item as completed")
-	listUpdateItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
-	listUpdateItemCmd.MarkFlagRequired("item-id") //nolint:errcheck
+	markFlagRequired(listUpdateItemCmd, "list-id")
+	markFlagRequired(listUpdateItemCmd, "item-id")
 
 	listDeleteItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
-	listDeleteItemCmd.MarkFlagRequired("list-id") //nolint:errcheck
-	listDeleteItemCmd.MarkFlagRequired("item-id") //nolint:errcheck
+	markFlagRequired(listDeleteItemCmd, "list-id")
+	markFlagRequired(listDeleteItemCmd, "item-id")
 
 	listClearCompletedCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
-	listClearCompletedCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(listClearCompletedCmd, "list-id")
 }

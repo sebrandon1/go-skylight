@@ -146,17 +146,17 @@ func init() {
 	routineCreateCmd.Flags().StringVar(&routineTitle, "title", "", "Routine title")
 	routineCreateCmd.Flags().StringVar(&routineAssignee, "assignee-id", "", "Assignee ID")
 	routineCreateCmd.Flags().StringSliceVar(&routineSteps, "steps", nil, "Step titles (comma-separated)")
-	routineCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+	markFlagRequired(routineCreateCmd, "title")
 
 	routineUpdateCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
 	routineUpdateCmd.Flags().StringVar(&routineTitle, "title", "", "Routine title")
 	routineUpdateCmd.Flags().StringVar(&routineAssignee, "assignee-id", "", "Assignee ID")
 	routineUpdateCmd.Flags().StringSliceVar(&routineSteps, "steps", nil, "Step titles (comma-separated)")
-	routineUpdateCmd.MarkFlagRequired("routine-id") //nolint:errcheck
+	markFlagRequired(routineUpdateCmd, "routine-id")
 
 	routineDeleteCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
-	routineDeleteCmd.MarkFlagRequired("routine-id") //nolint:errcheck
+	markFlagRequired(routineDeleteCmd, "routine-id")
 
 	routineReorderCmd.Flags().StringSliceVar(&routineIDs, "routine-ids", nil, "Routine IDs in desired order (comma-separated)")
-	routineReorderCmd.MarkFlagRequired("routine-ids") //nolint:errcheck
+	markFlagRequired(routineReorderCmd, "routine-ids")
 }

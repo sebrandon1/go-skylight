@@ -192,10 +192,10 @@ func init() {
 
 	photoUploadCmd.Flags().StringVar(&photoFile, "file", "", "Path to image file to upload")
 	photoUploadCmd.Flags().StringVar(&photoCaption, "caption", "", "Optional caption for the photo")
-	photoUploadCmd.MarkFlagRequired("file") //nolint:errcheck
+	markFlagRequired(photoUploadCmd, "file")
 
 	photoDeleteCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to delete (repeatable)")
-	photoDeleteCmd.MarkFlagRequired("message-id") //nolint:errcheck
+	markFlagRequired(photoDeleteCmd, "message-id")
 
 	photoDownloadCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to download (repeatable)")
 	photoDownloadCmd.Flags().BoolVar(&photoDownloadAll, "all", false, "Download all photos")

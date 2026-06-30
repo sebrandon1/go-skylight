@@ -320,24 +320,24 @@ func init() {
 	mealCmd.AddCommand(mealPlanCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
-	mealRecipeInfoCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+	markFlagRequired(mealRecipeInfoCmd, "recipe-id")
 
 	mealCreateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealCreateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeCategoryID, "meal-category-id", "", "Meal category ID")
-	mealCreateRecipeCmd.MarkFlagRequired("title") //nolint:errcheck
+	markFlagRequired(mealCreateRecipeCmd, "title")
 
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID to update")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealUpdateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
-	mealUpdateRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+	markFlagRequired(mealUpdateRecipeCmd, "recipe-id")
 
 	mealDeleteRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
-	mealDeleteRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+	markFlagRequired(mealDeleteRecipeCmd, "recipe-id")
 
 	mealSittingsCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date filter (YYYY-MM-DD)")
 	mealSittingsCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Maximum date filter (YYYY-MM-DD)")
@@ -346,25 +346,25 @@ func init() {
 	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
 	mealCreateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date")
 	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
-	mealCreateSittingCmd.MarkFlagRequired("recipe-id")        //nolint:errcheck
-	mealCreateSittingCmd.MarkFlagRequired("date")             //nolint:errcheck
-	mealCreateSittingCmd.MarkFlagRequired("meal-category-id") //nolint:errcheck
+	markFlagRequired(mealCreateSittingCmd, "recipe-id")
+	markFlagRequired(mealCreateSittingCmd, "date")
+	markFlagRequired(mealCreateSittingCmd, "meal-category-id")
 
 	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
-	mealDeleteSittingCmd.MarkFlagRequired("sitting-id") //nolint:errcheck
-	mealDeleteSittingCmd.MarkFlagRequired("date")       //nolint:errcheck
+	markFlagRequired(mealDeleteSittingCmd, "sitting-id")
+	markFlagRequired(mealDeleteSittingCmd, "date")
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
-	mealAddToGroceryCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+	markFlagRequired(mealAddToGroceryCmd, "recipe-id")
 
 	mealSittingRecipeCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
-	mealSittingRecipeCmd.MarkFlagRequired("sitting-id") //nolint:errcheck
+	markFlagRequired(mealSittingRecipeCmd, "sitting-id")
 
 	mealPlanCmd.Flags().StringSliceVar(&mealPlanRecipeIDs, "recipes", nil, "Recipe IDs (comma-separated)")
 	mealPlanCmd.Flags().StringSliceVar(&mealPlanCategoryIDs, "categories", nil, "Meal category IDs (comma-separated)")
 	mealPlanCmd.Flags().StringVar(&mealPlanStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
-	mealPlanCmd.MarkFlagRequired("recipes")    //nolint:errcheck
-	mealPlanCmd.MarkFlagRequired("categories") //nolint:errcheck
-	mealPlanCmd.MarkFlagRequired("start-date") //nolint:errcheck
+	markFlagRequired(mealPlanCmd, "recipes")
+	markFlagRequired(mealPlanCmd, "categories")
+	markFlagRequired(mealPlanCmd, "start-date")
 }

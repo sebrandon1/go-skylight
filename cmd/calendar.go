@@ -225,23 +225,23 @@ func init() {
 	calendarCreateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarCreateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarCreateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
-	calendarCreateCmd.MarkFlagRequired("title")    //nolint:errcheck
-	calendarCreateCmd.MarkFlagRequired("start-at") //nolint:errcheck
+	markFlagRequired(calendarCreateCmd, "title")
+	markFlagRequired(calendarCreateCmd, "start-at")
 
 	calendarUpdateCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to update")
 	calendarUpdateCmd.Flags().StringVar(&calendarTitle, "title", "", "Event title")
 	calendarUpdateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarUpdateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
-	calendarUpdateCmd.MarkFlagRequired("event-id") //nolint:errcheck
+	markFlagRequired(calendarUpdateCmd, "event-id")
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
-	calendarDeleteCmd.MarkFlagRequired("event-id") //nolint:errcheck
+	markFlagRequired(calendarDeleteCmd, "event-id")
 
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, "title", "", "Countdown event title")
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarCountdownDate, "date", "", "Target date (YYYY-MM-DD)")
-	calendarCreateCountdownCmd.MarkFlagRequired("title") //nolint:errcheck
-	calendarCreateCountdownCmd.MarkFlagRequired("date")  //nolint:errcheck
+	markFlagRequired(calendarCreateCountdownCmd, "title")
+	markFlagRequired(calendarCreateCountdownCmd, "date")
 
 	calendarWeekCmd.Flags().StringVar(&calendarWeekDate, "date", "", "Week containing this date (YYYY-MM-DD, default current week)")
 }

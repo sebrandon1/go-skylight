@@ -269,7 +269,7 @@ func init() {
 	choreCreateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
 	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
 	choreCreateCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Make chore claimable by anyone")
-	choreCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+	markFlagRequired(choreCreateCmd, "title")
 
 	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
 	choreUpdateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
@@ -278,19 +278,19 @@ func init() {
 	choreUpdateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreUpdateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
-	choreUpdateCmd.MarkFlagRequired("chore-id") //nolint:errcheck
+	markFlagRequired(choreUpdateCmd, "chore-id")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
-	choreDeleteCmd.MarkFlagRequired("chore-id") //nolint:errcheck
+	markFlagRequired(choreDeleteCmd, "chore-id")
 
 	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")
-	choreCompleteCmd.MarkFlagRequired("chore-id") //nolint:errcheck
+	markFlagRequired(choreCompleteCmd, "chore-id")
 
 	choreSkipCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to skip")
-	choreSkipCmd.MarkFlagRequired("chore-id") //nolint:errcheck
+	markFlagRequired(choreSkipCmd, "chore-id")
 
 	choreClaimCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to claim")
 	choreClaimCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Family member ID claiming the chore")
-	choreClaimCmd.MarkFlagRequired("chore-id")    //nolint:errcheck
-	choreClaimCmd.MarkFlagRequired("assignee-id") //nolint:errcheck
+	markFlagRequired(choreClaimCmd, "chore-id")
+	markFlagRequired(choreClaimCmd, "assignee-id")
 }

@@ -109,13 +109,13 @@ func init() {
 
 	categoryCreateCmd.Flags().StringVar(&categoryName, "name", "", "Category name")
 	categoryCreateCmd.Flags().StringVar(&categoryColor, "color", "", "Category color (hex, e.g. #FF0000)")
-	categoryCreateCmd.MarkFlagRequired("name") //nolint:errcheck
+	markFlagRequired(categoryCreateCmd, "name")
 
 	categoryDeleteCmd.Flags().StringVar(&categoryID, "category-id", "", "Category ID")
-	categoryDeleteCmd.MarkFlagRequired("category-id") //nolint:errcheck
+	markFlagRequired(categoryDeleteCmd, "category-id")
 
 	categoryUpdateCmd.Flags().StringVar(&categoryID, "category-id", "", "Category ID to update")
 	categoryUpdateCmd.Flags().StringVar(&categoryName, "name", "", "Category name")
 	categoryUpdateCmd.Flags().StringVar(&categoryColor, "color", "", "Category color (hex, e.g. #FF0000)")
-	categoryUpdateCmd.MarkFlagRequired("category-id") //nolint:errcheck
+	markFlagRequired(categoryUpdateCmd, "category-id")
 }

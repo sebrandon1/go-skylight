@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -18,6 +19,16 @@ const (
 func fatal(msg string, err error) {
 	fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
 	os.Exit(1)
+}
+
+// markFlagRequired marks a flag as required, panicking if the flag name
+// doesn't exist on the command. A failure here is a programmer error
+// (typo'd flag name) that should be caught immediately rather than
+// silently leaving the flag optional.
+func markFlagRequired(cmd *cobra.Command, name string) {
+	if err := cmd.MarkFlagRequired(name); err != nil {
+		panic(fmt.Sprintf("marking flag %q required on %q: %v", name, cmd.CommandPath(), err))
+	}
 }
 
 func getFrameOrFail(client *lib.Client, id string) *lib.Frame {

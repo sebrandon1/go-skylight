@@ -182,26 +182,26 @@ func init() {
 	groceryCmd.AddCommand(groceryOrderCmd)
 
 	groceryCreateCmd.Flags().StringVar(&groceryTitle, "title", "", "Grocery list title")
-	groceryCreateCmd.MarkFlagRequired("title") //nolint:errcheck
+	markFlagRequired(groceryCreateCmd, "title")
 
 	groceryShowCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
-	groceryShowCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(groceryShowCmd, "list-id")
 
 	groceryAddCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
 	groceryAddCmd.Flags().StringSliceVar(&groceryItems, "items", nil, "Items to add (comma-separated)")
-	groceryAddCmd.MarkFlagRequired("list-id") //nolint:errcheck
-	groceryAddCmd.MarkFlagRequired("items")   //nolint:errcheck
+	markFlagRequired(groceryAddCmd, "list-id")
+	markFlagRequired(groceryAddCmd, "items")
 
 	groceryAddRecipeCmd.Flags().StringVar(&groceryRecipeID, "recipe-id", "", "Recipe ID")
-	groceryAddRecipeCmd.MarkFlagRequired("recipe-id") //nolint:errcheck
+	markFlagRequired(groceryAddRecipeCmd, "recipe-id")
 
 	groceryClearCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
-	groceryClearCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(groceryClearCmd, "list-id")
 
 	groceryOrganizeCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
-	groceryOrganizeCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(groceryOrganizeCmd, "list-id")
 
 	groceryOrderCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
 	groceryOrderCmd.Flags().StringVar(&groceryRetailer, "retailer", "", "Retailer slug (e.g. costco)")
-	groceryOrderCmd.MarkFlagRequired("list-id") //nolint:errcheck
+	markFlagRequired(groceryOrderCmd, "list-id")
 }
