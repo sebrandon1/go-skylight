@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -144,5 +145,65 @@ func TestLoginHeadless_CSRFFetchFailure(t *testing.T) {
 	_, err := LoginHeadless("u@example.com", "pw", "fp1")
 	if err == nil {
 		t.Error("expected error when CSRF token not found, got nil")
+	}
+}
+
+func TestLoginHeadless_InvalidCredentials(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/auth/session/new", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<input name="authenticity_token" value="csrf123">`)
+	})
+	mux.HandleFunc("/auth/session", func(w http.ResponseWriter, r *http.Request) {
+		// Rails redirects back to the login page on a rejected login.
+		http.Redirect(w, r, "/auth/session/new", http.StatusFound)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	oldAuth := AuthSessionURL
+	AuthSessionURL = srv.URL + "/auth/session"
+	defer func() { AuthSessionURL = oldAuth }()
+
+	_, err := LoginHeadless("u@example.com", "wrongpw", "fp1")
+	if err == nil {
+		t.Fatal("expected error for rejected credentials, got nil")
+	}
+	if !strings.Contains(err.Error(), "login rejected") {
+		t.Errorf("expected error to mention rejected login, got: %v", err)
+	}
+}
+
+func TestLoginHeadless_NotLoggedInAtAuthorize(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/auth/session/new", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<input name="authenticity_token" value="csrf123">`)
+	})
+	mux.HandleFunc("/auth/session", func(w http.ResponseWriter, r *http.Request) {
+		// Devise-style re-render: 200 with the form, not a redirect, so
+		// postSession can't detect the failure - it only surfaces once
+		// the authorize step bounces back to the login page.
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `<html>invalid email or password</html>`)
+	})
+	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/auth/session/new", http.StatusFound)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	oldAuth, oldAuthorize := AuthSessionURL, OAuthAuthorizeURL
+	AuthSessionURL = srv.URL + "/auth/session"
+	OAuthAuthorizeURL = srv.URL + "/oauth/authorize"
+	defer func() {
+		AuthSessionURL = oldAuth
+		OAuthAuthorizeURL = oldAuthorize
+	}()
+
+	_, err := LoginHeadless("u@example.com", "pw", "fp1")
+	if err == nil {
+		t.Fatal("expected error when authorize redirects back to login, got nil")
+	}
+	if !strings.Contains(err.Error(), "login rejected") {
+		t.Errorf("expected error to mention rejected login, got: %v", err)
 	}
 }
