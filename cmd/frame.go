@@ -117,5 +117,5 @@ func init() {
 	frameCmd.AddCommand(frameSetAlbumCmd)
 
 	frameSetAlbumCmd.Flags().IntVar(&currentAlbumID, "album-id", 0, "Album ID to display (-1 for all photos)")
-	frameSetAlbumCmd.MarkFlagRequired("album-id") //nolint:errcheck
+	markFlagRequired(frameSetAlbumCmd, "album-id")
 }

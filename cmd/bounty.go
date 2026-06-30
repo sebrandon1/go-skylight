@@ -142,14 +142,14 @@ func init() {
 	bountyCreateCmd.Flags().StringVar(&bountyRewardTitle, "reward-title", "", "Reward title")
 	bountyCreateCmd.Flags().StringVar(&bountyEmojiIcon, "emoji-icon", "", "Reward emoji icon")
 	bountyCreateCmd.Flags().BoolVar(&bountyRecurring, "recurring", false, "Make chore recurring")
-	bountyCreateCmd.MarkFlagRequired("title")        //nolint:errcheck
-	bountyCreateCmd.MarkFlagRequired("points")       //nolint:errcheck
-	bountyCreateCmd.MarkFlagRequired("reward-title") //nolint:errcheck
+	markFlagRequired(bountyCreateCmd, "title")
+	markFlagRequired(bountyCreateCmd, "points")
+	markFlagRequired(bountyCreateCmd, "reward-title")
 
 	bountyDeleteCmd.Flags().StringVar(&bountyChoreID, "chore-id", "", "Chore ID of the bounty")
 	bountyDeleteCmd.Flags().StringVar(&bountyRewardID, "reward-id", "", "Reward ID of the bounty")
-	bountyDeleteCmd.MarkFlagRequired("chore-id")  //nolint:errcheck
-	bountyDeleteCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+	markFlagRequired(bountyDeleteCmd, "chore-id")
+	markFlagRequired(bountyDeleteCmd, "reward-id")
 
 	bountyUpdateCmd.Flags().StringVar(&bountyChoreID, "chore-id", "", "Chore ID of the bounty")
 	bountyUpdateCmd.Flags().StringVar(&bountyRewardID, "reward-id", "", "Reward ID of the bounty")
@@ -158,6 +158,6 @@ func init() {
 	bountyUpdateCmd.Flags().IntVar(&bountyPoints, "points", 0, "New point value for chore and reward")
 	bountyUpdateCmd.Flags().StringVar(&bountyDueDate, "due-date", "", "New due date (YYYY-MM-DD)")
 	bountyUpdateCmd.Flags().StringVar(&bountyEmojiIcon, "emoji-icon", "", "New reward emoji icon")
-	bountyUpdateCmd.MarkFlagRequired("chore-id")  //nolint:errcheck
-	bountyUpdateCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+	markFlagRequired(bountyUpdateCmd, "chore-id")
+	markFlagRequired(bountyUpdateCmd, "reward-id")
 }

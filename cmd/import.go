@@ -177,5 +177,5 @@ func init() {
 	importCmd.Flags().StringVar(&importFile, "file", "", "Path to export JSON file")
 	importCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "Preview what would be imported without making API calls")
 	importCmd.Flags().StringVar(&importResources, "resources", "all", "Comma-separated resource types to import")
-	importCmd.MarkFlagRequired("file") //nolint:errcheck
+	markFlagRequired(importCmd, "file")
 }

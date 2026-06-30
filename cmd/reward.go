@@ -180,21 +180,21 @@ func init() {
 	rewardCreateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
 	rewardCreateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
 	rewardCreateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
-	rewardCreateCmd.MarkFlagRequired("title")  //nolint:errcheck
-	rewardCreateCmd.MarkFlagRequired("points") //nolint:errcheck
+	markFlagRequired(rewardCreateCmd, "title")
+	markFlagRequired(rewardCreateCmd, "points")
 
 	rewardUpdateCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID to update")
 	rewardUpdateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardUpdateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
 	rewardUpdateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
-	rewardUpdateCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+	markFlagRequired(rewardUpdateCmd, "reward-id")
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
-	rewardDeleteCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+	markFlagRequired(rewardDeleteCmd, "reward-id")
 
 	rewardRedeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
-	rewardRedeemCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+	markFlagRequired(rewardRedeemCmd, "reward-id")
 
 	rewardUnredeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
-	rewardUnredeemCmd.MarkFlagRequired("reward-id") //nolint:errcheck
+	markFlagRequired(rewardUnredeemCmd, "reward-id")
 }
