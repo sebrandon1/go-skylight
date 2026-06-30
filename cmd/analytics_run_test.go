@@ -77,14 +77,5 @@ func TestAnalyticsCmd_CalendarErrorIsNonFatal(t *testing.T) {
 }
 
 func TestAnalyticsCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "analytics" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("analytics command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "analytics")
 }

@@ -112,14 +112,5 @@ func TestCalendarWeekCmd(t *testing.T) {
 }
 
 func TestCalendarCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "calendar" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("calendar command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "calendar")
 }

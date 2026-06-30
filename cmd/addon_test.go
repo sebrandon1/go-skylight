@@ -46,14 +46,5 @@ func TestAddonListCmd_WarnsWithoutPlus(t *testing.T) {
 }
 
 func TestAddonCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "addon" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("addon command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "addon")
 }

@@ -207,14 +207,5 @@ func TestLoginCmd_LoginFailure(t *testing.T) {
 }
 
 func TestLoginCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "login" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("login command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "login")
 }

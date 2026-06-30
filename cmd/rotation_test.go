@@ -30,14 +30,5 @@ func TestRotationCreateCmd(t *testing.T) {
 }
 
 func TestRotationCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "rotation" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("rotation command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "rotation")
 }

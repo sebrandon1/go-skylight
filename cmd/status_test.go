@@ -84,14 +84,5 @@ func TestStatusCmd_NoPoints(t *testing.T) {
 }
 
 func TestStatusCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "status" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("status command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "status")
 }

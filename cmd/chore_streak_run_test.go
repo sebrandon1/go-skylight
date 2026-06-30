@@ -25,14 +25,5 @@ func TestChoreStreakCmd(t *testing.T) {
 }
 
 func TestChoreStreakCmdExists(t *testing.T) {
-	found := false
-	for _, c := range choreCmd.Commands() {
-		if c.Use == "streak" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("streak command not registered on chore command")
-	}
+	assertCommandRegistered(t, choreCmd, "streak")
 }

@@ -131,14 +131,5 @@ func TestRewardUpdateCmd(t *testing.T) {
 }
 
 func TestRewardCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "reward" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("reward command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "reward")
 }

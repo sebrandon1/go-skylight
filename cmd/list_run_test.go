@@ -72,6 +72,8 @@ func TestListCreateCmd_HideFromFrame(t *testing.T) {
 	listTitle = "Groceries"
 	t.Cleanup(func() { listTitle = origTitle })
 
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
 	if err := listCreateCmd.Flags().Set("hide-from-frame", "true"); err != nil {
 		t.Fatalf("setting hide-from-frame flag: %v", err)
 	}
@@ -142,6 +144,8 @@ func TestListUpdateItemCmd(t *testing.T) {
 	listID, listItemID, listItemTitle = "list1", "item1", "Updated"
 	t.Cleanup(func() { listID, listItemID, listItemTitle = origID, origItemID, origTitle })
 
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
 	if err := listUpdateItemCmd.Flags().Set("title", "Updated"); err != nil {
 		t.Fatalf("setting title flag: %v", err)
 	}
@@ -185,14 +189,5 @@ func TestListClearCompletedCmd(t *testing.T) {
 }
 
 func TestListCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "list" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("list command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "list")
 }

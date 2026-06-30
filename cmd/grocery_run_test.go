@@ -128,14 +128,5 @@ func TestGroceryClearCmd(t *testing.T) {
 }
 
 func TestGroceryCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "grocery" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("grocery command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "grocery")
 }
