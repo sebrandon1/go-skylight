@@ -1,0 +1,144 @@
+package cmd
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+	"testing"
+)
+
+func rewardMockHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/reward1/redeem"):
+			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/reward1/unredeem"):
+			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/reward1") && r.Method == http.MethodPatch:
+			fmt.Fprint(w, `{"data":{"id":"reward1","attributes":{"name":"Updated","point_value":99}}}`)
+		case strings.HasSuffix(r.URL.Path, "/reward1") && r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/reward_points"):
+			fmt.Fprint(w, `[{"category_id":1,"current_point_balance":5}]`)
+		case strings.HasSuffix(r.URL.Path, "/rewards") && r.Method == http.MethodPost:
+			fmt.Fprint(w, `{"data":[{"id":"reward1","attributes":{"name":"Ice cream","point_value":10}}]}`)
+		default:
+			fmt.Fprint(w, `{"data":[{"id":"reward1","attributes":{"name":"Ice cream","point_value":10}}]}`)
+		}
+	}
+}
+
+func TestRewardListCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+
+	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	if !strings.Contains(out, "Ice cream") {
+		t.Errorf("expected reward in output, got: %s", out)
+	}
+}
+
+func TestRewardCreateCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origTitle, origPoints := rewardTitle, rewardPoints
+	rewardTitle, rewardPoints = "Ice cream", 10
+	t.Cleanup(func() { rewardTitle, rewardPoints = origTitle, origPoints })
+
+	out := captureStdout(func() { rewardCreateCmd.Run(rewardCreateCmd, nil) })
+	if !strings.Contains(out, "Ice cream") {
+		t.Errorf("expected created reward in output, got: %s", out)
+	}
+}
+
+func TestRewardCreateCmd_WithOptionalFields(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origTitle, origPoints, origEmoji, origNoRespawn, origCatIDs :=
+		rewardTitle, rewardPoints, rewardEmojiIcon, rewardNoRespawn, rewardCategoryIDs
+	rewardTitle, rewardPoints, rewardEmojiIcon, rewardNoRespawn, rewardCategoryIDs =
+		"Ice cream", 10, "🍦", true, []int{1, 2}
+	t.Cleanup(func() {
+		rewardTitle, rewardPoints, rewardEmojiIcon, rewardNoRespawn, rewardCategoryIDs =
+			origTitle, origPoints, origEmoji, origNoRespawn, origCatIDs
+	})
+
+	out := captureStdout(func() { rewardCreateCmd.Run(rewardCreateCmd, nil) })
+	if !strings.Contains(out, "Ice cream") {
+		t.Errorf("expected created reward in output, got: %s", out)
+	}
+}
+
+func TestRewardDeleteCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origID := rewardID
+	rewardID = "reward1"
+	t.Cleanup(func() { rewardID = origID })
+
+	out := captureStdout(func() { rewardDeleteCmd.Run(rewardDeleteCmd, nil) })
+	if !strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestRewardRedeemCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origID := rewardID
+	rewardID = "reward1"
+	t.Cleanup(func() { rewardID = origID })
+
+	out := captureStdout(func() { rewardRedeemCmd.Run(rewardRedeemCmd, nil) })
+	if !strings.Contains(out, "redeemed successfully") {
+		t.Errorf("expected redeem confirmation, got: %s", out)
+	}
+}
+
+func TestRewardUnredeemCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origID := rewardID
+	rewardID = "reward1"
+	t.Cleanup(func() { rewardID = origID })
+
+	out := captureStdout(func() { rewardUnredeemCmd.Run(rewardUnredeemCmd, nil) })
+	if !strings.Contains(out, "unredeemed successfully") {
+		t.Errorf("expected unredeem confirmation, got: %s", out)
+	}
+}
+
+func TestRewardPointsCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+
+	out := captureStdout(func() { rewardPointsCmd.Run(rewardPointsCmd, nil) })
+	if !strings.Contains(out, "current_point_balance") {
+		t.Errorf("expected points in output, got: %s", out)
+	}
+}
+
+func TestRewardUpdateCmd(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origID, origTitle := rewardID, rewardTitle
+	rewardID, rewardTitle = "reward1", "Updated"
+	t.Cleanup(func() { rewardID, rewardTitle = origID, origTitle })
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := rewardUpdateCmd.Flags().Set("title", "Updated"); err != nil {
+		t.Fatalf("setting title flag: %v", err)
+	}
+
+	out := captureStdout(func() { rewardUpdateCmd.Run(rewardUpdateCmd, nil) })
+	if !strings.Contains(out, "Updated") {
+		t.Errorf("expected updated reward in output, got: %s", out)
+	}
+}
+
+func TestRewardCmdExists(t *testing.T) {
+	found := false
+	for _, c := range rootCmd.Commands() {
+		if c.Use == "reward" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("reward command not registered on root")
+	}
+}

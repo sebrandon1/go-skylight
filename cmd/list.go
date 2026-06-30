@@ -24,7 +24,7 @@ var listCmd = &cobra.Command{
 }
 
 var listListCmd = &cobra.Command{
-	Use:   "all",
+	Use:   "all", //nolint:goconst // subcommand name, not the --resources sentinel value (resourceAll) elsewhere in the package.
 	Short: "List all lists",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()

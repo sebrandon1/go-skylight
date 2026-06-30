@@ -164,7 +164,7 @@ func printRedemptionEvent(e lib.RedemptionEvent) {
 }
 
 func parseWatchResources(s string) []string {
-	if s == "" || s == "all" {
+	if s == "" || s == resourceAll {
 		return allWatchResources
 	}
 	var out []string
@@ -313,6 +313,6 @@ func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts strin
 func init() {
 	rootCmd.AddCommand(watchCmd)
 	watchCmd.Flags().IntVar(&watchInterval, "interval", 60, "Poll interval in seconds")
-	watchCmd.Flags().StringVar(&watchResources, "resources", "all", "Comma-separated resources to watch: rewards,chores,calendar")
+	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar")
 	watchCmd.Flags().BoolVar(&watchPersist, "persist", false, "Persist reward deduplication state to disk across restarts (~/.skylight/poller-state.json)")
 }
