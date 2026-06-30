@@ -153,7 +153,35 @@ func postSession(hc *http.Client, email, password, csrfToken string) error {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("login returned status %d: %s", resp.StatusCode, string(body))
 	}
+
+	// A 302 back to the login page (rather than to a dashboard/welcome
+	// page) means the login was rejected; Rails still responds with a
+	// redirect in that case, so status code alone can't distinguish
+	// success from failure.
+	if resp.StatusCode == http.StatusFound && isLoginPageURL(resp.Header.Get("Location")) {
+		return errLoginRejected
+	}
 	return nil
+}
+
+// errLoginRejected is returned whenever Skylight redirects back to the login
+// page instead of completing authentication. Wrong credentials are the most
+// common cause, but a pending device/2FA verification can trigger the same
+// redirect, so the message stays deliberately non-committal.
+var errLoginRejected = fmt.Errorf("login rejected: check email/password, or complete any pending device/2FA verification in a browser")
+
+// isLoginPageURL reports whether rawURL points back at the login form,
+// which Skylight uses to signal a failed login attempt.
+func isLoginPageURL(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	authPath, err := url.Parse(AuthSessionURL)
+	if err != nil {
+		return false
+	}
+	return u.Path == authPath.Path+"/new"
 }
 
 // fetchAuthCode GETs the OAuth authorize endpoint and extracts the auth code
@@ -191,6 +219,9 @@ func fetchAuthCode(hc *http.Client, fingerprint string) (string, error) {
 
 	code := u.Query().Get("code")
 	if code == "" {
+		if isLoginPageURL(location) {
+			return "", errLoginRejected
+		}
 		return "", fmt.Errorf("no code in redirect URL: %s", location)
 	}
 	return code, nil
