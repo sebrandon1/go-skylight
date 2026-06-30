@@ -254,19 +254,25 @@ func printAnalyticsText(s AnalyticsStats) {
 	if len(s.Assignees) == 0 {
 		fmt.Println("  (none)")
 	} else {
+		w := newTableWriter()
+		fmt.Fprintln(w, "NAME\tCOMPLETED/TOTAL\tCOMPLETION RATE\tPOINTS")
 		for _, a := range s.Assignees {
-			fmt.Printf("  %-20s  %d/%d chores (%.1f%%)  points: %d\n",
+			fmt.Fprintf(w, "%s\t%d/%d\t%.1f%%\t%d\n",
 				a.Name, a.CompletedChores, a.TotalChores, a.CompletionRate, a.PointBalance)
 		}
+		w.Flush()
 	}
 
 	fmt.Println("\nTop Chores:")
 	if len(s.TopChores) == 0 {
 		fmt.Println("  (none)")
 	} else {
+		w := newTableWriter()
+		fmt.Fprintln(w, "TITLE\tTIMES\tCOMPLETED")
 		for _, c := range s.TopChores {
-			fmt.Printf("  %-30s  %d times  (%d completed)\n", c.Title, c.Count, c.Completed)
+			fmt.Fprintf(w, "%s\t%d\t%d\n", c.Title, c.Count, c.Completed)
 		}
+		w.Flush()
 	}
 
 	fmt.Printf("\nRewards:   %d total, %d redeemed\n", s.Rewards.Total, s.Rewards.Redeemed)
