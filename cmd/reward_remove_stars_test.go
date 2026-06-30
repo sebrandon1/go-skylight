@@ -28,14 +28,5 @@ func TestRewardRemoveStarsCmd(t *testing.T) {
 }
 
 func TestRewardRemoveStarsCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rewardCmd.Commands() {
-		if c.Use == "remove-stars" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("remove-stars command not registered on reward command")
-	}
+	assertCommandRegistered(t, rewardCmd, "remove-stars")
 }

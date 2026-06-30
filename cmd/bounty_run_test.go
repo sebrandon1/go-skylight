@@ -72,6 +72,8 @@ func TestBountyUpdateCmd(t *testing.T) {
 	bountyChoreID, bountyRewardID, bountyTitle = "c1", "r1", "Updated"
 	t.Cleanup(func() { bountyChoreID, bountyRewardID, bountyTitle = origChoreID, origRewardID, origTitle })
 
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
 	if err := bountyUpdateCmd.Flags().Set("title", "Updated"); err != nil {
 		t.Fatalf("setting title flag: %v", err)
 	}
@@ -83,14 +85,5 @@ func TestBountyUpdateCmd(t *testing.T) {
 }
 
 func TestBountyCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "bounty" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("bounty command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "bounty")
 }

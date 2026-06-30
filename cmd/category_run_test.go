@@ -75,14 +75,5 @@ func TestCategoryUpdateCmd(t *testing.T) {
 }
 
 func TestCategoryCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "category" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("category command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "category")
 }

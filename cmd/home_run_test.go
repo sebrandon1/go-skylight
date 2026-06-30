@@ -69,14 +69,5 @@ func TestHomeCmd_NoTasksNoLists(t *testing.T) {
 }
 
 func TestHomeCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "home" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("home command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "home")
 }

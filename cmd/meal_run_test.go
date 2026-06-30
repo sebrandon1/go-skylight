@@ -198,14 +198,5 @@ func TestMealUpdateRecipeCmd(t *testing.T) {
 }
 
 func TestMealCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "meal" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("meal command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "meal")
 }

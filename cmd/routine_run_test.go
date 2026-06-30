@@ -52,6 +52,8 @@ func TestRoutineUpdateCmd(t *testing.T) {
 	routineID, routineTitle = "routine1", "Updated"
 	t.Cleanup(func() { routineID, routineTitle = origID, origTitle })
 
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
 	if err := routineUpdateCmd.Flags().Set("title", "Updated"); err != nil {
 		t.Fatalf("setting title flag: %v", err)
 	}
@@ -87,14 +89,5 @@ func TestRoutineReorderCmd(t *testing.T) {
 }
 
 func TestRoutineCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "routine" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("routine command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "routine")
 }

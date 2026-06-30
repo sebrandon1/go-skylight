@@ -39,6 +39,8 @@ func TestChoreListCmd(t *testing.T) {
 func TestChoreListCmd_WeekView(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
 
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
 	if err := choreListCmd.Flags().Set("week", "current"); err != nil {
 		t.Fatalf("setting week flag: %v", err)
 	}
@@ -140,14 +142,5 @@ func TestChoreClaimCmd(t *testing.T) {
 }
 
 func TestChoreCmdExists(t *testing.T) {
-	found := false
-	for _, c := range rootCmd.Commands() {
-		if c.Use == "chore" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Error("chore command not registered on root")
-	}
+	assertCommandRegistered(t, rootCmd, "chore")
 }

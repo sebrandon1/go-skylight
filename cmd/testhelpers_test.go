@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebrandon1/go-skylight/lib"
+	"github.com/spf13/cobra"
 )
 
 // captureStderr redirects os.Stderr for the duration of fn and returns
@@ -65,4 +66,16 @@ func pointClientAt(t *testing.T, client *lib.Client) {
 func newCmdTestClient(t *testing.T, handler http.HandlerFunc) {
 	t.Helper()
 	pointClientAt(t, newMockClient(t, handler))
+}
+
+// assertCommandRegistered fails the test unless parent has a direct
+// subcommand whose Use matches use.
+func assertCommandRegistered(t *testing.T, parent *cobra.Command, use string) {
+	t.Helper()
+	for _, c := range parent.Commands() {
+		if c.Use == use {
+			return
+		}
+	}
+	t.Errorf("%q command not registered on %q", use, parent.Use)
 }
