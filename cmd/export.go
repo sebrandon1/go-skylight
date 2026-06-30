@@ -19,6 +19,10 @@ const (
 	exportResourceRecipes  = "recipes"
 	exportResourceSittings = "sittings"
 	exportResourceCalendar = "calendar"
+
+	// resourceAll is the documented default/wildcard value for the various
+	// --resources flags across commands, meaning "no filter, include all".
+	resourceAll = "all"
 )
 
 var allExportResources = []string{
@@ -216,7 +220,7 @@ func parseExportResources(s string) []string {
 }
 
 func parseResourceList(s string, all []string) []string {
-	if s == "" || s == "all" {
+	if s == "" || s == resourceAll {
 		return all
 	}
 	var out []string
@@ -232,6 +236,6 @@ func parseResourceList(s string, all []string) []string {
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.Flags().StringVar(&exportOutputFile, "output-file", "", "Output file path (default: stdout)")
-	exportCmd.Flags().StringVar(&exportResources, "resources", "all", "Comma-separated resource types: chores,rewards,lists,recipes,sittings,calendar")
+	exportCmd.Flags().StringVar(&exportResources, "resources", resourceAll, "Comma-separated resource types: chores,rewards,lists,recipes,sittings,calendar")
 	exportCmd.Flags().IntVar(&exportDays, "days", 90, "Window (in days before/after today) for time-bounded resources")
 }

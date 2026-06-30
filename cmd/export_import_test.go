@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +11,16 @@ import (
 
 	"github.com/sebrandon1/go-skylight/lib"
 )
+
+func TestToWantMap(t *testing.T) {
+	got := toWantMap([]string{exportResourceChores, exportResourceRewards})
+	if !got[exportResourceChores] || !got[exportResourceRewards] {
+		t.Errorf("expected chores and rewards to be wanted, got: %v", got)
+	}
+	if got[exportResourceLists] {
+		t.Errorf("expected lists not to be wanted, got: %v", got)
+	}
+}
 
 func TestParseExportResources_All(t *testing.T) {
 	for _, input := range []string{"", "all"} {
@@ -144,5 +156,109 @@ func TestExportDataRoundTrip(t *testing.T) {
 	}
 	if len(got.Chores) != 1 || got.Chores[0].Title != "Walk the dog" {
 		t.Errorf("chores mismatch: %+v", got.Chores)
+	}
+}
+
+func exportMockHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/chores"):
+			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes"}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/rewards"):
+			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"Ice cream","point_value":5}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/lists"):
+			fmt.Fprint(w, `{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries"}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/meals/recipes"):
+			fmt.Fprint(w, `{"data":[{"id":"rc1","type":"meal_recipe","attributes":{"summary":"Tacos"}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
+			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
+		default:
+			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+		}
+	}
+}
+
+func TestExportCmd_AllResourcesToStdout(t *testing.T) {
+	newCmdTestClient(t, exportMockHandler())
+
+	origFile, origResources, origDays := exportOutputFile, exportResources, exportDays
+	exportOutputFile = ""
+	exportResources = "all"
+	exportDays = 7
+	t.Cleanup(func() {
+		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
+	})
+
+	out := captureStdout(func() { exportCmd.Run(exportCmd, nil) })
+
+	var data ExportData
+	if err := json.Unmarshal([]byte(out), &data); err != nil {
+		t.Fatalf("expected valid JSON on stdout, got error %v for: %s", err, out)
+	}
+	if data.FrameID != "test-frame" {
+		t.Errorf("expected frame_id test-frame, got %q", data.FrameID)
+	}
+	if len(data.Chores) != 1 || len(data.Rewards) != 1 || len(data.Lists) != 1 || len(data.Recipes) != 1 || len(data.CalendarEvents) != 1 {
+		t.Errorf("expected one of each resource, got: %+v", data)
+	}
+}
+
+func TestExportCmd_ResourceFilter(t *testing.T) {
+	newCmdTestClient(t, exportMockHandler())
+
+	origFile, origResources, origDays := exportOutputFile, exportResources, exportDays
+	exportOutputFile = ""
+	exportResources = "chores"
+	exportDays = 1
+	t.Cleanup(func() {
+		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
+	})
+
+	out := captureStdout(func() { exportCmd.Run(exportCmd, nil) })
+
+	var data ExportData
+	if err := json.Unmarshal([]byte(out), &data); err != nil {
+		t.Fatalf("expected valid JSON on stdout, got error %v for: %s", err, out)
+	}
+	if len(data.Chores) != 1 {
+		t.Errorf("expected chores included, got: %+v", data.Chores)
+	}
+	if len(data.Rewards) != 0 || len(data.Lists) != 0 {
+		t.Errorf("expected only chores resource exported, got: %+v", data)
+	}
+}
+
+func TestExportCmd_WritesToFile(t *testing.T) {
+	newCmdTestClient(t, exportMockHandler())
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "export.json")
+
+	origFile, origResources, origDays := exportOutputFile, exportResources, exportDays
+	exportOutputFile = path
+	exportResources = "chores"
+	exportDays = 1
+	t.Cleanup(func() {
+		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
+	})
+
+	out := captureStdout(func() { exportCmd.Run(exportCmd, nil) })
+	if !strings.Contains(out, "Exported to "+path) {
+		t.Errorf("expected confirmation message, got: %s", out)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading exported file: %v", err)
+	}
+	var data ExportData
+	if err := json.Unmarshal(raw, &data); err != nil {
+		t.Fatalf("expected valid JSON in file, got error %v", err)
+	}
+	if len(data.Chores) != 1 {
+		t.Errorf("expected chores in exported file, got: %+v", data.Chores)
 	}
 }

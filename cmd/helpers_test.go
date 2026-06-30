@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
+	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -559,5 +562,58 @@ func TestPrintOutputSourceCalendarsTable(t *testing.T) {
 	}
 	if !strings.Contains(output, "PROVIDER") {
 		t.Errorf("Expected PROVIDER header, got: %s", output)
+	}
+}
+
+func TestBuildCatNames(t *testing.T) {
+	cats := []lib.Category{
+		{ID: "1", Name: "Alice"},
+		{ID: "2", Name: "Bob"},
+	}
+	got := buildCatNames(cats)
+	if got["1"] != "Alice" || got["2"] != "Bob" {
+		t.Errorf("unexpected result: %v", got)
+	}
+	if len(got) != 2 {
+		t.Errorf("expected 2 entries, got %d", len(got))
+	}
+}
+
+func TestGetFrameOrFail_Success(t *testing.T) {
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"f1","attributes":{"name":"Kitchen"}}}`)
+	})
+
+	frame := getFrameOrFail(client, "f1")
+	if frame.ID != "f1" || frame.Name != "Kitchen" {
+		t.Errorf("unexpected frame: %+v", frame)
+	}
+}
+
+// TestFatal_Crasher is invoked as a subprocess by TestFatal to exercise the
+// os.Exit(1) path without terminating the real test binary.
+func TestFatal_Crasher(t *testing.T) {
+	if os.Getenv("WANT_FATAL_CRASH") != "1" {
+		t.Skip("only runs as a subprocess of TestFatal")
+	}
+	fatal("doing the thing", fmt.Errorf("boom"))
+}
+
+func TestFatal(t *testing.T) {
+	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
+	cmd := exec.Command(os.Args[0], "-test.run=TestFatal_Crasher")
+	cmd.Env = append(os.Environ(), "WANT_FATAL_CRASH=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.Success() {
+		t.Fatalf("expected fatal() to exit with a non-zero status, got err=%v", err)
+	}
+	if !strings.Contains(stderr.String(), "Error: doing the thing: boom") {
+		t.Errorf("expected error message on stderr, got: %s", stderr.String())
 	}
 }
