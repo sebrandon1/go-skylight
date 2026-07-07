@@ -81,6 +81,21 @@ func TestRewardDeleteCmd(t *testing.T) {
 	}
 }
 
+func TestRewardDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := rewardID, dryRun
+	rewardID, dryRun = "reward1", true
+	t.Cleanup(func() { rewardID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() { rewardDeleteCmd.Run(rewardDeleteCmd, nil) })
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
 func TestRewardRedeemCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
 	origID := rewardID
@@ -93,6 +108,21 @@ func TestRewardRedeemCmd(t *testing.T) {
 	}
 }
 
+func TestRewardRedeemCmd_DryRun(t *testing.T) {
+	origID, origDryRun := rewardID, dryRun
+	rewardID, dryRun = "reward1", true
+	t.Cleanup(func() { rewardID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() { rewardRedeemCmd.Run(rewardRedeemCmd, nil) })
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
 func TestRewardUnredeemCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
 	origID := rewardID
@@ -102,6 +132,21 @@ func TestRewardUnredeemCmd(t *testing.T) {
 	out := captureStdout(func() { rewardUnredeemCmd.Run(rewardUnredeemCmd, nil) })
 	if !strings.Contains(out, "unredeemed successfully") {
 		t.Errorf("expected unredeem confirmation, got: %s", out)
+	}
+}
+
+func TestRewardUnredeemCmd_DryRun(t *testing.T) {
+	origID, origDryRun := rewardID, dryRun
+	rewardID, dryRun = "reward1", true
+	t.Cleanup(func() { rewardID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() { rewardUnredeemCmd.Run(rewardUnredeemCmd, nil) })
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
 	}
 }
 

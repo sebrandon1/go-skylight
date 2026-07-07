@@ -136,6 +136,11 @@ var choreDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		if dryRun {
+			printDryRun("delete chore %s", choreID)
+			return
+		}
+
 		client := getClient()
 
 		err := client.DeleteChore(frameID, choreID)
@@ -297,6 +302,7 @@ func init() {
 	markFlagRequired(choreUpdateCmd, "chore-id")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
+	choreDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	markFlagRequired(choreDeleteCmd, "chore-id")
 
 	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")

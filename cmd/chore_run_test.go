@@ -103,6 +103,21 @@ func TestChoreDeleteCmd_Quiet(t *testing.T) {
 	}
 }
 
+func TestChoreDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := choreID, dryRun
+	choreID, dryRun = "c1", true
+	t.Cleanup(func() { choreID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() { choreDeleteCmd.Run(choreDeleteCmd, nil) })
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
 func TestChoreCompleteCmd(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
 	origID := choreID

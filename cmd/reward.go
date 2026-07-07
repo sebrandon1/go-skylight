@@ -73,6 +73,11 @@ var rewardDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		if dryRun {
+			printDryRun("delete reward %s", rewardID)
+			return
+		}
+
 		client := getClient()
 
 		err := client.DeleteReward(frameID, rewardID)
@@ -90,6 +95,11 @@ var rewardRedeemCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		if dryRun {
+			printDryRun("redeem reward %s", rewardID)
+			return
+		}
+
 		client := getClient()
 
 		err := client.RedeemReward(frameID, rewardID)
@@ -106,6 +116,11 @@ var rewardUnredeemCmd = &cobra.Command{
 	Short: "Unredeem a reward",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if dryRun {
+			printDryRun("unredeem reward %s", rewardID)
+			return
+		}
 
 		client := getClient()
 
@@ -193,11 +208,14 @@ func init() {
 	markFlagRequired(rewardUpdateCmd, "reward-id")
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
+	rewardDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	markFlagRequired(rewardDeleteCmd, "reward-id")
 
 	rewardRedeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
+	rewardRedeemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	markFlagRequired(rewardRedeemCmd, "reward-id")
 
 	rewardUnredeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
+	rewardUnredeemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	markFlagRequired(rewardUnredeemCmd, "reward-id")
 }
