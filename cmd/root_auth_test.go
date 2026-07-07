@@ -321,3 +321,33 @@ func TestPersistentPreRunE_NoCredentials(t *testing.T) {
 		t.Error("expected autoClient to stay nil with no credentials configured")
 	}
 }
+
+func TestPersistentPreRunE_RejectsInvalidOutputFormat(t *testing.T) {
+	resetAuthState(t)
+	origOutputFormat := outputFormat
+	t.Cleanup(func() { outputFormat = origOutputFormat })
+	outputFormat = "xml"
+
+	cmd := &cobra.Command{Use: "frame"}
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid --output value, got nil")
+	}
+	if !strings.Contains(err.Error(), "xml") {
+		t.Errorf("expected error to mention invalid value, got: %v", err)
+	}
+}
+
+func TestPersistentPreRunE_AcceptsValidOutputFormats(t *testing.T) {
+	resetAuthState(t)
+	origOutputFormat := outputFormat
+	t.Cleanup(func() { outputFormat = origOutputFormat })
+
+	for _, v := range []string{outputJSON, outputTable} {
+		outputFormat = v
+		cmd := &cobra.Command{Use: "frame"}
+		if err := rootCmd.PersistentPreRunE(cmd, nil); err != nil {
+			t.Errorf("unexpected error for --output=%q: %v", v, err)
+		}
+	}
+}

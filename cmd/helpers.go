@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -48,6 +50,14 @@ func validateDate(date string) error {
 		return fmt.Errorf("invalid date %q: use YYYY-MM-DD format", date)
 	}
 	return nil
+}
+
+// validateEnum returns an error if value is non-empty and not present in allowed.
+func validateEnum(value string, allowed []string) error {
+	if value == "" || slices.Contains(allowed, value) {
+		return nil
+	}
+	return fmt.Errorf("invalid value %q: must be one of %s", value, strings.Join(allowed, ", "))
 }
 
 func buildCatNames(categories []lib.Category) map[string]string {

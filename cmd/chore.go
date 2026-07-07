@@ -24,6 +24,8 @@ var (
 	choreWeek        string
 )
 
+var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
+
 var choreCmd = &cobra.Command{
 	Use:   "chore",
 	Short: "Chore management commands",
@@ -46,6 +48,13 @@ var choreListCmd = &cobra.Command{
 					fmt.Fprintln(os.Stderr, err)
 					os.Exit(1)
 				}
+			}
+		}
+
+		if cmd.Flags().Changed("status") {
+			if err := validateEnum(choreStatus, choreStatuses); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
 			}
 		}
 
@@ -162,6 +171,13 @@ var choreUpdateCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("date") {
 			if err := validateDate(choreDate); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}
+
+		if cmd.Flags().Changed("status") {
+			if err := validateEnum(choreStatus, choreStatuses); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}

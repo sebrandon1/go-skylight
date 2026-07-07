@@ -45,49 +45,7 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		// Load config file first (CLI flags take precedence since they're already set)
-		loadConfig()
-
-		// Skip auto-login for login command itself, help, and config subcommands
-		// (config commands must work even when credentials are missing or expired).
-		if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" ||
-			(cmd.Parent() != nil && cmd.Parent().Name() == "config") {
-			return nil
-		}
-
-		// Prefer OAuth2 refresh token flow (new API).
-		if refreshToken != "" {
-			fingerprint := deviceFingerprint
-			if fingerprint == "" {
-				fingerprint = defaultFingerprint()
-			}
-			c, err := lib.NewClientWithRefreshToken(refreshToken, fingerprint)
-			if err != nil {
-				return fmt.Errorf("auto-login failed: %w", err)
-			}
-			autoClient = c
-			// Persist the rotated refresh token back to config.
-			if c.RefreshToken != "" && c.RefreshToken != refreshToken {
-				persistRotatedToken(c.RefreshToken, fingerprint)
-				refreshToken = c.RefreshToken
-			}
-			return nil
-		}
-
-		// Legacy: email/password via deprecated /api/sessions endpoint.
-		if email != "" && password != "" && (token == "" || userID == "") {
-			//nolint:staticcheck // intentional fallback for legacy callers.
-			c, err := lib.NewClient(email, password)
-			if err != nil {
-				return fmt.Errorf("auto-login failed: %w", err)
-			}
-			userID = c.UserID
-			token = c.APIToken
-			autoClient = c
-		}
-		return nil
-	}
+	rootCmd.PersistentPreRunE = rootPersistentPreRun
 
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "Config file path (default ~/.skylight/config)")
 	rootCmd.PersistentFlags().StringVar(&email, "email", "", "Skylight account email (deprecated: use --refresh-token)")
@@ -115,6 +73,69 @@ func init() {
 	rootCmd.AddCommand(frameCmd)
 	rootCmd.AddCommand(photoCmd)
 	rootCmd.AddCommand(configCmd)
+}
+
+func rootPersistentPreRun(cmd *cobra.Command, args []string) error {
+	// Load config file first (CLI flags take precedence since they're already set)
+	loadConfig()
+
+	if err := validateEnum(outputFormat, []string{outputJSON, outputTable}); err != nil {
+		return err
+	}
+
+	// Skip auto-login for login command itself, help, and config subcommands
+	// (config commands must work even when credentials are missing or expired).
+	if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" ||
+		(cmd.Parent() != nil && cmd.Parent().Name() == "config") {
+		return nil
+	}
+
+	// Prefer OAuth2 refresh token flow (new API).
+	if handled, err := tryRefreshTokenAuth(); handled {
+		return err
+	}
+
+	// Legacy: email/password via deprecated /api/sessions endpoint.
+	return tryLegacyEmailPasswordAuth()
+}
+
+// tryRefreshTokenAuth attempts OAuth2 refresh-token auto-login. handled reports
+// whether a refresh token was configured (and thus this flow was attempted).
+func tryRefreshTokenAuth() (handled bool, err error) {
+	if refreshToken == "" {
+		return false, nil
+	}
+
+	fingerprint := deviceFingerprint
+	if fingerprint == "" {
+		fingerprint = defaultFingerprint()
+	}
+	c, err := lib.NewClientWithRefreshToken(refreshToken, fingerprint)
+	if err != nil {
+		return true, fmt.Errorf("auto-login failed: %w", err)
+	}
+	autoClient = c
+	// Persist the rotated refresh token back to config.
+	if c.RefreshToken != "" && c.RefreshToken != refreshToken {
+		persistRotatedToken(c.RefreshToken, fingerprint)
+		refreshToken = c.RefreshToken
+	}
+	return true, nil
+}
+
+func tryLegacyEmailPasswordAuth() error {
+	if email == "" || password == "" || (token != "" && userID != "") {
+		return nil
+	}
+	//nolint:staticcheck // intentional fallback for legacy callers.
+	c, err := lib.NewClient(email, password)
+	if err != nil {
+		return fmt.Errorf("auto-login failed: %w", err)
+	}
+	userID = c.UserID
+	token = c.APIToken
+	autoClient = c
+	return nil
 }
 
 func requireFrameID() {
