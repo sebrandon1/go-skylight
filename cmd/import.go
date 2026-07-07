@@ -15,6 +15,33 @@ var (
 	importResources string
 )
 
+// importWorkerCount bounds how many items within a single resource type are
+// created concurrently during import.
+const importWorkerCount = 5
+
+// parallelImport runs fn for each item in items using a bounded pool of
+// importWorkerCount goroutines, aggregating each call's (total, failed)
+// counts. Item order in stderr output is not preserved.
+func parallelImport[T any](items []T, fn func(T) (total, failed int)) (total, failed int) {
+	type result struct{ total, failed int }
+	results := make(chan result, len(items))
+	sem := make(chan struct{}, importWorkerCount)
+	for _, item := range items {
+		sem <- struct{}{}
+		go func(item T) {
+			defer func() { <-sem }()
+			t, f := fn(item)
+			results <- result{t, f}
+		}(item)
+	}
+	for range items {
+		r := <-results
+		total += r.total
+		failed += r.failed
+	}
+	return total, failed
+}
+
 var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Restore frame data from an export file",
@@ -98,78 +125,75 @@ func runImport(client *lib.Client, data ExportData, want map[string]bool) {
 }
 
 func importRewards(client *lib.Client, rewards []lib.Reward) (total, failed int) {
-	for _, r := range rewards {
-		total++
+	return parallelImport(rewards, func(r lib.Reward) (int, int) {
 		if _, err := client.CreateReward(frameID, lib.RewardData{Title: r.Title, Points: r.Points, EmojiIcon: r.EmojiIcon}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating reward %q: %v\n", r.Title, err)
-			failed++
+			return 1, 1
 		}
-	}
-	return
+		return 1, 0
+	})
 }
 
 func importChores(client *lib.Client, chores []lib.Chore) (total, failed int) {
-	for _, c := range chores {
-		total++
+	return parallelImport(chores, func(c lib.Chore) (int, int) {
 		if _, err := client.CreateChore(frameID, lib.ChoreData{Title: c.Title, DueDate: c.DueDate, Points: c.Points, AssigneeID: c.AssigneeID}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating chore %q: %v\n", c.Title, err)
-			failed++
+			return 1, 1
 		}
-	}
-	return
+		return 1, 0
+	})
 }
 
+// importLists parallelizes across lists, but each list's own items are
+// created sequentially after it (AddListItem depends on the parent list's
+// freshly assigned ID), so items are never parallelized against each other.
 func importLists(client *lib.Client, lists []lib.List) (total, failed int) {
-	for _, l := range lists {
-		total++
+	return parallelImport(lists, func(l lib.List) (int, int) {
+		t, f := 1, 0
 		created, err := client.CreateList(frameID, lib.ListData{Title: l.Title, Color: l.Color, Kind: l.Kind})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating list %q: %v\n", l.Title, err)
-			failed++
-			continue
+			return t, 1
 		}
 		for _, item := range l.Items {
-			total++
+			t++
 			if _, err := client.AddListItem(frameID, created.ID, lib.ListItemData{Title: item.Title}); err != nil {
 				fmt.Fprintf(os.Stderr, "Error adding item %q to list %q: %v\n", item.Title, l.Title, err)
-				failed++
+				f++
 			}
 		}
-	}
-	return
+		return t, f
+	})
 }
 
 func importRecipes(client *lib.Client, recipes []lib.Recipe) (total, failed int) {
-	for _, r := range recipes {
-		total++
+	return parallelImport(recipes, func(r lib.Recipe) (int, int) {
 		if _, err := client.CreateRecipe(frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating recipe %q: %v\n", r.Title, err)
-			failed++
+			return 1, 1
 		}
-	}
-	return
+		return 1, 0
+	})
 }
 
 func importSittings(client *lib.Client, sittings []lib.MealSitting) (total, failed int) {
-	for _, s := range sittings {
-		total++
+	return parallelImport(sittings, func(s lib.MealSitting) (int, int) {
 		if _, err := client.CreateMealSitting(frameID, lib.MealSittingData{Summary: s.Summary, Date: s.Date}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating meal sitting %q: %v\n", s.Summary, err)
-			failed++
+			return 1, 1
 		}
-	}
-	return
+		return 1, 0
+	})
 }
 
 func importCalendarEvents(client *lib.Client, events []lib.CalendarEvent) (total, failed int) {
-	for _, e := range events {
-		total++
+	return parallelImport(events, func(e lib.CalendarEvent) (int, int) {
 		if _, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: e.AllDay}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating calendar event %q: %v\n", e.Title, err)
-			failed++
+			return 1, 1
 		}
-	}
-	return
+		return 1, 0
+	})
 }
 
 func init() {
