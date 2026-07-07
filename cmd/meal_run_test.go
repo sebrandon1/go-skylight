@@ -138,6 +138,21 @@ func TestMealAddToGroceryCmd(t *testing.T) {
 	}
 }
 
+func TestMealGetSittingCmd(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	origID := sittingID
+	sittingID = "sitting1"
+	t.Cleanup(func() { sittingID = origID })
+
+	out := captureStdout(func() { mealGetSittingCmd.Run(mealGetSittingCmd, nil) })
+	if !strings.Contains(out, "sitting1") {
+		t.Errorf("expected sitting ID in output, got: %s", out)
+	}
+	if !strings.Contains(out, "dinner") {
+		t.Errorf("expected sitting summary in output, got: %s", out)
+	}
+}
+
 func TestMealSittingRecipeCmd_WithRecipe(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
 	origID := sittingID
