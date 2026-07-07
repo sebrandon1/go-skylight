@@ -133,7 +133,12 @@ var rewardPointsCmd = &cobra.Command{
 			fatal("getting reward points", err)
 		}
 
-		printJSON(points)
+		categories, err := client.ListCategories(frameID)
+		if err != nil {
+			fatal("listing categories", err)
+		}
+
+		printJSON(resolveRewardPointNames(points, categories))
 	},
 }
 
