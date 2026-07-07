@@ -24,8 +24,9 @@ var statusCmd = &cobra.Command{
 		}
 
 		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
-			Date:   today,
-			Status: "pending",
+			After:  today,
+			Before: today,
+			Status: lib.ChoreStatusPending,
 		})
 		if err != nil {
 			fatal("listing chores", err)
