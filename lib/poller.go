@@ -128,13 +128,27 @@ func (p *RewardsPoller) loop(ctx context.Context) {
 }
 
 func (p *RewardsPoller) poll(ctx context.Context) {
-	// Resolve category ID → child name.
-	childNames := p.resolveChildNames()
+	var (
+		childNames map[string]string
+		rewards    []Reward
+		rewardErr  error
+		wg         sync.WaitGroup
+	)
 
-	rewards, err := p.client.ListRewards(p.frameID)
-	if err != nil {
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		childNames = p.resolveChildNames()
+	}()
+	go func() {
+		defer wg.Done()
+		rewards, rewardErr = p.client.ListRewards(p.frameID)
+	}()
+	wg.Wait()
+
+	if rewardErr != nil {
 		if p.logger != nil {
-			p.logger.Warn("poller: ListRewards failed", slog.String("error", err.Error()))
+			p.logger.Warn("poller: ListRewards failed", slog.String("error", rewardErr.Error()))
 		}
 		return
 	}
