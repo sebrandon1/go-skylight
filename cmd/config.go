@@ -57,6 +57,12 @@ func loadConfig() {
 	}
 	defer f.Close()
 
+	if info, statErr := f.Stat(); statErr == nil {
+		if perm := info.Mode().Perm(); perm&0o077 != 0 { // 0o077: group/other read-write-execute bits
+			fmt.Fprintf(os.Stderr, "warning: config file %s is readable by group/other (mode %04o); it contains credentials, run: chmod 600 %s\n", path, perm, path)
+		}
+	}
+
 	vars := map[string]*string{
 		"SKYLIGHT_EMAIL":              &email,
 		"SKYLIGHT_PASSWORD":           &password,

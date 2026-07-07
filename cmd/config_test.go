@@ -117,6 +117,53 @@ SKYLIGHT_TOKEN=tok123
 	configPath = ""
 }
 
+func TestLoadConfigWarnsOnWorldReadablePermissions(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte("SKYLIGHT_EMAIL=test@example.com\n"), 0o644); err != nil { //nolint:gosec // intentionally world-readable to test the permission warning
+		t.Fatal(err)
+	}
+
+	email = ""
+	configPath = path
+
+	stderr := captureStderr(func() {
+		loadConfig()
+	})
+
+	if !strings.Contains(stderr, "readable by group/other") {
+		t.Errorf("expected permission warning on stderr, got %q", stderr)
+	}
+	if email != "test@example.com" {
+		t.Errorf("email = %q, want %q (loading should still succeed)", email, "test@example.com")
+	}
+
+	email = ""
+	configPath = ""
+}
+
+func TestLoadConfigNoWarningOnSecurePermissions(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte("SKYLIGHT_EMAIL=test@example.com\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	email = ""
+	configPath = path
+
+	stderr := captureStderr(func() {
+		loadConfig()
+	})
+
+	if strings.Contains(stderr, "readable by group/other") {
+		t.Errorf("did not expect permission warning on stderr, got %q", stderr)
+	}
+
+	email = ""
+	configPath = ""
+}
+
 func TestLoadConfigMissingFile(t *testing.T) {
 	configPath = "/nonexistent/path/config"
 	email = ""
