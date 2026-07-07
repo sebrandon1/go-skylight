@@ -27,8 +27,6 @@ var homeCmd = &cobra.Command{
 
 		client := getClient()
 
-		frame := getFrameOrFail(client, frameID)
-
 		var (
 			events   []lib.CalendarEvent
 			chores   []lib.Chore
@@ -39,9 +37,14 @@ var homeCmd = &cobra.Command{
 			wg       sync.WaitGroup
 		)
 
+		// Frame info is only needed for TimeZone, used by the calendar events
+		// call. Fetch it inside this goroutine (rather than serially before
+		// the fan-out) so it runs concurrently with the chores/lists calls
+		// instead of blocking them.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			frame := getFrameOrFail(client, frameID)
 			events, evtErr = client.ListCalendarEvents(frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
 		}()
 
