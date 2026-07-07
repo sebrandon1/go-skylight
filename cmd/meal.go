@@ -30,6 +30,16 @@ var (
 var mealCmd = &cobra.Command{
 	Use:   "meal",
 	Short: "Meal and recipe management commands",
+	Long: `Manage recipes and scheduled meal sittings on a Skylight frame.
+
+A recipe holds the title/ingredients; a "sitting" schedules that
+recipe on a specific date and meal category (breakfast, dinner,
+etc.). Use "meal plan" to schedule several recipes across a date
+range in one call.
+
+  # Create a recipe, then schedule it for a specific date
+  skylight meal create-recipe --title "Tacos" --meal-category-id 12345678
+  skylight meal create-sitting --recipe-id 87654321 --date 2026-06-05 --meal-category-id 12345678`,
 }
 
 var mealCategoriesCmd = &cobra.Command{

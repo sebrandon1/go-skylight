@@ -17,6 +17,15 @@ var (
 var rewardCmd = &cobra.Command{
 	Use:   "reward",
 	Short: "Reward management commands",
+	Long: `Create, list, update, delete, redeem, and unredeem rewards.
+
+Each reward has a points cost; family members spend earned chore
+points to redeem it. Use "reward points" to see current point
+balances per family member.
+
+  # Check point balances, then redeem a reward
+  skylight reward points
+  skylight reward redeem --reward-id 12345678`,
 }
 
 var rewardListCmd = &cobra.Command{

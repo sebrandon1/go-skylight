@@ -23,6 +23,15 @@ var (
 var calendarCmd = &cobra.Command{
 	Use:   "calendar",
 	Short: "Calendar event management commands",
+	Long: `Create, list, update, and delete calendar events on a Skylight frame.
+
+Events created here appear alongside any connected source calendars
+(Google, Apple, etc.) — see "calendar sources" to list those. Use
+"calendar week" for a 7-day Mon-Sun view instead of a raw list.
+
+  # List this week's events, then create a new one
+  skylight calendar week
+  skylight calendar create --title "Dentist" --start-at 2026-06-05T09:00:00Z --end-at 2026-06-05T10:00:00Z`,
 }
 
 var calendarListCmd = &cobra.Command{

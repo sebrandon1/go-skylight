@@ -21,6 +21,15 @@ var (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List management commands",
+	Long: `Manage to-do and shopping lists and their items on a Skylight frame.
+
+Lists have a title, color, and kind (e.g. to_do, shopping). Use
+"list info" to fetch a single list with its items included, or
+"list clear-completed" to bulk-remove finished items.
+
+  # Create a list, then add an item to it
+  skylight list create --title "Groceries" --color "#F83922"
+  skylight list add-item --list-id 12345678 --title "Milk"`,
 }
 
 var listListCmd = &cobra.Command{

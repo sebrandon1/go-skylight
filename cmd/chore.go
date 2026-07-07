@@ -29,6 +29,15 @@ var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, li
 var choreCmd = &cobra.Command{
 	Use:   "chore",
 	Short: "Chore management commands",
+	Long: `Create, list, update, complete, delete, skip, and claim chores on a Skylight frame.
+
+Chores can be assigned to a family member or left up-for-grabs for
+anyone to claim. Prefer --after/--before over --date to filter chore
+list by date range, and --status to filter by pending/complete/skipped.
+
+  # Find today's pending chores, then complete one
+  skylight chore list --after 2026-06-05 --before 2026-06-05 --status pending
+  skylight chore complete --chore-id 12345678`,
 }
 
 var choreListCmd = &cobra.Command{
