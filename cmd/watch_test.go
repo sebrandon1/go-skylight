@@ -9,8 +9,8 @@ func TestParseWatchResources_All(t *testing.T) {
 	cases := []string{"", "all"}
 	for _, c := range cases {
 		got := parseWatchResources(c)
-		if len(got) != 3 {
-			t.Errorf("parseWatchResources(%q): expected 3 resources, got %d: %v", c, len(got), got)
+		if len(got) != len(allWatchResources) {
+			t.Errorf("parseWatchResources(%q): expected %d resources, got %d: %v", c, len(allWatchResources), len(got), got)
 		}
 	}
 }
@@ -124,7 +124,7 @@ func TestWatchCmdHasFlags(t *testing.T) {
 
 func TestWatchCmdLong_ContainsResources(t *testing.T) {
 	long := watchCmd.Long
-	for _, r := range []string{"rewards", "chores", "calendar"} {
+	for _, r := range []string{"rewards", "chores", "calendar", "lists", "routines"} {
 		if !strings.Contains(long, r) {
 			t.Errorf("expected %q mentioned in watch command long description", r)
 		}
