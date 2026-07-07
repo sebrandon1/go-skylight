@@ -80,6 +80,11 @@ jobs:
     - name: Download dependencies
       run: go mod download
 
+    - name: Verify go.mod/go.sum are tidy
+      run: |
+        go mod tidy
+        git diff --exit-code go.mod go.sum
+
     - name: Build binary
       run: |
         VERSION=$(git describe --tags --always 2>/dev/null || echo "dev")
