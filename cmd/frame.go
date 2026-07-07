@@ -11,6 +11,15 @@ var currentAlbumID int
 var frameCmd = &cobra.Command{
 	Use:   "frame",
 	Short: "Frame and device info commands",
+	Long: `Inspect and configure the Skylight frame device itself.
+
+Covers account-level frame listing, per-frame info/devices, the
+available avatar/color palettes used elsewhere (e.g. family member
+categories), and switching the active photo slideshow album.
+
+  # Find your frame ID, then check its info
+  skylight frame list
+  skylight frame info --frame-id 12345678`,
 }
 
 var frameListCmd = &cobra.Command{

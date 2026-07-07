@@ -23,6 +23,12 @@ var (
 var bountyCmd = &cobra.Command{
 	Use:   "bounty",
 	Short: "Bounty management (chore + reward pairs)",
+	Long: `Create and manage bounties: a chore and a reward created together,
+matched by point value so completing the chore earns exactly enough
+points to redeem the paired reward.
+
+  # Create a $10-point bounty due next Friday
+  skylight bounty create --title "Wash the car" --points 10 --reward-title "Ice cream" --due-date 2026-06-05`,
 }
 
 var bountyCreateCmd = &cobra.Command{
