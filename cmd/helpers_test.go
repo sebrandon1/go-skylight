@@ -602,6 +602,33 @@ func TestBuildCatNames(t *testing.T) {
 	}
 }
 
+func TestResolveRewardPointNames(t *testing.T) {
+	categories := []lib.Category{
+		{ID: "1", Name: "Alice"},
+		{ID: "2", Name: "Bob"},
+	}
+	points := []lib.RewardPointEntry{
+		{CategoryID: 1, CurrentPointBalance: 10},
+		{CategoryID: 2, CurrentPointBalance: 20},
+		{CategoryID: 99, CurrentPointBalance: 5}, // no matching category
+	}
+
+	got := resolveRewardPointNames(points, categories)
+	want := []pointEntry{
+		{Name: "Alice", Balance: 10},
+		{Name: "Bob", Balance: 20},
+		{Name: "99", Balance: 5},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d entries, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("entry %d: got %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}
+
 func TestGetFrameOrFail_Success(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

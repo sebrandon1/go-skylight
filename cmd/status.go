@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -62,21 +61,11 @@ var statusCmd = &cobra.Command{
 		}
 		incompleteItems, listErrors := countIncompleteListItems(client, frameID, lists)
 
-		catNames := make(map[int]string, len(categories))
-		for _, c := range categories {
-			id, convErr := strconv.Atoi(c.ID)
-			if convErr == nil {
-				catNames[id] = c.Name
-			}
-		}
+		pointEntries := resolveRewardPointNames(points, categories)
 
 		var pointParts []string
-		for _, p := range points {
-			name := catNames[p.CategoryID]
-			if name == "" {
-				name = strconv.Itoa(p.CategoryID)
-			}
-			pointParts = append(pointParts, fmt.Sprintf("%s: %d", name, p.CurrentPointBalance))
+		for _, pe := range pointEntries {
+			pointParts = append(pointParts, fmt.Sprintf("%s: %d", pe.Name, pe.Balance))
 		}
 		pointsStr := strings.Join(pointParts, "  ")
 		if pointsStr == "" {
@@ -84,18 +73,6 @@ var statusCmd = &cobra.Command{
 		}
 
 		if outputFormat == outputJSON {
-			type pointEntry struct {
-				Name    string `json:"name"`
-				Balance int    `json:"balance"`
-			}
-			var pointEntries []pointEntry
-			for _, p := range points {
-				name := catNames[p.CategoryID]
-				if name == "" {
-					name = strconv.Itoa(p.CategoryID)
-				}
-				pointEntries = append(pointEntries, pointEntry{Name: name, Balance: p.CurrentPointBalance})
-			}
 			printJSON(map[string]any{
 				"frame":                 frame.Name,
 				"pending_chores":        len(chores),

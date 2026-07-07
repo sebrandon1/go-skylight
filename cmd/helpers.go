@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -58,6 +59,31 @@ func validateEnum(value string, allowed []string) error {
 		return nil
 	}
 	return fmt.Errorf("invalid value %q: must be one of %s", value, strings.Join(allowed, ", "))
+}
+
+// pointEntry is a reward point balance with its category ID resolved to a
+// human-readable name.
+type pointEntry struct {
+	Name    string `json:"name"`
+	Balance int    `json:"balance"`
+}
+
+// resolveRewardPointNames maps each point entry's numeric CategoryID to a
+// human-readable name via categories, falling back to the numeric ID as a
+// string when no matching category is found.
+func resolveRewardPointNames(points []lib.RewardPointEntry, categories []lib.Category) []pointEntry {
+	catNames := buildCatNames(categories)
+
+	entries := make([]pointEntry, 0, len(points))
+	for _, p := range points {
+		key := strconv.Itoa(p.CategoryID)
+		name := catNames[key]
+		if name == "" {
+			name = key
+		}
+		entries = append(entries, pointEntry{Name: name, Balance: p.CurrentPointBalance})
+	}
+	return entries
 }
 
 func buildCatNames(categories []lib.Category) map[string]string {

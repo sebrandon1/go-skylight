@@ -21,6 +21,8 @@ func rewardMockHandler() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 		case strings.HasSuffix(r.URL.Path, "/reward_points"):
 			fmt.Fprint(w, `[{"category_id":1,"current_point_balance":5}]`)
+		case strings.HasSuffix(r.URL.Path, "/categories"):
+			fmt.Fprint(w, `{"data":[{"id":"1","attributes":{"label":"Mom","color":"#FF0000"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/rewards") && r.Method == http.MethodPost:
 			fmt.Fprint(w, `{"data":[{"id":"reward1","attributes":{"name":"Ice cream","point_value":10}}]}`)
 		default:
@@ -107,8 +109,11 @@ func TestRewardPointsCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
 
 	out := captureStdout(func() { rewardPointsCmd.Run(rewardPointsCmd, nil) })
-	if !strings.Contains(out, "current_point_balance") {
-		t.Errorf("expected points in output, got: %s", out)
+	if !strings.Contains(out, `"name": "Mom"`) {
+		t.Errorf("expected resolved category name in output, got: %s", out)
+	}
+	if !strings.Contains(out, `"balance": 5`) {
+		t.Errorf("expected point balance in output, got: %s", out)
 	}
 }
 
