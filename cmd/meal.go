@@ -221,6 +221,23 @@ var mealAddToGroceryCmd = &cobra.Command{
 	},
 }
 
+var mealGetSittingCmd = &cobra.Command{
+	Use:   "get-sitting",
+	Short: "Get meal sitting details",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+
+		client := getClient()
+
+		sitting, err := client.GetMealSitting(frameID, sittingID)
+		if err != nil {
+			fatal("getting meal sitting", err)
+		}
+
+		printJSON(sitting)
+	},
+}
+
 var mealSittingRecipeCmd = &cobra.Command{
 	Use:   "sitting-recipe",
 	Short: "View recipe details from a meal sitting",
@@ -315,6 +332,7 @@ func init() {
 	mealCmd.AddCommand(mealSittingsCmd)
 	mealCmd.AddCommand(mealCreateSittingCmd)
 	mealCmd.AddCommand(mealDeleteSittingCmd)
+	mealCmd.AddCommand(mealGetSittingCmd)
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 	mealCmd.AddCommand(mealSittingRecipeCmd)
 	mealCmd.AddCommand(mealPlanCmd)
@@ -354,6 +372,9 @@ func init() {
 	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
 	markFlagRequired(mealDeleteSittingCmd, "sitting-id")
 	markFlagRequired(mealDeleteSittingCmd, "date")
+
+	mealGetSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	markFlagRequired(mealGetSittingCmd, "sitting-id")
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	markFlagRequired(mealAddToGroceryCmd, "recipe-id")
