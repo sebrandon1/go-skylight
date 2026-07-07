@@ -50,7 +50,8 @@ var homeCmd = &cobra.Command{
 			go func() {
 				defer wg.Done()
 				chores, choreErr = client.ListChores(frameID, lib.ChoreListOptions{
-					Date:   today,
+					After:  today,
+					Before: today,
 					Status: lib.ChoreStatusPending,
 				})
 			}()
