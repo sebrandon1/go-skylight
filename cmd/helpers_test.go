@@ -395,6 +395,29 @@ func TestValidateDate(t *testing.T) {
 	}
 }
 
+func TestValidateEnum(t *testing.T) {
+	allowed := []string{"json", "table"}
+	cases := []struct {
+		input string
+		valid bool
+	}{
+		{"", true},
+		{"json", true},
+		{"table", true},
+		{"xml", false},
+		{"JSON", false},
+	}
+	for _, c := range cases {
+		err := validateEnum(c.input, allowed)
+		if c.valid && err != nil {
+			t.Errorf("validateEnum(%q): expected no error, got %v", c.input, err)
+		}
+		if !c.valid && err == nil {
+			t.Errorf("validateEnum(%q): expected error, got nil", c.input)
+		}
+	}
+}
+
 func TestPrintOutputDevicesTable(t *testing.T) {
 	outputFormat = outputTable
 	t.Cleanup(func() { outputFormat = outputJSON })
