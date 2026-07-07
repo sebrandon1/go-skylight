@@ -17,6 +17,8 @@ const (
 	watchResourceRewards  = "rewards"
 	watchResourceChores   = "chores"
 	watchResourceCalendar = "calendar"
+	watchResourceLists    = "lists"
+	watchResourceRoutines = "routines"
 )
 
 var (
@@ -24,7 +26,7 @@ var (
 	watchResources string
 	watchPersist   bool
 
-	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar}
+	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar, watchResourceLists, watchResourceRoutines}
 
 	validWatchResources = func() map[string]struct{} {
 		m := make(map[string]struct{}, len(allWatchResources))
@@ -41,9 +43,11 @@ var watchCmd = &cobra.Command{
 	Long: `Poll Skylight resources at a regular interval and print new events.
 
 Tracks previously-seen IDs in memory and emits only newly-observed changes:
-  - rewards: newly redeemed rewards
-  - chores:  chores newly marked complete
+  - rewards:  newly redeemed rewards
+  - chores:   chores newly marked complete
   - calendar: events starting within the next hour
+  - lists:    newly created lists
+  - routines: newly created routines
 
 Use --persist to persist reward deduplication state to disk
 (~/.skylight/poller-state.json) so restarts do not re-emit already-seen
@@ -70,10 +74,12 @@ Press Ctrl+C to stop.`,
 		frame := getFrameOrFail(client, frameID)
 
 		state := &watchState{
-			seenRewardIDs: make(map[string]struct{}),
-			seenChoreIDs:  make(map[string]struct{}),
-			seenEventIDs:  make(map[string]struct{}),
-			timezone:      frame.TimeZone,
+			seenRewardIDs:  make(map[string]struct{}),
+			seenChoreIDs:   make(map[string]struct{}),
+			seenEventIDs:   make(map[string]struct{}),
+			seenListIDs:    make(map[string]struct{}),
+			seenRoutineIDs: make(map[string]struct{}),
+			timezone:       frame.TimeZone,
 		}
 
 		pollResources := resources
@@ -121,11 +127,13 @@ Press Ctrl+C to stop.`,
 }
 
 type watchState struct {
-	seenRewardIDs map[string]struct{}
-	seenChoreIDs  map[string]struct{}
-	seenEventIDs  map[string]struct{}
-	seeding       bool
-	timezone      string
+	seenRewardIDs  map[string]struct{}
+	seenChoreIDs   map[string]struct{}
+	seenEventIDs   map[string]struct{}
+	seenListIDs    map[string]struct{}
+	seenRoutineIDs map[string]struct{}
+	seeding        bool
+	timezone       string
 }
 
 func containsResource(resources []string, target string) bool {
@@ -211,6 +219,18 @@ func poll(client *lib.Client, state *watchState, resources []string) {
 				defer wg.Done()
 				pollCalendar(client, state, now, ts)
 			}()
+		case watchResourceLists:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollLists(client, state, ts)
+			}()
+		case watchResourceRoutines:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollRoutines(client, state, ts)
+			}()
 		}
 	}
 	wg.Wait()
@@ -241,6 +261,54 @@ func pollRewards(client *lib.Client, state *watchState, ts string) {
 		} else {
 			fmt.Printf("[%s] REWARD REDEEMED  %s (%d pts) — category %s\n",
 				ts, r.Title, r.Points, r.CategoryID)
+		}
+	}
+}
+
+func pollLists(client *lib.Client, state *watchState, ts string) {
+	lists, err := client.ListLists(frameID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[%s] Error listing lists: %v\n", ts, err)
+		return
+	}
+	for _, l := range lists {
+		if _, seen := state.seenListIDs[l.ID]; seen {
+			continue
+		}
+		state.seenListIDs[l.ID] = struct{}{}
+		if state.seeding {
+			continue
+		}
+		if outputFormat == outputJSON {
+			printJSON(map[string]any{
+				"type": "list_created", "id": l.ID, "title": l.Title, "ts": ts,
+			})
+		} else {
+			fmt.Printf("[%s] LIST CREATED     %s\n", ts, l.Title)
+		}
+	}
+}
+
+func pollRoutines(client *lib.Client, state *watchState, ts string) {
+	routines, err := client.ListRoutines(frameID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[%s] Error listing routines: %v\n", ts, err)
+		return
+	}
+	for _, r := range routines {
+		if _, seen := state.seenRoutineIDs[r.ID]; seen {
+			continue
+		}
+		state.seenRoutineIDs[r.ID] = struct{}{}
+		if state.seeding {
+			continue
+		}
+		if outputFormat == outputJSON {
+			printJSON(map[string]any{
+				"type": "routine_created", "id": r.ID, "title": r.Title, "ts": ts,
+			})
+		} else {
+			fmt.Printf("[%s] ROUTINE CREATED  %s\n", ts, r.Title)
 		}
 	}
 }
@@ -313,6 +381,6 @@ func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts strin
 func init() {
 	rootCmd.AddCommand(watchCmd)
 	watchCmd.Flags().IntVar(&watchInterval, "interval", 60, "Poll interval in seconds")
-	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar")
+	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar,lists,routines")
 	watchCmd.Flags().BoolVar(&watchPersist, "persist", false, "Persist reward deduplication state to disk across restarts (~/.skylight/poller-state.json)")
 }

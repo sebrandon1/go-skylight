@@ -291,6 +291,102 @@ func TestPollCalendar_ListError(t *testing.T) {
 	pollCalendar(client, state, time.Now(), "12:00:00")
 }
 
+func TestPollLists(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"l1","attributes":{"label":"Groceries"}}]}`)
+	})
+
+	state := &watchState{seenListIDs: make(map[string]struct{})}
+
+	out := captureStdout(func() { pollLists(client, state, "12:00:00") })
+	if !strings.Contains(out, "Groceries") {
+		t.Errorf("expected new list in output, got: %s", out)
+	}
+	if _, seen := state.seenListIDs["l1"]; !seen {
+		t.Error("expected list l1 to be marked seen")
+	}
+
+	// Already-seen lists should not be re-printed.
+	out = captureStdout(func() { pollLists(client, state, "12:00:01") })
+	if strings.Contains(out, "Groceries") {
+		t.Errorf("already-seen list should not be re-printed, got: %s", out)
+	}
+}
+
+func TestPollLists_JSONOutput(t *testing.T) {
+	t.Cleanup(func() { outputFormat = "" })
+	outputFormat = outputJSON
+
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"l1","attributes":{"label":"Groceries"}}]}`)
+	})
+
+	state := &watchState{seenListIDs: make(map[string]struct{})}
+	out := captureStdout(func() { pollLists(client, state, "12:00:00") })
+	if !strings.Contains(out, `"id": "l1"`) {
+		t.Errorf("expected list id in JSON output, got: %s", out)
+	}
+}
+
+func TestPollLists_ListError(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	state := &watchState{seenListIDs: make(map[string]struct{})}
+	pollLists(client, state, "12:00:00")
+}
+
+func TestPollRoutines(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine"}}]}`)
+	})
+
+	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
+
+	out := captureStdout(func() { pollRoutines(client, state, "12:00:00") })
+	if !strings.Contains(out, "Morning Routine") {
+		t.Errorf("expected new routine in output, got: %s", out)
+	}
+	if _, seen := state.seenRoutineIDs["r1"]; !seen {
+		t.Error("expected routine r1 to be marked seen")
+	}
+
+	// Already-seen routines should not be re-printed.
+	out = captureStdout(func() { pollRoutines(client, state, "12:00:01") })
+	if strings.Contains(out, "Morning Routine") {
+		t.Errorf("already-seen routine should not be re-printed, got: %s", out)
+	}
+}
+
+func TestPollRoutines_JSONOutput(t *testing.T) {
+	t.Cleanup(func() { outputFormat = "" })
+	outputFormat = outputJSON
+
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine"}}]}`)
+	})
+
+	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
+	out := captureStdout(func() { pollRoutines(client, state, "12:00:00") })
+	if !strings.Contains(out, `"id": "r1"`) {
+		t.Errorf("expected routine id in JSON output, got: %s", out)
+	}
+}
+
+func TestPollRoutines_ListError(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
+	pollRoutines(client, state, "12:00:00")
+}
+
 func TestPoll_AllResources(t *testing.T) {
 	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -301,15 +397,21 @@ func TestPoll_AllResources(t *testing.T) {
 			fmt.Fprint(w, `{"data":[]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
 			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/lists"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/routines"):
+			fmt.Fprint(w, `{"data":[]}`)
 		default:
 			t.Fatalf("unexpected request: %s", r.URL.Path)
 		}
 	})
 
 	state := &watchState{
-		seenRewardIDs: make(map[string]struct{}),
-		seenChoreIDs:  make(map[string]struct{}),
-		seenEventIDs:  make(map[string]struct{}),
+		seenRewardIDs:  make(map[string]struct{}),
+		seenChoreIDs:   make(map[string]struct{}),
+		seenEventIDs:   make(map[string]struct{}),
+		seenListIDs:    make(map[string]struct{}),
+		seenRoutineIDs: make(map[string]struct{}),
 	}
 
 	// poll() fans the resources out over goroutines; a clean run with no
