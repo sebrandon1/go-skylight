@@ -118,7 +118,7 @@ func runImport(client *lib.Client, data ExportData, want map[string]bool) {
 		add(importCalendarEvents(client, data.CalendarEvents))
 	}
 
-	fmt.Printf("Imported %d/%d items successfully.\n", total-failed, total)
+	printSuccessf("Imported %d/%d items successfully.\n", total-failed, total)
 	if failed > 0 {
 		os.Exit(1)
 	}

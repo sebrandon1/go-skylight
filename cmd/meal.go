@@ -119,7 +119,7 @@ var mealDeleteRecipeCmd = &cobra.Command{
 			fatal("deleting recipe", err)
 		}
 
-		fmt.Println("Recipe deleted successfully")
+		printSuccess("Recipe deleted successfully")
 	},
 }
 
@@ -200,7 +200,7 @@ var mealDeleteSittingCmd = &cobra.Command{
 			fatal("deleting meal sitting", err)
 		}
 
-		fmt.Println("Meal sitting deleted successfully")
+		printSuccess("Meal sitting deleted successfully")
 	},
 }
 
@@ -217,7 +217,7 @@ var mealAddToGroceryCmd = &cobra.Command{
 			fatal("adding to grocery list", err)
 		}
 
-		fmt.Println("Recipe added to grocery list successfully")
+		printSuccess("Recipe added to grocery list successfully")
 	},
 }
 

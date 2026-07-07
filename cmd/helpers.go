@@ -24,6 +24,25 @@ func fatal(msg string, err error) {
 	os.Exit(1)
 }
 
+// printSuccess prints a human-readable confirmation message, unless --quiet
+// was set, in which case it's suppressed. Use for post-mutation confirmations
+// (e.g. "X deleted successfully") — never for primary command output.
+func printSuccess(msg string) {
+	if quiet {
+		return
+	}
+	fmt.Println(msg)
+}
+
+// printSuccessf is printSuccess with fmt.Printf-style formatting, for
+// confirmations that carry dynamic content (e.g. an item count).
+func printSuccessf(format string, args ...any) {
+	if quiet {
+		return
+	}
+	fmt.Printf(format, args...)
+}
+
 // markFlagRequired marks a flag as required, panicking if the flag name
 // doesn't exist on the command. A failure here is a programmer error
 // (typo'd flag name) that should be caught immediately rather than

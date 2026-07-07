@@ -103,7 +103,7 @@ var photoDeleteCmd = &cobra.Command{
 			fatal("deleting photos", err)
 		}
 
-		fmt.Println("Photos deleted successfully")
+		printSuccess("Photos deleted successfully")
 	},
 }
 

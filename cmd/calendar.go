@@ -91,7 +91,7 @@ var calendarDeleteCmd = &cobra.Command{
 			fatal("deleting calendar event", err)
 		}
 
-		fmt.Println("Calendar event deleted successfully")
+		printSuccess("Calendar event deleted successfully")
 	},
 }
 

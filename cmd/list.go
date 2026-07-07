@@ -94,7 +94,7 @@ var listDeleteCmd = &cobra.Command{
 			fatal("deleting list", err)
 		}
 
-		fmt.Println("List deleted successfully")
+		printSuccess("List deleted successfully")
 	},
 }
 
@@ -130,7 +130,7 @@ var listDeleteItemCmd = &cobra.Command{
 			fatal("deleting list item", err)
 		}
 
-		fmt.Println("List item deleted successfully")
+		printSuccess("List item deleted successfully")
 	},
 }
 
@@ -224,7 +224,7 @@ var listClearCompletedCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("Deleted %d completed item(s)\n", deleted)
+		printSuccessf("Deleted %d completed item(s)\n", deleted)
 	},
 }
 
