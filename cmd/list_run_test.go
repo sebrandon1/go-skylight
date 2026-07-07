@@ -96,6 +96,21 @@ func TestListDeleteCmd(t *testing.T) {
 	}
 }
 
+func TestListDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := listID, dryRun
+	listID, dryRun = "list1", true
+	t.Cleanup(func() { listID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() { listDeleteCmd.Run(listDeleteCmd, nil) })
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
 func TestListAddItemCmd(t *testing.T) {
 	newCmdTestClient(t, listMockHandler())
 	origID, origTitle := listID, listItemTitle
@@ -117,6 +132,21 @@ func TestListDeleteItemCmd(t *testing.T) {
 	out := captureStdout(func() { listDeleteItemCmd.Run(listDeleteItemCmd, nil) })
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestListDeleteItemCmd_DryRun(t *testing.T) {
+	origID, origItemID, origDryRun := listID, listItemID, dryRun
+	listID, listItemID, dryRun = "list1", "item1", true
+	t.Cleanup(func() { listID, listItemID, dryRun = origID, origItemID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() { listDeleteItemCmd.Run(listDeleteItemCmd, nil) })
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
 	}
 }
 

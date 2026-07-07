@@ -19,6 +19,11 @@ const (
 	boolNo  = "no"
 )
 
+// dryRun is shared by delete/redeem/unredeem commands that support --dry-run
+// (only one command runs per invocation, so sharing the backing var across
+// several commands' flag registrations is safe).
+var dryRun bool
+
 func fatal(msg string, err error) {
 	fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
 	os.Exit(1)
@@ -41,6 +46,15 @@ func printSuccessf(format string, args ...any) {
 		return
 	}
 	fmt.Printf(format, args...)
+}
+
+// printDryRun prints a "Dry run: would ..." preview for --dry-run commands.
+// Deliberately not gated by --quiet: it's the only output a dry-run
+// invocation produces, so suppressing it would leave no signal that
+// anything was evaluated at all — unlike printSuccess/printSuccessf, which
+// gate confirmations layered on top of output that already happened.
+func printDryRun(format string, args ...any) {
+	fmt.Printf("Dry run: would "+format+"\n", args...)
 }
 
 // markFlagRequired marks a flag as required, panicking if the flag name

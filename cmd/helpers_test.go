@@ -673,6 +673,23 @@ func TestPrintSuccessf(t *testing.T) {
 	}
 }
 
+func TestPrintDryRun(t *testing.T) {
+	t.Cleanup(func() { quiet = false })
+
+	out := captureStdout(func() { printDryRun("delete chore %s", "c1") })
+	if !strings.Contains(out, "Dry run: would delete chore c1") {
+		t.Errorf("expected dry run message, got: %q", out)
+	}
+
+	// Unlike printSuccess/printSuccessf, --quiet must not suppress this —
+	// it's the only output a dry-run invocation produces.
+	quiet = true
+	out = captureStdout(func() { printDryRun("delete chore %s", "c1") })
+	if !strings.Contains(out, "Dry run: would delete chore c1") {
+		t.Errorf("expected dry run message even with --quiet, got: %q", out)
+	}
+}
+
 // TestFatal_Crasher is invoked as a subprocess by TestFatal to exercise the
 // os.Exit(1) path without terminating the real test binary.
 func TestFatal_Crasher(t *testing.T) {

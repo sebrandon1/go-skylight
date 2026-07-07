@@ -87,6 +87,11 @@ var listDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
+		if dryRun {
+			printDryRun("delete list %s", listID)
+			return
+		}
+
 		client := getClient()
 
 		err := client.DeleteList(frameID, listID)
@@ -122,6 +127,11 @@ var listDeleteItemCmd = &cobra.Command{
 	Short: "Delete an item from a list",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
+
+		if dryRun {
+			printDryRun("delete item %s from list %s", listItemID, listID)
+			return
+		}
 
 		client := getClient()
 
@@ -252,6 +262,7 @@ func init() {
 	markFlagRequired(listCreateCmd, "title")
 
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	markFlagRequired(listDeleteCmd, "list-id")
 
 	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
@@ -274,6 +285,7 @@ func init() {
 
 	listDeleteItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
+	listDeleteItemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	markFlagRequired(listDeleteItemCmd, "list-id")
 	markFlagRequired(listDeleteItemCmd, "item-id")
 
