@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -47,6 +48,20 @@ var statusCmd = &cobra.Command{
 			fatal("getting reward points", err)
 		}
 
+		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
+			DateMin: today,
+			DateMax: today,
+		})
+		if err != nil {
+			fatal("listing meal sittings", err)
+		}
+
+		lists, err := client.ListLists(frameID)
+		if err != nil {
+			fatal("listing lists", err)
+		}
+		incompleteItems, listErrors := countIncompleteListItems(client, frameID, lists)
+
 		catNames := make(map[int]string, len(categories))
 		for _, c := range categories {
 			id, convErr := strconv.Atoi(c.ID)
@@ -82,10 +97,14 @@ var statusCmd = &cobra.Command{
 				pointEntries = append(pointEntries, pointEntry{Name: name, Balance: p.CurrentPointBalance})
 			}
 			printJSON(map[string]any{
-				"frame":          frame.Name,
-				"pending_chores": len(chores),
-				"events_today":   len(events),
-				"points":         pointEntries,
+				"frame":                 frame.Name,
+				"pending_chores":        len(chores),
+				"events_today":          len(events),
+				"points":                pointEntries,
+				"meal_sittings_today":   len(sittings),
+				"active_lists":          len(lists),
+				"incomplete_list_items": incompleteItems,
+				"list_errors":           listErrors,
 			})
 			return
 		}
@@ -93,8 +112,48 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("Frame:   %s\n", frame.Name)
 		fmt.Printf("Chores:  %d pending today\n", len(chores))
 		fmt.Printf("Events:  %d today\n", len(events))
+		fmt.Printf("Meals:   %d today\n", len(sittings))
+		listsLine := fmt.Sprintf("%d active, %d incomplete items", len(lists), incompleteItems)
+		if listErrors > 0 {
+			listsLine += fmt.Sprintf(" (%d lists unavailable)", listErrors)
+		}
+		fmt.Printf("Lists:   %s\n", listsLine)
 		fmt.Printf("Points:  %s\n", pointsStr)
 	},
+}
+
+// countIncompleteListItems fetches each list's full detail concurrently and
+// counts incomplete items. ListLists does not populate item data, so this
+// requires one GetList call per list. A failed list is excluded from the
+// count rather than failing the whole status command (this is supplementary
+// detail on top of the primary status fields), but the number of failures is
+// returned so callers can surface it instead of silently under-reporting.
+func countIncompleteListItems(client *lib.Client, frameID string, lists []lib.List) (incomplete, errors int) {
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
+	wg.Add(len(lists))
+	for _, l := range lists {
+		go func(l lib.List) {
+			defer wg.Done()
+			full, err := client.GetList(frameID, l.ID)
+
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errors++
+				return
+			}
+			for _, item := range full.Items {
+				if !item.Completed {
+					incomplete++
+				}
+			}
+		}(l)
+	}
+	wg.Wait()
+	return incomplete, errors
 }
 
 func init() {
