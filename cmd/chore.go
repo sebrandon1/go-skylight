@@ -143,7 +143,7 @@ var choreDeleteCmd = &cobra.Command{
 			fatal("deleting chore", err)
 		}
 
-		fmt.Println("Chore deleted successfully")
+		printSuccess("Chore deleted successfully")
 	},
 }
 
@@ -159,7 +159,7 @@ var choreCompleteCmd = &cobra.Command{
 			fatal("completing chore", err)
 		}
 
-		fmt.Println("Chore completed successfully")
+		printSuccess("Chore completed successfully")
 	},
 }
 
@@ -237,7 +237,7 @@ The date suffix in the chore ID identifies the specific instance.`,
 			fatal("skipping chore", err)
 		}
 
-		fmt.Println("Chore skipped successfully")
+		printSuccess("Chore skipped successfully")
 	},
 }
 

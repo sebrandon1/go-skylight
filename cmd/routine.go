@@ -103,7 +103,7 @@ var routineDeleteCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("Routine deleted successfully")
+		printSuccess("Routine deleted successfully")
 	},
 }
 
@@ -120,7 +120,7 @@ var routineReorderCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("Routines reordered successfully")
+		printSuccess("Routines reordered successfully")
 	},
 }
 

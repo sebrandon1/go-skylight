@@ -87,6 +87,22 @@ func TestChoreDeleteCmd(t *testing.T) {
 	}
 }
 
+func TestChoreDeleteCmd_Quiet(t *testing.T) {
+	newCmdTestClient(t, choreMockHandler())
+	origID := choreID
+	choreID = "c1"
+	t.Cleanup(func() { choreID = origID })
+
+	origQuiet := quiet
+	quiet = true
+	t.Cleanup(func() { quiet = origQuiet })
+
+	out := captureStdout(func() { choreDeleteCmd.Run(choreDeleteCmd, nil) })
+	if out != "" {
+		t.Errorf("expected no output with --quiet, got: %s", out)
+	}
+}
+
 func TestChoreCompleteCmd(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
 	origID := choreID

@@ -76,7 +76,7 @@ var groceryOrganizeCmd = &cobra.Command{
 			fatal("organizing grocery list", err)
 		}
 
-		fmt.Println("Grocery list organized successfully")
+		printSuccess("Grocery list organized successfully")
 	},
 }
 
@@ -96,7 +96,7 @@ var groceryOrderCmd = &cobra.Command{
 		if url != "" {
 			fmt.Printf("Order URL: %s\n", url)
 		} else {
-			fmt.Println("Order submitted successfully")
+			printSuccess("Order submitted successfully")
 		}
 	},
 }
@@ -132,7 +132,7 @@ var groceryAddCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("Added %d item(s) to grocery list\n", len(groceryItems))
+		printSuccessf("Added %d item(s) to grocery list\n", len(groceryItems))
 	},
 }
 
@@ -148,7 +148,7 @@ var groceryAddRecipeCmd = &cobra.Command{
 			fatal("adding recipe to grocery list", err)
 		}
 
-		fmt.Println("Recipe added to grocery list successfully")
+		printSuccess("Recipe added to grocery list successfully")
 	},
 }
 
@@ -165,7 +165,7 @@ var groceryClearCmd = &cobra.Command{
 			fatal("clearing grocery list", err)
 		}
 
-		fmt.Printf("Cleared %d completed item(s) from grocery list\n", n)
+		printSuccessf("Cleared %d completed item(s) from grocery list\n", n)
 	},
 }
 

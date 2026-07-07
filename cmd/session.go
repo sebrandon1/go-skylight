@@ -35,7 +35,7 @@ persist the credentials so subsequent commands authenticate automatically.`,
 			fatal("logging in", err)
 		}
 
-		fmt.Println("Login successful!")
+		printSuccess("Login successful!")
 		fmt.Printf("Access Token:  %s\n", tok.AccessToken)
 		fmt.Printf("Refresh Token: %s\n", tok.RefreshToken)
 		fmt.Printf("Fingerprint:   %s\n", fingerprint)

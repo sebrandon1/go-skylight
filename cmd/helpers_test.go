@@ -641,6 +641,38 @@ func TestGetFrameOrFail_Success(t *testing.T) {
 	}
 }
 
+func TestPrintSuccess(t *testing.T) {
+	t.Cleanup(func() { quiet = false })
+
+	quiet = false
+	out := captureStdout(func() { printSuccess("done") })
+	if !strings.Contains(out, "done") {
+		t.Errorf("expected message when quiet is false, got: %q", out)
+	}
+
+	quiet = true
+	out = captureStdout(func() { printSuccess("done") })
+	if out != "" {
+		t.Errorf("expected no output when quiet is true, got: %q", out)
+	}
+}
+
+func TestPrintSuccessf(t *testing.T) {
+	t.Cleanup(func() { quiet = false })
+
+	quiet = false
+	out := captureStdout(func() { printSuccessf("done %d\n", 3) })
+	if !strings.Contains(out, "done 3") {
+		t.Errorf("expected formatted message when quiet is false, got: %q", out)
+	}
+
+	quiet = true
+	out = captureStdout(func() { printSuccessf("done %d\n", 3) })
+	if out != "" {
+		t.Errorf("expected no output when quiet is true, got: %q", out)
+	}
+}
+
 // TestFatal_Crasher is invoked as a subprocess by TestFatal to exercise the
 // os.Exit(1) path without terminating the real test binary.
 func TestFatal_Crasher(t *testing.T) {

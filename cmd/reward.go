@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
@@ -82,7 +80,7 @@ var rewardDeleteCmd = &cobra.Command{
 			fatal("deleting reward", err)
 		}
 
-		fmt.Println("Reward deleted successfully")
+		printSuccess("Reward deleted successfully")
 	},
 }
 
@@ -99,7 +97,7 @@ var rewardRedeemCmd = &cobra.Command{
 			fatal("redeeming reward", err)
 		}
 
-		fmt.Println("Reward redeemed successfully")
+		printSuccess("Reward redeemed successfully")
 	},
 }
 
@@ -116,7 +114,7 @@ var rewardUnredeemCmd = &cobra.Command{
 			fatal("unredeeming reward", err)
 		}
 
-		fmt.Println("Reward unredeemed successfully")
+		printSuccess("Reward unredeemed successfully")
 	},
 }
 

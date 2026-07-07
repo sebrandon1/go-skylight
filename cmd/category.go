@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
@@ -72,7 +70,7 @@ var categoryDeleteCmd = &cobra.Command{
 			fatal("deleting category", err)
 		}
 
-		fmt.Println("Category deleted successfully")
+		printSuccess("Category deleted successfully")
 	},
 }
 

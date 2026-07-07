@@ -84,7 +84,7 @@ var bountyDeleteCmd = &cobra.Command{
 			fatal("deleting bounty", err)
 		}
 
-		fmt.Println("Bounty deleted.")
+		printSuccess("Bounty deleted.")
 	},
 }
 
