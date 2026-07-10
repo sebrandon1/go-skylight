@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -52,17 +53,17 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 }
 
 // DeleteBounty deletes the chore and reward that make up a bounty.
-// Both deletions are attempted; the first error encountered is returned.
+// Both deletions are always attempted; any errors are joined and returned together.
 func (c *Client) DeleteBounty(frameID, choreID, rewardID string) error {
 	choreErr := c.DeleteChore(frameID, choreID)
 	rewardErr := c.DeleteReward(frameID, rewardID)
 	if choreErr != nil {
-		return fmt.Errorf("failed to delete bounty chore: %w", choreErr)
+		choreErr = fmt.Errorf("failed to delete bounty chore: %w", choreErr)
 	}
 	if rewardErr != nil {
-		return fmt.Errorf("failed to delete bounty reward: %w", rewardErr)
+		rewardErr = fmt.Errorf("failed to delete bounty reward: %w", rewardErr)
 	}
-	return nil
+	return errors.Join(choreErr, rewardErr)
 }
 
 // UpdateBounty updates the chore and reward that make up a bounty.
