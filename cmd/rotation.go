@@ -57,4 +57,8 @@ func init() {
 	rotationCreateCmd.Flags().StringVar(&rotationStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
 	rotationCreateCmd.Flags().IntVar(&rotationWeeks, "weeks", 4, "Number of weeks")
 	rotationCreateCmd.Flags().IntVar(&rotationPoints, "points", 0, "Points per chore")
+
+	markFlagRequired(rotationCreateCmd, "chores")
+	markFlagRequired(rotationCreateCmd, "assignee-ids")
+	markFlagRequired(rotationCreateCmd, "start-date")
 }
