@@ -137,8 +137,11 @@ func (c *Client) UpdateListItem(frameID, listID, itemID string, item ListItemDat
 	}
 	if item.Completed {
 		send.Status = listItemStatusCompleted
+	} else if item.CompletedSet {
+		// Caller explicitly requested incomplete (e.g. --completed=false with --title).
+		send.Status = listItemStatusPending
 	} else if item.Title == "" && item.Position == 0 {
-		// Explicit incomplete when only status is being changed
+		// Legacy: status-only update with zero-value fields → pending.
 		send.Status = listItemStatusPending
 	}
 

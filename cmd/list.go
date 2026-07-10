@@ -195,6 +195,7 @@ var listUpdateItemCmd = &cobra.Command{
 		}
 		if cmd.Flags().Changed("completed") {
 			data.Completed = listItemCompleted
+			data.CompletedSet = true
 		}
 
 		item, err := client.UpdateListItem(frameID, listID, listItemID, data)
