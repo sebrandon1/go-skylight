@@ -201,3 +201,13 @@ func printTableOutputMore(data any) bool {
 func newTableWriter() *tabwriter.Writer {
 	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 }
+
+func filterEmptyStrings(ss []string) []string {
+	out := ss[:0:0]
+	for _, s := range ss {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}

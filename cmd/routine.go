@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
@@ -31,8 +28,7 @@ var routineListCmd = &cobra.Command{
 
 		routines, err := client.ListRoutines(frameID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error listing routines: %v\n", err)
-			os.Exit(1)
+			fatal("listing routines", err)
 		}
 
 		printOutput(routines)
@@ -53,8 +49,7 @@ var routineCreateCmd = &cobra.Command{
 			Steps:      filterEmptyStrings(routineSteps),
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating routine: %v\n", err)
-			os.Exit(1)
+			fatal("creating routine", err)
 		}
 
 		printJSON(routine)
@@ -82,8 +77,7 @@ var routineUpdateCmd = &cobra.Command{
 
 		routine, err := client.UpdateRoutine(frameID, routineID, data)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error updating routine: %v\n", err)
-			os.Exit(1)
+			fatal("updating routine", err)
 		}
 
 		printJSON(routine)
@@ -99,8 +93,7 @@ var routineDeleteCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.DeleteRoutine(frameID, routineID); err != nil {
-			fmt.Fprintf(os.Stderr, "Error deleting routine: %v\n", err)
-			os.Exit(1)
+			fatal("deleting routine", err)
 		}
 
 		printSuccess("Routine deleted successfully")
@@ -116,22 +109,11 @@ var routineReorderCmd = &cobra.Command{
 		client := getClient()
 
 		if err := client.ReorderRoutines(frameID, routineIDs); err != nil {
-			fmt.Fprintf(os.Stderr, "Error reordering routines: %v\n", err)
-			os.Exit(1)
+			fatal("reordering routines", err)
 		}
 
 		printSuccess("Routines reordered successfully")
 	},
-}
-
-func filterEmptyStrings(ss []string) []string {
-	out := ss[:0:0]
-	for _, s := range ss {
-		if s != "" {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 func init() {
