@@ -101,6 +101,66 @@ func TestParseRetryAfter(t *testing.T) {
 	})
 }
 
+func TestParseNotFoundPath(t *testing.T) {
+	tests := []struct {
+		path         string
+		wantResource string
+		wantID       string
+	}{
+		// specific resource: collection + ID
+		{"/api/frames/frame1/chores/chore1", "chore", "chore1"},
+		{"/api/frames/frame1/rewards/reward1", "reward", "reward1"},
+		{"/api/frames/frame1/calendar_events/ev1", "calendar_event", "ev1"},
+		{"/api/frames/frame1/categories/cat1", "category", "cat1"},
+		{"/api/frames/frame1/lists/list1", "list", "list1"},
+		{"/api/frames/frame1/routines/rt1", "routine", "rt1"},
+		{"/api/frames/frame1/meals/sittings/sit1", "sitting", "sit1"},
+		{"/api/frames/frame1/meals/recipes/rec1", "recipe", "rec1"},
+		// frame itself
+		{"/api/frames/frame1", "frame", "frame1"},
+		// collection only (no specific ID in path)
+		{"/api/frames/frame1/chores", "chore", ""},
+		// edge cases
+		{"", "", ""},
+		{"/single", "single", ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.path, func(t *testing.T) {
+			r, id := parseNotFoundPath(tc.path)
+			if r != tc.wantResource {
+				t.Errorf("resource: got %q, want %q", r, tc.wantResource)
+			}
+			if id != tc.wantID {
+				t.Errorf("id: got %q, want %q", id, tc.wantID)
+			}
+		})
+	}
+}
+
+func TestCheckStatus404IDPopulated(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/frames/frame1/chores/chore1", nil)
+	resp := &http.Response{
+		StatusCode: http.StatusNotFound,
+		Request:    req,
+		Header:     make(http.Header),
+	}
+	err := checkStatus(resp, nil)
+	var nfe *NotFoundError
+	if !errors.As(err, &nfe) {
+		t.Fatalf("want *NotFoundError, got %T", err)
+	}
+	if nfe.Resource != "chore" {
+		t.Errorf("resource: got %q, want %q", nfe.Resource, "chore")
+	}
+	if nfe.ID != "chore1" {
+		t.Errorf("id: got %q, want %q", nfe.ID, "chore1")
+	}
+	want := `chore "chore1" not found`
+	if nfe.Error() != want {
+		t.Errorf("error string: got %q, want %q", nfe.Error(), want)
+	}
+}
+
 func TestErrorTypes(t *testing.T) {
 	t.Run("AuthError", func(t *testing.T) {
 		err := &AuthError{Message: "bad creds"}
