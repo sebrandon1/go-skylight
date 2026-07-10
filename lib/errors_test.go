@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -123,4 +124,73 @@ func TestErrorTypes(t *testing.T) {
 			t.Error("Unwrap should return cause")
 		}
 	})
+}
+
+func TestParseNotFoundFromPath(t *testing.T) {
+	cases := []struct {
+		path         string
+		wantResource string
+		wantID       string
+	}{
+		{"/api/frames/123/chores/456", "chores", "456"},
+		{"/api/frames/123", "frames", "123"},
+		{"/api/test", "test", ""},
+		{"/", "resource", ""},
+		{"", "resource", ""},
+		{"frames/1/lists/2/list_items/3", "list_items", "3"},
+	}
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			r, id := parseNotFoundFromPath(c.path)
+			if r != c.wantResource || id != c.wantID {
+				t.Errorf("parseNotFoundFromPath(%q) = (%q,%q), want (%q,%q)", c.path, r, id, c.wantResource, c.wantID)
+			}
+		})
+	}
+}
+
+func TestCheckStatusNotFoundPopulatesID(t *testing.T) {
+	tests := []struct {
+		name         string
+		path         string
+		wantResource string
+		wantID       string
+		wantInMsg    string
+		wantNotInMsg string
+	}{
+		{
+			name:         "nested resource with id",
+			path:         "/api/frames/123/chores/456",
+			wantResource: "chores",
+			wantID:       "456",
+			wantInMsg:    "456",
+			wantNotInMsg: "/api/",
+		},
+		{
+			name:         "collection-level 404 has no id",
+			path:         "/api/test",
+			wantResource: "test",
+			wantID:       "",
+			wantInMsg:    "test",
+			wantNotInMsg: "/api/",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			resp := &http.Response{StatusCode: http.StatusNotFound, Request: req, Header: make(http.Header)}
+			err := checkStatus(resp, nil)
+			var nfe *NotFoundError
+			if !errors.As(err, &nfe) {
+				t.Fatalf("want *NotFoundError, got %T %v", err, err)
+			}
+			if nfe.Resource != tc.wantResource || nfe.ID != tc.wantID {
+				t.Fatalf("got resource=%q id=%q, want resource=%q id=%q", nfe.Resource, nfe.ID, tc.wantResource, tc.wantID)
+			}
+			msg := nfe.Error()
+			if !strings.Contains(msg, tc.wantInMsg) || strings.Contains(msg, tc.wantNotInMsg) {
+				t.Fatalf("Error() = %q, want contains %q and not contains %q", msg, tc.wantInMsg, tc.wantNotInMsg)
+			}
+		})
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -61,12 +62,33 @@ func checkStatus(resp *http.Response, body []byte) error {
 	case http.StatusUnauthorized:
 		return &AuthError{Message: string(body)}
 	case http.StatusNotFound:
-		return &NotFoundError{Resource: resp.Request.URL.Path}
+		resource, id := parseNotFoundFromPath(resp.Request.URL.Path)
+		return &NotFoundError{Resource: resource, ID: id}
 	case http.StatusTooManyRequests:
 		return &RateLimitError{RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
 	default:
 		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
 	}
+}
+
+// so NotFoundError prints e.g. chores "456" not found instead of the raw URL.
+// Example: /api/frames/123/chores/456 → resource=chores, id=456
+func parseNotFoundFromPath(p string) (resource, id string) {
+	p = strings.Trim(p, "/")
+	if p == "" {
+		return "resource", ""
+	}
+	parts := strings.Split(p, "/")
+	if parts[0] == "api" {
+		parts = parts[1:]
+	}
+	if len(parts) == 0 {
+		return "resource", ""
+	}
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return parts[len(parts)-2], parts[len(parts)-1]
 }
 
 // parseRetryAfter parses an HTTP Retry-After header value (seconds as integer
