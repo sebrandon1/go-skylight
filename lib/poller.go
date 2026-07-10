@@ -51,6 +51,8 @@ type RewardsPoller struct {
 	events chan RedemptionEvent
 	stop   chan struct{}
 	done   chan struct{}
+	// stopOnce makes Stop idempotent — a second Stop must not panic on close(stop) (#269).
+	stopOnce sync.Once
 
 	mu   sync.Mutex
 	seen map[string]struct{}
@@ -101,8 +103,11 @@ func (p *RewardsPoller) Start(ctx context.Context) {
 }
 
 // Stop signals the poll loop to exit and waits for it to finish.
+// Safe to call more than once (sync.Once); subsequent calls wait on done only (#269).
 func (p *RewardsPoller) Stop() {
-	close(p.stop)
+	p.stopOnce.Do(func() {
+		close(p.stop)
+	})
 	<-p.done
 }
 

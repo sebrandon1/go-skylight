@@ -425,3 +425,18 @@ func TestRewardsPollerStop(t *testing.T) {
 		t.Fatal("Stop() did not return in time")
 	}
 }
+func TestRewardsPollerStopIdempotent(t *testing.T) {
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	dir := t.TempDir()
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(dir, "state.json"))
+	// Start then stop twice — second Stop must not panic (#269).
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	p.Start(ctx)
+	p.Stop()
+	p.Stop()
+}
