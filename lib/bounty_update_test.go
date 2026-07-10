@@ -12,13 +12,13 @@ func TestUpdateBountySuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.Method == http.MethodPatch && r.URL.Path == "/api/frames/frame1/chores/ch1":
+		case (r.Method == http.MethodPut || r.Method == http.MethodPatch) && r.URL.Path == "/api/frames/frame1/chores/ch1":
 			if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
 				Data: choreAPIEntry{ID: "ch1", Attributes: choreAPIAttributes{Summary: "Updated chore", RewardPoints: 7}},
 			}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-		case r.Method == http.MethodPatch && r.URL.Path == "/api/frames/frame1/rewards/rw1":
+		case (r.Method == http.MethodPut || r.Method == http.MethodPatch) && r.URL.Path == "/api/frames/frame1/rewards/rw1":
 			var entry rewardAPIEntry
 			entry.ID = "rw1"
 			entry.Attributes.Name = "Updated prize"
@@ -81,11 +81,11 @@ func TestUpdateBountyRewardError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.Method == http.MethodPatch && r.URL.Path == "/api/frames/frame1/chores/ch1":
+		case (r.Method == http.MethodPut || r.Method == http.MethodPatch) && r.URL.Path == "/api/frames/frame1/chores/ch1":
 			_ = json.NewEncoder(w).Encode(choreAPISingleResponse{
 				Data: choreAPIEntry{ID: "ch1", Attributes: choreAPIAttributes{Summary: "ok", RewardPoints: 1}},
 			})
-		case r.Method == http.MethodPatch && r.URL.Path == "/api/frames/frame1/rewards/rw1":
+		case (r.Method == http.MethodPut || r.Method == http.MethodPatch) && r.URL.Path == "/api/frames/frame1/rewards/rw1":
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(`{"error":"reward fail"}`))
 		default:
