@@ -14,7 +14,12 @@ Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.co
 
 - Full CRUD for calendar events, chores, rewards, lists, recipes, categories, photos, routines, and grocery lists
 - OAuth2 login with automatic token rotation and config file persistence
-- Table and JSON output formats
+- Table and JSON output formats (`--output json|table`), quiet mode (`--quiet`)
+- Family activity analytics and chore completion streaks
+- Export/import for backup and migration between frames
+- Live change watcher with configurable resource polling
+- Weekly combined home view (events, tasks, lists, meals) and quick frame status
+- Grocery list management with Instacart ordering and recipe ingredient import
 - Go client library with retry, rate limiting, and typed errors
 - Alpaca Markets integration for reward-triggered stock purchases
 - Docker images for `linux/amd64` and `linux/arm64`
@@ -32,6 +37,9 @@ skylight login --email user@example.com --password yourpassword --save
 skylight chore list --frame-id FRAME_ID
 skylight calendar list --start-date 2024-01-15
 skylight reward points
+skylight status
+skylight home
+skylight analytics --days 30
 ```
 
 Or run via Docker:
@@ -62,6 +70,33 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | [CLI Reference](docs/cli-reference.md) | Full command listing for all resources |
 | [Library Usage](docs/library-usage.md) | Go client API, examples, typed errors, and coverage matrix |
 | [Alpaca Integration](docs/alpaca-trigger.md) | Reward-triggered stock purchases via Alpaca Markets |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `login` | Authenticate and save credentials |
+| `status` | Quick overview of the connected frame |
+| `home` | Weekly combined view of events, tasks, lists, meals |
+| `analytics` | Family activity statistics over a time period |
+| `watch` | Poll for changes and print events in real time |
+| `export` / `import` | Backup and restore frame data as JSON |
+| `calendar` | Calendar event CRUD, weekly view, source calendars, countdowns |
+| `chore` | Chore CRUD, weekly view, completion streaks, complete/skip/claim |
+| `reward` | Reward CRUD, redeem/unredeem, points, remove-stars |
+| `list` | List and list item CRUD |
+| `meal` | Recipe CRUD, meal sittings, meal categories |
+| `photo` | Photo/video list, upload, download, delete |
+| `routine` | Routine CRUD with step management and reordering |
+| `grocery` | Grocery list management, Instacart ordering, recipe import |
+| `category` | List family member categories |
+| `frame` | Frame info, devices, avatars, colors |
+| `addon` | Frame add-ons and enabled state |
+| `bounty` | Chore + reward pair management |
+| `rotation` | Rotating chore assignments |
+| `config` | View and modify configuration (show/get/set/unset/edit) |
+
+See [CLI Reference](docs/cli-reference.md) for full details.
 
 ## Architecture
 
