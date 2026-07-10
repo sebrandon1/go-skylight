@@ -168,7 +168,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 		c.logger.Debug("skylight request",
 			slog.String("method", req.Method),
 			slog.String("url", req.URL.String()),
-			slog.String("auth", "Basic [REDACTED]"),
+			slog.String("auth", "Bearer [REDACTED]"),
 		)
 	}
 
