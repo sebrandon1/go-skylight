@@ -189,12 +189,23 @@ var configEditCmd = &cobra.Command{
 			editor = "vi"
 		}
 
-		c := exec.Command(editor, path) //nolint:gosec
+		c := editorCommand(editor, path)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
 		return c.Run()
 	},
+}
+
+// editorCommand builds an *exec.Cmd for $EDITOR values that may include args
+// (e.g. "code --wait", "emacs -nw").
+func editorCommand(editor, path string) *exec.Cmd {
+	fields := strings.Fields(editor)
+	if len(fields) == 0 {
+		fields = []string{"vi"}
+	}
+	args := append(append([]string{}, fields[1:]...), path)
+	return exec.Command(fields[0], args...) //nolint:gosec
 }
 
 func init() {
