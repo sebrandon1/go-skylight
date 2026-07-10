@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -162,7 +163,13 @@ var groceryClearCmd = &cobra.Command{
 
 		n, err := client.ClearCompletedListItems(frameID, groceryListID)
 		if err != nil {
-			fatal("clearing grocery list", err)
+			// Match list clear-completed: surface partial progress before exit (#246).
+			if n > 0 {
+				fmt.Fprintf(os.Stderr, "Deleted %d item(s) before error: %v\n", n, err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Error clearing grocery list: %v\n", err)
+			}
+			os.Exit(1)
 		}
 
 		printSuccessf("Cleared %d completed item(s) from grocery list\n", n)
