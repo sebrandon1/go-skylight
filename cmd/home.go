@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -85,20 +84,16 @@ var homeCmd = &cobra.Command{
 		wg.Wait()
 
 		if evtErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing calendar events: %v\n", evtErr)
-			os.Exit(1)
+			fatal("listing calendar events", evtErr)
 		}
 		if choreErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing chores: %v\n", choreErr)
-			os.Exit(1)
+			fatal("listing chores", choreErr)
 		}
 		if listErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing lists: %v\n", listErr)
-			os.Exit(1)
+			fatal("listing lists", listErr)
 		}
 		if mealErr != nil {
-			fmt.Fprintf(os.Stderr, "Error listing meal sittings: %v\n", mealErr)
-			os.Exit(1)
+			fatal("listing meal sittings", mealErr)
 		}
 
 		if outputFormat == outputJSON {
