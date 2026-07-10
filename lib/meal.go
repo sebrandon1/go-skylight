@@ -212,6 +212,86 @@ func (c *Client) GetSittingRecipe(frameID, sittingID string) (*SittingWithRecipe
 	return result, nil
 }
 
+// ListMealPlanSittings lists scheduled meal sittings in an optional date window.
+//
+// The Skylight API has no separate "meal plan" resource: PlanMeals creates ordinary
+// meal sittings. Listing those sittings is how callers inspect existing plans (#256).
+func (c *Client) ListMealPlanSittings(frameID string, opts MealSittingListOptions) ([]MealSitting, error) {
+	return c.ListMealSittings(frameID, opts)
+}
+
+// DeleteMealPlanSitting removes one planned meal sitting instance (sitting ID + date).
+// Same underlying endpoint as DeleteMealSitting; named for the plan CLI surface (#256).
+func (c *Client) DeleteMealPlanSitting(frameID, sittingID, date string) error {
+	return c.DeleteMealSitting(frameID, sittingID, date)
+}
+
+// DeleteMealPlanRange deletes every meal sitting instance whose date falls in [dateMin, dateMax].
+// Both bounds are inclusive YYYY-MM-DD strings. Deletions always run; errors are joined.
+func (c *Client) DeleteMealPlanRange(frameID, dateMin, dateMax string) (deleted int, err error) {
+	if dateMin == "" || dateMax == "" {
+		return 0, errors.New("date_min and date_max are required")
+	}
+	if _, e := time.Parse(DateFormat, dateMin); e != nil {
+		return 0, fmt.Errorf("invalid date_min (expected YYYY-MM-DD): %w", e)
+	}
+	if _, e := time.Parse(DateFormat, dateMax); e != nil {
+		return 0, fmt.Errorf("invalid date_max (expected YYYY-MM-DD): %w", e)
+	}
+
+	sittings, listErr := c.ListMealSittings(frameID, MealSittingListOptions{
+		DateMin: dateMin,
+		DateMax: dateMax,
+	})
+	if listErr != nil {
+		return 0, fmt.Errorf("failed to list meal plan sittings: %w", listErr)
+	}
+
+	// List responses often omit instance dates; expand the requested window so
+	// DELETE /sittings/{id}/instances/{date} can still be formed.
+	dates := dateRangeInclusive(dateMin, dateMax)
+
+	var errs []error
+	for _, s := range sittings {
+		tryDates := dates
+		if s.Date != "" {
+			tryDates = []string{s.Date}
+		}
+		removed := false
+		var lastErr error
+		for _, date := range tryDates {
+			if delErr := c.DeleteMealSitting(frameID, s.ID, date); delErr != nil {
+				lastErr = delErr
+				continue
+			}
+			deleted++
+			removed = true
+			break
+		}
+		if !removed {
+			errs = append(errs, fmt.Errorf("sitting %s: %w", s.ID, lastErr))
+		}
+	}
+	return deleted, errors.Join(errs...)
+}
+
+// dateRangeInclusive returns every YYYY-MM-DD from start through end inclusive.
+func dateRangeInclusive(start, end string) []string {
+	s, err1 := time.Parse(DateFormat, start)
+	e, err2 := time.Parse(DateFormat, end)
+	if err1 != nil || err2 != nil || e.Before(s) {
+		return []string{start}
+	}
+	var out []string
+	for d := s; !d.After(e); d = d.AddDate(0, 0, 1) {
+		out = append(out, d.Format(DateFormat))
+		if len(out) > 366 {
+			break
+		}
+	}
+	return out
+}
+
 // PlanMeals schedules a list of recipes as meal sittings starting from a given date,
 // rotating through the provided meal categories across consecutive days.
 func (c *Client) PlanMeals(frameID string, data MealPlanData) (*MealPlanResult, error) {
