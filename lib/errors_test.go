@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -123,4 +124,42 @@ func TestErrorTypes(t *testing.T) {
 			t.Error("Unwrap should return cause")
 		}
 	})
+}
+
+func TestParseNotFoundFromPath(t *testing.T) {
+	cases := []struct {
+		path         string
+		wantResource string
+		wantID       string
+	}{
+		{"/api/frames/123/chores/456", "chores", "456"},
+		{"/api/frames/123", "frames", "123"},
+		{"/api/test", "test", ""},
+		{"/", "resource", ""},
+		{"", "resource", ""},
+		{"frames/1/lists/2/list_items/3", "list_items", "3"},
+	}
+	for _, c := range cases {
+		r, id := parseNotFoundFromPath(c.path)
+		if r != c.wantResource || id != c.wantID {
+			t.Errorf("parseNotFoundFromPath(%q) = (%q,%q), want (%q,%q)", c.path, r, id, c.wantResource, c.wantID)
+		}
+	}
+}
+
+func TestCheckStatusNotFoundPopulatesID(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/frames/123/chores/456", nil)
+	resp := &http.Response{StatusCode: http.StatusNotFound, Request: req, Header: make(http.Header)}
+	err := checkStatus(resp, nil)
+	var nfe *NotFoundError
+	if !errors.As(err, &nfe) {
+		t.Fatalf("want *NotFoundError, got %T %v", err, err)
+	}
+	if nfe.Resource != "chores" || nfe.ID != "456" {
+		t.Fatalf("got resource=%q id=%q", nfe.Resource, nfe.ID)
+	}
+	msg := nfe.Error()
+	if !strings.Contains(msg, "456") || strings.Contains(msg, "/api/") {
+		t.Fatalf("Error() = %q, want friendly id without raw path", msg)
+	}
 }
