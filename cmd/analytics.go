@@ -174,6 +174,10 @@ func buildAssigneeStats(assigneeTotals map[string]*choreCount, catNames map[stri
 		var pointBalance int
 		if catID, err := strconv.Atoi(id); err == nil {
 			pointBalance = pointsByCategory[catID]
+		} else {
+			// Category IDs are strings in the chores/categories API but ints on
+			// reward points — non-numeric IDs would silently show 0 points (#253).
+			fmt.Fprintf(os.Stderr, "Warning: analytics: skipping point balance for category id %q: not numeric\n", id)
 		}
 		assignees = append(assignees, AssigneeStats{
 			Name:            name,
