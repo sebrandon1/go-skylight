@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -69,15 +70,29 @@ func checkStatus(resp *http.Response, body []byte) error {
 	}
 }
 
-// parseRetryAfter parses an HTTP Retry-After header value (seconds as integer
-// or delta-seconds). Returns 0 on parse failure.
+// parseRetryAfter parses an HTTP Retry-After header value per RFC 7231:
+// either delta-seconds (integer) or an HTTP-date. Returns 0 on parse failure
+// or when an HTTP-date is already in the past.
 func parseRetryAfter(header string) time.Duration {
+	header = strings.TrimSpace(header)
 	if header == "" {
 		return 0
 	}
-	secs, err := strconv.Atoi(header)
-	if err != nil || secs <= 0 {
+	// Prefer delta-seconds when the whole value is a non-negative integer.
+	if secs, err := strconv.Atoi(header); err == nil {
+		if secs <= 0 {
+			return 0
+		}
+		return time.Duration(secs) * time.Second
+	}
+	// HTTP-date form (e.g. "Thu, 10 Jul 2026 15:04:05 GMT").
+	t, err := http.ParseTime(header)
+	if err != nil {
 		return 0
 	}
-	return time.Duration(secs) * time.Second
+	d := time.Until(t)
+	if d <= 0 {
+		return 0
+	}
+	return d
 }
