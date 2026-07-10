@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -464,4 +465,78 @@ func TestListBountiesDateRange(t *testing.T) {
 	if !beforeT.After(afterT) {
 		t.Errorf("expected before (%s) > after (%s)", gotBefore, gotAfter)
 	}
+}
+
+func TestDeleteBountyJoinsBothErrors(t *testing.T) {
+	var choreDeletes, rewardDeletes atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/frames/frame1/chores/ch1":
+			choreDeletes.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"chore boom"}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/frames/frame1/rewards/rw1":
+			rewardDeletes.Add(1)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"reward boom"}`))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.DeleteBounty("frame1", "ch1", "rw1")
+	if err == nil {
+		t.Fatal("expected joined error when both deletes fail")
+	}
+	msg := err.Error()
+	if !containsAll(msg, "failed to delete bounty chore", "failed to delete bounty reward") {
+		t.Fatalf("error should include both failures, got: %v", err)
+	}
+	if choreDeletes.Load() != 1 || rewardDeletes.Load() != 1 {
+		t.Fatalf("both deletes must run: chore=%d reward=%d", choreDeletes.Load(), rewardDeletes.Load())
+	}
+}
+
+func TestDeleteBountyRewardOnlyError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/frames/frame1/chores/ch1":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/frames/frame1/rewards/rw1":
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"reward boom"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.DeleteBounty("frame1", "ch1", "rw1")
+	if err == nil {
+		t.Fatal("expected reward delete error")
+	}
+	if !containsAll(err.Error(), "failed to delete bounty reward") {
+		t.Fatalf("want reward error, got %v", err)
+	}
+}
+
+func containsAll(s string, parts ...string) bool {
+	for _, p := range parts {
+		if !strings.Contains(s, p) {
+			return false
+		}
+	}
+	return true
 }
