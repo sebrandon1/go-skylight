@@ -1,9 +1,12 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -65,8 +68,57 @@ func checkStatus(resp *http.Response, body []byte) error {
 	case http.StatusTooManyRequests:
 		return &RateLimitError{RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
 	default:
-		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, formatAPIErrorBody(body))
 	}
+}
+
+// formatAPIErrorBody turns common Skylight/Rails-style JSON error bodies into
+// a short human-readable string. Non-JSON or unrecognized shapes are returned
+// as the original body text (trimmed).
+func formatAPIErrorBody(body []byte) string {
+	raw := strings.TrimSpace(string(body))
+	if raw == "" {
+		return "(empty body)"
+	}
+
+	// {"errors":{"title":["can't be blank"],"points":["must be greater than 0"]}}
+	var nested struct {
+		Errors map[string][]string `json:"errors"`
+	}
+	if err := json.Unmarshal(body, &nested); err == nil && len(nested.Errors) > 0 {
+		parts := make([]string, 0, len(nested.Errors))
+		for field, msgs := range nested.Errors {
+			if len(msgs) == 0 {
+				continue
+			}
+			parts = append(parts, fmt.Sprintf("%s: %s", field, strings.Join(msgs, "; ")))
+		}
+		if len(parts) > 0 {
+			sort.Strings(parts) // map iteration order is random
+			return strings.Join(parts, "; ")
+		}
+	}
+
+	// {"error":"message"} or {"message":"..."} or {"errors":["a","b"]}
+	var flat map[string]json.RawMessage
+	if err := json.Unmarshal(body, &flat); err == nil {
+		for _, key := range []string{"error", "message", "detail", "error_description"} {
+			if v, ok := flat[key]; ok {
+				var s string
+				if json.Unmarshal(v, &s) == nil && s != "" {
+					return s
+				}
+			}
+		}
+		if v, ok := flat["errors"]; ok {
+			var list []string
+			if json.Unmarshal(v, &list) == nil && len(list) > 0 {
+				return strings.Join(list, "; ")
+			}
+		}
+	}
+
+	return raw
 }
 
 // parseRetryAfter parses an HTTP Retry-After header value (seconds as integer

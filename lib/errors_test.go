@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -58,6 +59,82 @@ func TestCheckStatus(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestFormatAPIErrorBody(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "rails nested field errors",
+			body: `{"errors":{"title":["can't be blank"],"points":["must be greater than 0"]}}`,
+			want: "points: must be greater than 0; title: can't be blank",
+		},
+		{
+			name: "single field error",
+			body: `{"errors":{"title":["can't be blank"]}}`,
+			want: "title: can't be blank",
+		},
+		{
+			name: "error string key",
+			body: `{"error":"not allowed"}`,
+			want: "not allowed",
+		},
+		{
+			name: "message key",
+			body: `{"message":"forbidden"}`,
+			want: "forbidden",
+		},
+		{
+			name: "errors array",
+			body: `{"errors":["bad request","try again"]}`,
+			want: "bad request; try again",
+		},
+		{
+			name: "plain text body",
+			body: `oops`,
+			want: "oops",
+		},
+		{
+			name: "empty body",
+			body: ``,
+			want: "(empty body)",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatAPIErrorBody([]byte(tc.body))
+			if got != tc.want {
+				t.Errorf("formatAPIErrorBody() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCheckStatus_FriendlyValidationError(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/chores", nil)
+	resp := &http.Response{
+		StatusCode: http.StatusUnprocessableEntity,
+		Request:    req,
+		Header:     make(http.Header),
+	}
+	body := []byte(`{"errors":{"title":["can't be blank"]}}`)
+	err := checkStatus(resp, body)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "unexpected status 422") {
+		t.Errorf("want status in error, got %q", got)
+	}
+	if !strings.Contains(got, "title: can't be blank") {
+		t.Errorf("want friendly field message, got %q", got)
+	}
+	if strings.Contains(got, `{"errors"`) {
+		t.Errorf("raw JSON should not appear in error, got %q", got)
 	}
 }
 
