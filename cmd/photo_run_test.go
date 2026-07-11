@@ -38,6 +38,29 @@ func TestPhotoListCmd_PrintsNextPageToken(t *testing.T) {
 	}
 }
 
+func TestPhotoListCmd_JSONIncludesNextPageToken(t *testing.T) {
+	// #264: JSON mode must expose next_page_token in stdout body
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":"http://cdn/p1.jpg"}}],"meta":{"next_page_token":"tok-json"}}`)
+	})
+
+	orig := outputFormat
+	outputFormat = outputJSON
+	t.Cleanup(func() { outputFormat = orig })
+
+	var stderr string
+	stdout := captureStdout(func() {
+		stderr = captureStderr(func() { photoListCmd.Run(photoListCmd, nil) })
+	})
+	if !strings.Contains(stdout, "next_page_token") || !strings.Contains(stdout, "tok-json") {
+		t.Errorf("expected next_page_token in JSON stdout, got: %s", stdout)
+	}
+	if strings.Contains(stderr, "tok-json") {
+		t.Errorf("JSON mode should not write token to stderr, got: %s", stderr)
+	}
+}
+
 func TestPhotoUploadCmd(t *testing.T) {
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "photo.jpg")
