@@ -127,7 +127,12 @@ func TestCreateChoreRotationPartialFailure(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected partial result, got nil")
 	}
-	if len(result.Chores) != 2 {
-		t.Errorf("want 2 partial chores, got %d", len(result.Chores))
+	// Parallel workers may complete more than two creates before failures land;
+	// require at least one success and fewer than the full 4-job batch.
+	if len(result.Chores) < 1 {
+		t.Errorf("want some partial chores, got %d", len(result.Chores))
+	}
+	if len(result.Chores) >= 4 {
+		t.Errorf("want incomplete batch on partial failure, got %d chores", len(result.Chores))
 	}
 }
