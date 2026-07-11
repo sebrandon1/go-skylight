@@ -68,7 +68,7 @@ skylight reward delete --reward-id ID
 skylight reward redeem   --reward-id ID
 skylight reward unredeem --reward-id ID
 skylight reward points
-skylight reward remove-stars --category-id ID --points N
+skylight reward remove-stars --assignee-id ID --points N
 ```
 
 ## Lists
