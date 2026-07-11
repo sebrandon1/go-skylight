@@ -282,8 +282,9 @@ func init() {
 	choreCmd.AddCommand(choreClaimCmd)
 
 	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Date filter")
-	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter")
+	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter: pending, complete, skipped")
 	choreListCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
+	registerEnumFlagCompletion(choreListCmd, "status", choreStatuses...)
 
 	choreListCmd.Flags().StringVar(&choreAfter, "after", "", "After date filter")
 	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "Before date filter")
@@ -304,10 +305,11 @@ func init() {
 	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
 	choreUpdateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
 	choreUpdateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
-	choreUpdateCmd.Flags().StringVar(&choreStatus, "status", "", "Chore status")
+	choreUpdateCmd.Flags().StringVar(&choreStatus, "status", "", "Chore status: pending, complete, skipped")
 	choreUpdateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreUpdateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
+	registerEnumFlagCompletion(choreUpdateCmd, "status", choreStatuses...)
 	markFlagRequired(choreUpdateCmd, "chore-id")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
