@@ -32,7 +32,7 @@ func (c *Client) setCompletion(frameID, choreID, status string) error {
 	baseID, instanceDate := parseChoreID(choreID)
 	body := ChoreCompletionData{Status: status, InstanceDate: instanceDate}
 	req, err := newRequestWithBody("PUT",
-		fmt.Sprintf("%s/frames/%s/chores/%s/completions", c.effectiveURL(), frameID, baseID), body)
+		fmt.Sprintf("%s/frames/%s/chores/%s/completions", c.effectiveURL(), pathSeg(frameID), pathSeg(baseID)), body)
 	if err != nil {
 		return fmt.Errorf("failed to create completion request: %w", err)
 	}
@@ -75,7 +75,7 @@ func (opts ChoreListOptions) queryParams() map[string]string {
 
 // ListChores retrieves chores for a frame with optional filters.
 func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list chores request: %w", err)
 	}
@@ -106,7 +106,7 @@ func (c *Client) ListChores(frameID string, opts ChoreListOptions) ([]Chore, err
 
 // CreateChore creates a new chore on a frame.
 func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), frameID), chore)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), pathSeg(frameID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chore request: %w", err)
 	}
@@ -124,7 +124,7 @@ func (c *Client) CreateChore(frameID string, chore ChoreData) (*Chore, error) {
 // create_multiple endpoint which accepts up_for_grabs without a category_id.
 func (c *Client) CreateUpForGrabsChore(frameID string, chore ChoreData) (*Chore, error) {
 	chore.UpForGrabs = true
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores/create_multiple", c.effectiveURL(), frameID), chore)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/chores/create_multiple", c.effectiveURL(), pathSeg(frameID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create up-for-grabs chore request: %w", err)
 	}
@@ -143,7 +143,7 @@ func (c *Client) CreateUpForGrabsChore(frameID string, chore ChoreData) (*Chore,
 
 // UpdateChore updates an existing chore.
 func (c *Client) UpdateChore(frameID, choreID string, chore ChoreData) (*Chore, error) {
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), frameID, choreID), chore)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update chore request: %w", err)
 	}
@@ -174,7 +174,7 @@ func (c *Client) ClaimChore(frameID, choreID, assigneeID string) (*Chore, error)
 
 // DeleteChore deletes a chore.
 func (c *Client) DeleteChore(frameID, choreID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), frameID, choreID))
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}

@@ -25,7 +25,7 @@ func (c *Client) ListFrames() ([]Frame, error) {
 
 // GetFrame retrieves frame information.
 func (c *Client) GetFrame(frameID string) (*Frame, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get frame request: %w", err)
 	}
@@ -41,7 +41,7 @@ func (c *Client) GetFrame(frameID string) (*Frame, error) {
 
 // ListDevices retrieves devices for a frame.
 func (c *Client) ListDevices(frameID string) ([]Device, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/devices", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/devices", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list devices request: %w", err)
 	}
@@ -87,7 +87,7 @@ func (c *Client) SetCurrentAlbum(frameID string, albumID int) error {
 	}{}
 	body.Frame.CurrentAlbumID = albumID
 
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), frameID), body)
+	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)), body)
 	if err != nil {
 		return fmt.Errorf("failed to create set album request: %w", err)
 	}

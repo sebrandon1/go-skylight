@@ -8,7 +8,7 @@ import (
 
 // ListMealCategories retrieves meal categories for a frame.
 func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/categories", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/categories", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list meal categories request: %w", err)
 	}
@@ -27,7 +27,7 @@ func (c *Client) ListMealCategories(frameID string) ([]MealCategory, error) {
 
 // ListRecipes retrieves recipes for a frame.
 func (c *Client) ListRecipes(frameID string) ([]Recipe, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list recipes request: %w", err)
 	}
@@ -46,7 +46,7 @@ func (c *Client) ListRecipes(frameID string) ([]Recipe, error) {
 
 // GetRecipe retrieves a single recipe by ID.
 func (c *Client) GetRecipe(frameID, recipeID string) (*Recipe, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(recipeID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get recipe request: %w", err)
 	}
@@ -63,7 +63,7 @@ func (c *Client) GetRecipe(frameID, recipeID string) (*Recipe, error) {
 // CreateRecipe creates a new recipe.
 // The API expects a flat JSON body (no recipe wrapper).
 func (c *Client) CreateRecipe(frameID string, recipe RecipeData) (*Recipe, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), frameID), recipe)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), pathSeg(frameID)), recipe)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create recipe request: %w", err)
 	}
@@ -80,7 +80,7 @@ func (c *Client) CreateRecipe(frameID string, recipe RecipeData) (*Recipe, error
 // UpdateRecipe updates an existing recipe.
 // The API expects a flat JSON body (no recipe wrapper).
 func (c *Client) UpdateRecipe(frameID, recipeID string, recipe RecipeData) (*Recipe, error) {
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID), recipe)
+	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(recipeID)), recipe)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update recipe request: %w", err)
 	}
@@ -96,7 +96,7 @@ func (c *Client) UpdateRecipe(frameID, recipeID string, recipe RecipeData) (*Rec
 
 // DeleteRecipe deletes a recipe.
 func (c *Client) DeleteRecipe(frameID, recipeID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), frameID, recipeID))
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/recipes/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(recipeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete recipe request: %w", err)
 	}
@@ -110,7 +110,7 @@ func (c *Client) DeleteRecipe(frameID, recipeID string) error {
 
 // ListMealSittings retrieves meal sittings for a frame within an optional date range.
 func (c *Client) ListMealSittings(frameID string, opts MealSittingListOptions) ([]MealSitting, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list meal sittings request: %w", err)
 	}
@@ -141,7 +141,7 @@ func (c *Client) ListMealSittings(frameID string, opts MealSittingListOptions) (
 // CreateMealSitting creates a new meal sitting.
 // The API expects a flat JSON body (no meal_sitting wrapper).
 func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*MealSitting, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), frameID), sitting)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/meals/sittings", c.effectiveURL(), pathSeg(frameID)), sitting)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create meal sitting request: %w", err)
 	}
@@ -161,7 +161,7 @@ func (c *Client) CreateMealSitting(frameID string, sitting MealSittingData) (*Me
 
 // DeleteMealSitting deletes a specific instance of a meal sitting by sitting ID and date (YYYY-MM-DD).
 func (c *Client) DeleteMealSitting(frameID, sittingID, date string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/sittings/%s/instances/%s", c.effectiveURL(), frameID, sittingID, date))
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/meals/sittings/%s/instances/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID), pathSeg(date)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete meal sitting request: %w", err)
 	}
@@ -175,7 +175,7 @@ func (c *Client) DeleteMealSitting(frameID, sittingID, date string) error {
 
 // GetMealSitting retrieves a single meal sitting by ID.
 func (c *Client) GetMealSitting(frameID, sittingID string) (*MealSitting, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), frameID, sittingID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get meal sitting request: %w", err)
 	}
@@ -252,7 +252,7 @@ func (c *Client) PlanMeals(frameID string, data MealPlanData) (*MealPlanResult, 
 
 // AddRecipeToGroceryList adds a recipe's ingredients to the grocery list.
 func (c *Client) AddRecipeToGroceryList(frameID, recipeID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), frameID, recipeID))
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/meals/recipes/%s/add_to_grocery_list", c.effectiveURL(), pathSeg(frameID), pathSeg(recipeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create add to grocery list request: %w", err)
 	}

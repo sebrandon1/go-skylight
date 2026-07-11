@@ -10,7 +10,7 @@ const ListKindGrocery = "grocery"
 
 // ListLists retrieves all lists for a frame.
 func (c *Client) ListLists(frameID string) ([]List, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list lists request: %w", err)
 	}
@@ -29,7 +29,7 @@ func (c *Client) ListLists(frameID string) ([]List, error) {
 
 // GetList retrieves a single list by ID (includes items from the included array).
 func (c *Client) GetList(frameID, listID string) (*List, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get list request: %w", err)
 	}
@@ -58,7 +58,7 @@ func (c *Client) CreateList(frameID string, list ListData) (*List, error) {
 		list.Color = "#2178AF"
 	}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), frameID), list)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), pathSeg(frameID)), list)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list request: %w", err)
 	}
@@ -75,7 +75,7 @@ func (c *Client) CreateList(frameID string, list ListData) (*List, error) {
 // UpdateList updates an existing list.
 // The API expects a flat JSON body (no {"list":{...}} wrapper).
 func (c *Client) UpdateList(frameID, listID string, list ListData) (*List, error) {
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID), list)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID)), list)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update list request: %w", err)
 	}
@@ -91,7 +91,7 @@ func (c *Client) UpdateList(frameID, listID string, list ListData) (*List, error
 
 // DeleteList deletes a list.
 func (c *Client) DeleteList(frameID, listID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), frameID, listID))
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete list request: %w", err)
 	}
@@ -114,7 +114,7 @@ func (c *Client) AddListItem(frameID, listID string, item ListItemData) (*ListIt
 		send.Status = listItemStatusCompleted
 	}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/list_items", c.effectiveURL(), frameID, listID), send)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/list_items", c.effectiveURL(), pathSeg(frameID), pathSeg(listID)), send)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create add list item request: %w", err)
 	}
@@ -142,7 +142,7 @@ func (c *Client) UpdateListItem(frameID, listID, itemID string, item ListItemDat
 		send.Status = listItemStatusPending
 	}
 
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), frameID, listID, itemID), send)
+	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID), pathSeg(itemID)), send)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update list item request: %w", err)
 	}
@@ -158,7 +158,7 @@ func (c *Client) UpdateListItem(frameID, listID, itemID string, item ListItemDat
 
 // DeleteListItem deletes an item from a list.
 func (c *Client) DeleteListItem(frameID, listID, itemID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), frameID, listID, itemID))
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID), pathSeg(itemID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete list item request: %w", err)
 	}
@@ -191,7 +191,7 @@ func (c *Client) ClearCompletedListItems(frameID, listID string) (int, error) {
 
 // OrganizeGroceryList deduplicates and sorts a grocery list by aisle.
 func (c *Client) OrganizeGroceryList(frameID, listID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/lists/%s/organize", c.effectiveURL(), frameID, listID))
+	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/lists/%s/organize", c.effectiveURL(), pathSeg(frameID), pathSeg(listID)))
 	if err != nil {
 		return fmt.Errorf("failed to create organize list request: %w", err)
 	}
@@ -211,7 +211,7 @@ func (c *Client) OrderGroceryList(frameID, listID, retailer string) (string, err
 		Retailer string `json:"retailer,omitempty"`
 	}{Retailer: retailer}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/order", c.effectiveURL(), frameID, listID), body)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/lists/%s/order", c.effectiveURL(), pathSeg(frameID), pathSeg(listID)), body)
 	if err != nil {
 		return "", fmt.Errorf("failed to create order list request: %w", err)
 	}
@@ -230,7 +230,7 @@ func (c *Client) OrderGroceryList(frameID, listID, retailer string) (string, err
 func (c *Client) CreateTaskBoxItem(frameID string, item TaskBoxItemData) (*TaskBoxItem, error) {
 	reqBody := TaskBoxItemRequest{TaskBoxItem: item}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/task_box_items", c.effectiveURL(), frameID), reqBody)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/task_box_items", c.effectiveURL(), pathSeg(frameID)), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task box item request: %w", err)
 	}
