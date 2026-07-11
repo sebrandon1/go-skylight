@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -126,14 +127,28 @@ var groceryAddCmd = &cobra.Command{
 
 		client := getClient()
 
+		added := 0
 		for _, item := range groceryItems {
 			if _, err := client.AddListItem(frameID, groceryListID, lib.ListItemData{Title: item}); err != nil {
-				fatal(fmt.Sprintf("adding item %q", item), err)
+				// Mirror list clear-completed: report progress before exit so
+				// partial adds are visible when a later item fails.
+				fmt.Fprintln(os.Stderr, formatGroceryAddFailure(added, item, err))
+				os.Exit(1)
 			}
+			added++
 		}
 
-		printSuccessf("Added %d item(s) to grocery list\n", len(groceryItems))
+		printSuccessf("Added %d item(s) to grocery list\n", added)
 	},
+}
+
+// formatGroceryAddFailure reports how many items were already created when a
+// later add fails (partial progress), matching list clear-completed UX.
+func formatGroceryAddFailure(added int, item string, err error) string {
+	if added > 0 {
+		return fmt.Sprintf("Added %d item(s) before error on %q: %v", added, item, err)
+	}
+	return fmt.Sprintf("Error adding item %q: %v", item, err)
 }
 
 var groceryAddRecipeCmd = &cobra.Command{
