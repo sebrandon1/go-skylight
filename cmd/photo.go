@@ -47,7 +47,7 @@ var photoListCmd = &cobra.Command{
 		}
 
 		// #264: include next_page_token in JSON so scripts need not parse stderr
-		if outputFormat == outputJSON {
+		if outputFormat != outputTable {
 			printJSON(map[string]any{
 				"photos":          photos,
 				"next_page_token": nextToken,
