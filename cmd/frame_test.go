@@ -81,3 +81,24 @@ func TestFrameSetAlbumCmd(t *testing.T) {
 		t.Errorf("expected confirmation message, got: %s", out)
 	}
 }
+
+func TestFrameSetAlbumCmdQuiet(t *testing.T) {
+	// #265: --quiet must suppress set-album success output
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	origAlbumID := currentAlbumID
+	origQuiet := quiet
+	currentAlbumID = 7
+	quiet = true
+	t.Cleanup(func() {
+		currentAlbumID = origAlbumID
+		quiet = origQuiet
+	})
+
+	out := captureStdout(func() { frameSetAlbumCmd.Run(frameSetAlbumCmd, nil) })
+	if out != "" {
+		t.Errorf("expected no output with --quiet, got: %q", out)
+	}
+}
