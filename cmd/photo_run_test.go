@@ -32,6 +32,11 @@ func TestPhotoListCmd_PrintsNextPageToken(t *testing.T) {
 		fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"next123"}}`)
 	})
 
+	// Table mode still prints token on stderr for humans
+	orig := outputFormat
+	outputFormat = outputTable
+	t.Cleanup(func() { outputFormat = orig })
+
 	stderr := captureStderr(func() { photoListCmd.Run(photoListCmd, nil) })
 	if !strings.Contains(stderr, "next123") {
 		t.Errorf("expected next page token on stderr, got: %s", stderr)
