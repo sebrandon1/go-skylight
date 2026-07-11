@@ -45,6 +45,19 @@ func TestParseExportResources_TrimsSpaces(t *testing.T) {
 	}
 }
 
+func TestParseExportResources_SkipsUnknown(t *testing.T) {
+	// #266: unknown tokens are warned and dropped; valid ones remain
+	stderr := captureStderr(func() {
+		got := parseExportResources("chores,bogus,rewards")
+		if len(got) != 2 || got[0] != exportResourceChores || got[1] != exportResourceRewards {
+			t.Errorf("unexpected result: %v", got)
+		}
+	})
+	if !strings.Contains(stderr, "bogus") {
+		t.Errorf("expected warning for unknown resource, got: %s", stderr)
+	}
+}
+
 func TestExportCmdExists(t *testing.T) {
 	found := false
 	for _, c := range rootCmd.Commands() {

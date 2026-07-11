@@ -223,12 +223,26 @@ func parseResourceList(s string, all []string) []string {
 	if s == "" || s == resourceAll {
 		return all
 	}
+	valid := make(map[string]bool, len(all))
+	for _, r := range all {
+		valid[r] = true
+	}
 	var out []string
 	for _, r := range strings.Split(s, ",") {
 		r = strings.TrimSpace(r)
-		if r != "" {
-			out = append(out, r)
+		if r == "" {
+			continue
 		}
+		// #266: warn on typos like export --resources bogus (match parseWatchResources)
+		if !valid[r] {
+			fmt.Fprintf(os.Stderr, "Warning: unknown resource %q (valid: %s)\n", r, strings.Join(all, ", "))
+			continue
+		}
+		out = append(out, r)
+	}
+	if len(out) == 0 {
+		fmt.Fprintln(os.Stderr, "Error: no valid resources specified")
+		os.Exit(1)
 	}
 	return out
 }
