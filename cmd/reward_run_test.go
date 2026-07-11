@@ -180,6 +180,28 @@ func TestRewardUpdateCmd(t *testing.T) {
 	}
 }
 
+func TestRewardUpdateCmd_WithOptionalFields(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origID, origNoRespawn, origCatIDs := rewardID, rewardNoRespawn, rewardCategoryIDs
+	rewardID, rewardNoRespawn, rewardCategoryIDs = "reward1", true, []int{1, 2}
+	t.Cleanup(func() {
+		rewardID, rewardNoRespawn, rewardCategoryIDs = origID, origNoRespawn, origCatIDs
+	})
+
+	// Mark optional update flags as changed so Run includes them in RewardData.
+	if err := rewardUpdateCmd.Flags().Set("no-respawn", "true"); err != nil {
+		t.Fatalf("setting no-respawn flag: %v", err)
+	}
+	if err := rewardUpdateCmd.Flags().Set("category-ids", "1,2"); err != nil {
+		t.Fatalf("setting category-ids flag: %v", err)
+	}
+
+	out := captureStdout(func() { rewardUpdateCmd.Run(rewardUpdateCmd, nil) })
+	if !strings.Contains(out, "Updated") && !strings.Contains(out, "reward1") {
+		t.Errorf("expected updated reward in output, got: %s", out)
+	}
+}
+
 func TestRewardCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "reward")
 }
