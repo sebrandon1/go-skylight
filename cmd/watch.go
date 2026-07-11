@@ -242,14 +242,16 @@ func pollRewards(client *lib.Client, state *watchState, ts string) {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing rewards: %v\n", ts, err)
 		return
 	}
+	// Replace seen set with currently redeemed IDs so memory stays bounded.
+	current := make(map[string]struct{})
 	for _, r := range rewards {
 		if !r.Redeemed {
 			continue
 		}
+		current[r.ID] = struct{}{}
 		if _, seen := state.seenRewardIDs[r.ID]; seen {
 			continue
 		}
-		state.seenRewardIDs[r.ID] = struct{}{}
 		if state.seeding {
 			continue
 		}
@@ -263,6 +265,7 @@ func pollRewards(client *lib.Client, state *watchState, ts string) {
 				ts, r.Title, r.Points, r.CategoryID)
 		}
 	}
+	state.seenRewardIDs = current
 }
 
 func pollLists(client *lib.Client, state *watchState, ts string) {
@@ -271,11 +274,12 @@ func pollLists(client *lib.Client, state *watchState, ts string) {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing lists: %v\n", ts, err)
 		return
 	}
+	current := make(map[string]struct{})
 	for _, l := range lists {
+		current[l.ID] = struct{}{}
 		if _, seen := state.seenListIDs[l.ID]; seen {
 			continue
 		}
-		state.seenListIDs[l.ID] = struct{}{}
 		if state.seeding {
 			continue
 		}
@@ -287,6 +291,7 @@ func pollLists(client *lib.Client, state *watchState, ts string) {
 			fmt.Printf("[%s] LIST CREATED     %s\n", ts, l.Title)
 		}
 	}
+	state.seenListIDs = current
 }
 
 func pollRoutines(client *lib.Client, state *watchState, ts string) {
@@ -295,11 +300,12 @@ func pollRoutines(client *lib.Client, state *watchState, ts string) {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing routines: %v\n", ts, err)
 		return
 	}
+	current := make(map[string]struct{})
 	for _, r := range routines {
+		current[r.ID] = struct{}{}
 		if _, seen := state.seenRoutineIDs[r.ID]; seen {
 			continue
 		}
-		state.seenRoutineIDs[r.ID] = struct{}{}
 		if state.seeding {
 			continue
 		}
@@ -311,6 +317,7 @@ func pollRoutines(client *lib.Client, state *watchState, ts string) {
 			fmt.Printf("[%s] ROUTINE CREATED  %s\n", ts, r.Title)
 		}
 	}
+	state.seenRoutineIDs = current
 }
 
 func pollChores(client *lib.Client, state *watchState, now time.Time, ts string) {
@@ -320,11 +327,12 @@ func pollChores(client *lib.Client, state *watchState, now time.Time, ts string)
 		fmt.Fprintf(os.Stderr, "[%s] Error listing chores: %v\n", ts, err)
 		return
 	}
+	current := make(map[string]struct{})
 	for _, c := range chores {
+		current[c.ID] = struct{}{}
 		if _, seen := state.seenChoreIDs[c.ID]; seen {
 			continue
 		}
-		state.seenChoreIDs[c.ID] = struct{}{}
 		if state.seeding {
 			continue
 		}
@@ -338,6 +346,7 @@ func pollChores(client *lib.Client, state *watchState, now time.Time, ts string)
 				ts, c.Title, c.AssigneeID)
 		}
 	}
+	state.seenChoreIDs = current
 }
 
 func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts string) {
@@ -347,10 +356,9 @@ func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts strin
 		fmt.Fprintf(os.Stderr, "[%s] Error listing calendar events: %v\n", ts, err)
 		return
 	}
+	// Only track events currently in the "soon" window so the set stays small.
+	current := make(map[string]struct{})
 	for _, e := range events {
-		if _, seen := state.seenEventIDs[e.ID]; seen {
-			continue
-		}
 		if e.AllDay || e.StartAt == "" {
 			continue
 		}
@@ -362,7 +370,10 @@ func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts strin
 		if diff <= 0 || diff > time.Hour {
 			continue
 		}
-		state.seenEventIDs[e.ID] = struct{}{}
+		current[e.ID] = struct{}{}
+		if _, seen := state.seenEventIDs[e.ID]; seen {
+			continue
+		}
 		if state.seeding {
 			continue
 		}
@@ -376,6 +387,7 @@ func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts strin
 				ts, e.Title, int(diff.Minutes()))
 		}
 	}
+	state.seenEventIDs = current
 }
 
 func init() {

@@ -193,6 +193,56 @@ func TestRewardsPollerStatePersistence(t *testing.T) {
 	p2.Stop()
 }
 
+func TestRewardsPollerPrunesUnredeemedIDs(t *testing.T) {
+	// After a reward is no longer redeemed, the in-memory seen set (and next
+	// save) must drop that ID so state stays O(active redemptions).
+	rewards := []Reward{{ID: "rw1", Title: "Cookie", Points: 3, Redeemed: false}}
+	srv := makePollerServer(t, rewards, nil)
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	stateFile := filepath.Join(t.TempDir(), "state.json")
+	// Seed state file as if rw1 was previously redeemed.
+	if err := os.WriteFile(stateFile, []byte(`{"seen_reward_ids":["rw1","stale-id"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	client, _ := NewClientWithToken("u", "t")
+	p := NewRewardsPoller(client, "f1", time.Hour, stateFile)
+	if len(p.seen) != 2 {
+		t.Fatalf("want 2 ids loaded from state, got %d", len(p.seen))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	p.Start(ctx)
+	time.Sleep(200 * time.Millisecond)
+	p.Stop()
+
+	p.mu.Lock()
+	n := len(p.seen)
+	_, hasStale := p.seen["stale-id"]
+	_, hasRW1 := p.seen["rw1"]
+	p.mu.Unlock()
+	if n != 0 || hasStale || hasRW1 {
+		t.Errorf("want seen pruned empty after unredeem poll, got n=%d stale=%v rw1=%v", n, hasStale, hasRW1)
+	}
+}
+
+func TestSameStringSet(t *testing.T) {
+	a := map[string]struct{}{"x": {}, "y": {}}
+	b := map[string]struct{}{"y": {}, "x": {}}
+	if !sameStringSet(a, b) {
+		t.Error("expected equal sets")
+	}
+	if sameStringSet(a, map[string]struct{}{"x": {}}) {
+		t.Error("expected unequal sets")
+	}
+}
+
 func TestNewRewardsPollerDefaultStatePath(t *testing.T) {
 	old := SkylightURL
 	SkylightURL = "http://localhost:1/api"
