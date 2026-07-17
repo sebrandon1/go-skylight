@@ -334,6 +334,25 @@ func TestConfigEditCreatesFileIfMissing(t *testing.T) {
 	}
 }
 
+func TestEditorCommandSplitsArgs(t *testing.T) {
+	// #261: EDITOR="code --wait" must not treat the whole string as argv0.
+	c := editorCommand("code --wait", "/tmp/config")
+	if c.Path != "code" && c.Args[0] != "code" {
+		// Path may be resolved; Args[0] is the program name as invoked.
+		if len(c.Args) == 0 || c.Args[0] != "code" {
+			t.Fatalf("program: Path=%q Args=%v", c.Path, c.Args)
+		}
+	}
+	if len(c.Args) < 3 || c.Args[1] != "--wait" || c.Args[len(c.Args)-1] != "/tmp/config" {
+		t.Fatalf("args = %v, want [code --wait /tmp/config]", c.Args)
+	}
+
+	c2 := editorCommand("vi", "/tmp/config")
+	if len(c2.Args) != 2 || c2.Args[0] != "vi" || c2.Args[1] != "/tmp/config" {
+		t.Fatalf("simple editor args = %v", c2.Args)
+	}
+}
+
 // resetGlobals clears all config globals and resets them via t.Cleanup.
 func resetGlobals(t *testing.T) {
 	t.Helper()
