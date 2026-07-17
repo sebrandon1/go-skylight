@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -113,7 +111,8 @@ var frameSetAlbumCmd = &cobra.Command{
 			fatal("setting current album", err)
 		}
 
-		fmt.Printf("Current album set to %d\n", currentAlbumID)
+		// #265: honor global --quiet like other mutation confirmations
+		printSuccessf("Current album set to %d\n", currentAlbumID)
 	},
 }
 
