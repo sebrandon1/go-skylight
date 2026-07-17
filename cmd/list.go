@@ -15,6 +15,7 @@ var (
 	listItemID        string
 	listItemTitle     string
 	listItemCompleted bool
+	listItemPosition  int
 	listHideFromFrame bool
 )
 
@@ -121,7 +122,8 @@ var listAddItemCmd = &cobra.Command{
 		client := getClient()
 
 		item, err := client.AddListItem(frameID, listID, lib.ListItemData{
-			Title: listItemTitle,
+			Title:    listItemTitle,
+			Position: listItemPosition,
 		})
 		if err != nil {
 			fatal("adding list item", err)
@@ -195,6 +197,10 @@ var listUpdateItemCmd = &cobra.Command{
 		}
 		if cmd.Flags().Changed("completed") {
 			data.Completed = listItemCompleted
+		}
+		// #274: only send position when flag is explicitly set
+		if cmd.Flags().Changed("position") {
+			data.Position = listItemPosition
 		}
 
 		item, err := client.UpdateListItem(frameID, listID, listItemID, data)
@@ -282,6 +288,7 @@ func init() {
 
 	listAddItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listAddItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
+	listAddItemCmd.Flags().IntVar(&listItemPosition, "position", 0, "Item position/order in the list")
 	markFlagRequired(listAddItemCmd, "list-id")
 	markFlagRequired(listAddItemCmd, "title")
 
@@ -289,6 +296,7 @@ func init() {
 	listUpdateItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
 	listUpdateItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
 	listUpdateItemCmd.Flags().BoolVar(&listItemCompleted, "completed", false, "Mark item as completed")
+	listUpdateItemCmd.Flags().IntVar(&listItemPosition, "position", 0, "Item position/order in the list")
 	markFlagRequired(listUpdateItemCmd, "list-id")
 	markFlagRequired(listUpdateItemCmd, "item-id")
 

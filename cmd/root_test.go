@@ -394,6 +394,7 @@ func TestListAddItemFlags(t *testing.T) {
 	}{
 		{"list-id flag", "list-id"},
 		{"title flag", "title"},
+		{"position flag", "position"}, // #274
 	}
 
 	for _, tt := range tests {
@@ -403,6 +404,13 @@ func TestListAddItemFlags(t *testing.T) {
 				t.Errorf("Expected flag '%s' on list add-item command", tt.flag)
 			}
 		})
+	}
+}
+
+func TestListUpdateItemFlags(t *testing.T) {
+	// #274: update-item exposes --position
+	if listUpdateItemCmd.Flags().Lookup("position") == nil {
+		t.Error("Expected flag 'position' on list update-item command")
 	}
 }
 
