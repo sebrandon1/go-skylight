@@ -281,12 +281,13 @@ func init() {
 	choreCmd.AddCommand(choreSkipCmd)
 	choreCmd.AddCommand(choreClaimCmd)
 
-	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Date filter")
-	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter")
+	// #268: document valid status values and YYYY-MM-DD date format in help
+	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Exact date filter (YYYY-MM-DD)")
+	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter (pending|complete|skipped)")
 	choreListCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
 
-	choreListCmd.Flags().StringVar(&choreAfter, "after", "", "After date filter")
-	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "Before date filter")
+	choreListCmd.Flags().StringVar(&choreAfter, "after", "", "After date filter (YYYY-MM-DD)")
+	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "Before date filter (YYYY-MM-DD)")
 	choreListCmd.Flags().BoolVar(&choreIncludeLate, "include-late", false, "Include late chores")
 	choreListCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Only show up-for-grabs chores")
 	choreListCmd.Flags().StringVar(&choreWeek, "week", "", "Show weekly calendar view; optionally specify YYYY-MM-DD to select the week")
