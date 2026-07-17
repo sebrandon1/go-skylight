@@ -487,6 +487,31 @@ func TestRewardCreateFlags(t *testing.T) {
 	}
 }
 
+func TestRewardUpdateFlags(t *testing.T) {
+	flags := rewardUpdateCmd.Flags()
+
+	tests := []struct {
+		name string
+		flag string
+	}{
+		{"reward-id flag", "reward-id"},
+		{"title flag", "title"},
+		{"points flag", "points"},
+		{"emoji-icon flag", "emoji-icon"},
+		{"no-respawn flag", "no-respawn"},
+		{"category-ids flag", "category-ids"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := flags.Lookup(tt.flag)
+			if f == nil {
+				t.Errorf("Expected flag '%s' on reward update command", tt.flag)
+			}
+		})
+	}
+}
+
 func TestRewardDeleteFlags(t *testing.T) {
 	f := rewardDeleteCmd.Flags().Lookup("reward-id")
 	if f == nil {

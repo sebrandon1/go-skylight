@@ -182,6 +182,14 @@ var rewardUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("emoji-icon") {
 			data.EmojiIcon = rewardEmojiIcon
 		}
+		if cmd.Flags().Changed("no-respawn") {
+			// --no-respawn sets RespawnOnRedemption=false; explicit false re-enables.
+			respawn := !rewardNoRespawn
+			data.RespawnOnRedemption = &respawn
+		}
+		if cmd.Flags().Changed("category-ids") {
+			data.CategoryIDs = rewardCategoryIDs
+		}
 
 		reward, err := client.UpdateReward(frameID, rewardID, data)
 		if err != nil {
@@ -214,6 +222,8 @@ func init() {
 	rewardUpdateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardUpdateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
 	rewardUpdateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
+	rewardUpdateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
+	rewardUpdateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
 	markFlagRequired(rewardUpdateCmd, "reward-id")
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
