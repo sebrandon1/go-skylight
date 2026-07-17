@@ -51,6 +51,8 @@ cmd/                           # Cobra command definitions
   photo.go                     # photo list, upload, delete, download
   routine.go                   # routine list, create, update, delete, reorder
   grocery.go                   # grocery list, create, show, add, add-recipe, clear, organize, order
+  bounty.go                    # bounty (chore + reward pair) create/list/update/delete
+  rotation.go                  # chore rotation — generate rotating assignments across members
   addon.go                     # addon list — show frame add-ons and enabled state
   analytics.go                 # analytics — family activity stats over a time period
   export.go                    # export — dump frame data to JSON file
@@ -71,7 +73,7 @@ lib/                           # API client library
   session.go                   # Login (POST /api/sessions), OAuth2 refresh token flow
   structs.go                   # All API types and request/response structs
   options.go                   # ClientOption functional options (WithBaseURL, WithRetry, WithRateLimit, WithLogger)
-  errors.go                    # Typed errors: AuthError, NotFoundError, RateLimitError, ValidationError
+  errors.go                    # Typed errors: AuthError, NotFoundError, RateLimitError, NetworkError
   retry.go                     # Retry with exponential backoff, jitter, and rate limiting
   poller.go                    # RewardsPoller — background poll loop with persistent dedup state
   doc.go                       # Package-level godoc
@@ -91,6 +93,11 @@ lib/                           # API client library
   integration_crud_test.go     # CRUD integration tests (build tag: integration)
   example_test.go              # Testable examples for godoc
   config_loader_test.go        # Config loader tests
+docs/                          # User and library documentation
+  cli-reference.md             # CLI command reference
+  library-usage.md             # Library usage guide
+  alpaca-trigger.md            # Alpaca trigger daemon docs
+  examples/                    # Example walkthroughs
 ```
 
 ## Authentication
