@@ -201,3 +201,36 @@ func TestPrintAnalyticsText_EmptyAssignees(t *testing.T) {
 		t.Errorf("expected '(none)' for empty assignees, got: %s", output)
 	}
 }
+
+func TestBuildAssigneeStatsNonNumericCategoryWarns(t *testing.T) {
+	// #253: non-numeric category id must not panic; point balance stays 0.
+	totals := map[string]*choreCount{
+		"abc": {total: 2, completed: 1},
+		"1":   {total: 1, completed: 1},
+	}
+	catNames := map[string]string{"abc": "NonNumeric", "1": "Numeric"}
+	points := map[int]int{1: 42}
+	got := buildAssigneeStats(totals, catNames, points)
+	if len(got) != 2 {
+		t.Fatalf("want 2 assignees, got %d", len(got))
+	}
+	// Sorted by name: NonNumeric, Numeric
+	var nonNum, num *AssigneeStats
+	for i := range got {
+		switch got[i].Name {
+		case "NonNumeric":
+			nonNum = &got[i]
+		case "Numeric":
+			num = &got[i]
+		}
+	}
+	if nonNum == nil || num == nil {
+		t.Fatalf("missing assignees: %+v", got)
+	}
+	if nonNum.PointBalance != 0 {
+		t.Errorf("non-numeric PointBalance want 0, got %d", nonNum.PointBalance)
+	}
+	if num.PointBalance != 42 {
+		t.Errorf("numeric PointBalance want 42, got %d", num.PointBalance)
+	}
+}
