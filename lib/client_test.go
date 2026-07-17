@@ -518,6 +518,92 @@ func TestDoDeleteErrorResponse(t *testing.T) {
 	}
 }
 
+func TestNewClientWithRefreshToken(t *testing.T) {
+	tests := []struct {
+		name         string
+		refreshToken string
+		fingerprint  string
+		handler      http.HandlerFunc
+		wantErr      bool
+		wantToken    string
+		wantRefresh  string
+	}{
+		{
+			name:         "empty refresh token returns error",
+			refreshToken: "",
+			fingerprint:  "fp1",
+			wantErr:      true,
+		},
+		{
+			name:         "empty fingerprint returns error",
+			refreshToken: "rt1",
+			fingerprint:  "",
+			wantErr:      true,
+		},
+		{
+			name:         "refresh token auth success",
+			refreshToken: "rt1",
+			fingerprint:  "fp1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if _, err := w.Write([]byte(`{"access_token":"at1","refresh_token":"rt2","expires_in":3600}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			},
+			wantToken:   "at1",
+			wantRefresh: "rt2",
+		},
+		{
+			name:         "refresh token auth failure",
+			refreshToken: "rt1",
+			fingerprint:  "fp1",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusUnauthorized)
+				if _, err := w.Write([]byte(`{"error":"invalid_grant"}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.handler == nil {
+				client, err := NewClientWithRefreshToken(tc.refreshToken, tc.fingerprint)
+				if (err != nil) != tc.wantErr {
+					t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+				}
+				if !tc.wantErr && client == nil {
+					t.Fatal("expected non-nil client")
+				}
+				return
+			}
+
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+
+			old := OAuthURL
+			OAuthURL = srv.URL
+			defer func() { OAuthURL = old }()
+
+			client, err := NewClientWithRefreshToken(tc.refreshToken, tc.fingerprint)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if client.APIToken != tc.wantToken {
+				t.Errorf("APIToken: want %q got %q", tc.wantToken, client.APIToken)
+			}
+			if client.RefreshToken != tc.wantRefresh {
+				t.Errorf("RefreshToken: want %q got %q", tc.wantRefresh, client.RefreshToken)
+			}
+		})
+	}
+}
+
 func TestLoginBadURL(t *testing.T) {
 	old := SkylightURL
 	SkylightURL = "://bad"

@@ -177,6 +177,13 @@ func TestUpdateRoutine(t *testing.T) {
 			response:  `{invalid`,
 			wantErr:   true,
 		},
+		{
+			name:      "204 response returns zero-value routine",
+			routineID: "r1",
+			input:     RoutineData{Title: "Test"},
+			status:    http.StatusNoContent,
+			wantTitle: "",
+		},
 	}
 
 	for _, tc := range tests {
@@ -206,6 +213,13 @@ func TestUpdateRoutine(t *testing.T) {
 			}
 			if !tc.wantErr && routine != nil && routine.Title != tc.wantTitle {
 				t.Errorf("Title: want %q got %q", tc.wantTitle, routine.Title)
+			}
+			if !tc.wantErr && tc.status == http.StatusNoContent {
+				if routine == nil {
+					t.Error("expected non-nil routine for 204 response")
+				} else if routine.ID != "" {
+					t.Errorf("ID: want empty string, got %q", routine.ID)
+				}
 			}
 		})
 	}

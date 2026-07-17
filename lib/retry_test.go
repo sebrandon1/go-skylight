@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -239,6 +240,78 @@ func TestDoWithRetryMaxAttemptsZero(t *testing.T) {
 	resp.Body.Close()
 	if calls.Load() != 1 {
 		t.Errorf("maxAttempts=0 should default to 1, got %d calls", calls.Load())
+	}
+}
+
+func TestDoWithRetry_BodyReplayOnRetry(t *testing.T) {
+	type testPayload struct {
+		Value string `json:"value"`
+	}
+
+	var calls atomic.Int32
+	var mu sync.Mutex
+	var bodies []string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		bodies = append(bodies, string(b))
+		mu.Unlock()
+		if n == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	req, _ := newRequestWithBody("POST", srv.URL, testPayload{Value: "hello"})
+	cfg := retryConfig{maxAttempts: 2, baseDelay: 5 * time.Millisecond, maxDelay: 20 * time.Millisecond}
+
+	resp, err := doWithRetry(context.Background(), http.DefaultClient, nil, cfg, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	resp.Body.Close()
+
+	if calls.Load() != 2 {
+		t.Errorf("want 2 calls, got %d", calls.Load())
+	}
+	mu.Lock()
+	b := bodies
+	mu.Unlock()
+	if len(b) < 2 {
+		t.Fatalf("want 2 request bodies captured, got %d", len(b))
+	}
+	if b[0] == "" || b[1] == "" {
+		t.Errorf("expected non-empty body on both attempts, got %q and %q", b[0], b[1])
+	}
+	if b[0] != b[1] {
+		t.Errorf("body mismatch: first=%q second=%q", b[0], b[1])
+	}
+}
+
+func TestDrainAndError_429Instant(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	drainErr := drainAndError(context.Background(), resp)
+	if drainErr == nil {
+		t.Fatal("expected error")
+	}
+	var rle *RateLimitError
+	if !errors.As(drainErr, &rle) {
+		t.Errorf("expected *RateLimitError, got %T: %v", drainErr, drainErr)
 	}
 }
 
