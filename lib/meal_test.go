@@ -343,6 +343,7 @@ func TestListMealSittings(t *testing.T) {
 		status   int
 		response string
 		wantLen  int
+		wantDate string
 		wantErr  bool
 	}{
 		{
@@ -350,6 +351,7 @@ func TestListMealSittings(t *testing.T) {
 			status:   http.StatusOK,
 			response: `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"Dinner","instances":["2024-03-10"]},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}]}`,
 			wantLen:  1,
+			wantDate: "2024-03-10",
 		},
 		{
 			name:    "server error returns error",
@@ -385,6 +387,9 @@ func TestListMealSittings(t *testing.T) {
 			}
 			if !tc.wantErr && len(sittings) != tc.wantLen {
 				t.Errorf("wantLen=%d got %d", tc.wantLen, len(sittings))
+			}
+			if tc.wantDate != "" && len(sittings) > 0 && sittings[0].Date != tc.wantDate {
+				t.Errorf("Date: want %q got %q", tc.wantDate, sittings[0].Date)
 			}
 		})
 	}
@@ -432,14 +437,16 @@ func TestCreateMealSitting(t *testing.T) {
 		status      int
 		response    string
 		wantSummary string
+		wantDate    string
 		wantErr     bool
 	}{
 		{
 			name:        "creates sitting",
 			input:       MealSittingData{RecipeID: "recipe1", Date: "2024-01-15", MealCategoryID: "cat1"},
 			status:      http.StatusCreated,
-			response:    `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"dinner"},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}]}`,
+			response:    `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"dinner","instances":["2024-01-15"]},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}]}`,
 			wantSummary: "dinner",
+			wantDate:    "2024-01-15",
 		},
 		{
 			name:    "server error returns error",
@@ -479,6 +486,9 @@ func TestCreateMealSitting(t *testing.T) {
 			}
 			if !tc.wantErr && sitting.Summary != tc.wantSummary {
 				t.Errorf("Summary: want %q got %q", tc.wantSummary, sitting.Summary)
+			}
+			if tc.wantDate != "" && sitting != nil && sitting.Date != tc.wantDate {
+				t.Errorf("Date: want %q got %q", tc.wantDate, sitting.Date)
 			}
 		})
 	}

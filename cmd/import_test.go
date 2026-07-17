@@ -57,6 +57,21 @@ func TestParallelImport_PanicRecovery(t *testing.T) {
 	}
 }
 
+func TestParallelImport_MixedPanicAndSuccess(t *testing.T) {
+	items := []string{"ok1", "panic", "ok2"}
+	total, failed := parallelImport(items, func(s string) (int, int) {
+		if s == "panic" {
+			panic("simulated goroutine panic")
+		}
+		return 1, 0
+	})
+	// Panicked items contribute (0,1) — not (1,1) — since they never counted
+	// the attempt. So 2 successful items give total=2; 1 panic gives failed=1.
+	if total != 2 || failed != 1 {
+		t.Errorf("got total=%d failed=%d, want total=2 failed=1", total, failed)
+	}
+}
+
 func TestImportRewards(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
