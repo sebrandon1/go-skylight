@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -62,12 +63,39 @@ func checkStatus(resp *http.Response, body []byte) error {
 	case http.StatusUnauthorized:
 		return &AuthError{Message: string(body)}
 	case http.StatusNotFound:
-		return &NotFoundError{Resource: resp.Request.URL.Path}
+		resource, id := parseNotFoundPath(resp.Request.URL.Path)
+		return &NotFoundError{Resource: resource, ID: id}
 	case http.StatusTooManyRequests:
 		return &RateLimitError{RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
 	default:
 		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
 	}
+}
+
+// parseNotFoundPath extracts a resource type and optional resource ID from a
+// REST URL path. Assumes paths of the form /…/{collection}/{id} where
+// collection names are English plurals ending in "s".
+func parseNotFoundPath(urlPath string) (resource, id string) {
+	if urlPath == "" {
+		return "", ""
+	}
+	last := path.Base(urlPath)
+	if last == "." || last == "/" {
+		return "", ""
+	}
+	prev := path.Base(path.Dir(urlPath))
+	// If prev ends in "s" it is a collection name; last is the resource ID.
+	if strings.HasSuffix(prev, "s") {
+		return singularize(prev), last
+	}
+	return singularize(last), ""
+}
+
+func singularize(s string) string {
+	if strings.HasSuffix(s, "ies") {
+		return s[:len(s)-3] + "y"
+	}
+	return strings.TrimSuffix(s, "s")
 }
 
 // parseRetryAfter parses an HTTP Retry-After header value per RFC 7231:
