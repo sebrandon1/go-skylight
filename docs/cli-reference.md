@@ -1,6 +1,37 @@
 # CLI Reference
 
-All commands accept `--user-id`/`--token`, `--refresh-token`, `--frame-id`, `--config`, and `--output (json|table)` as persistent flags. Resource commands are top-level (e.g. `skylight chore list`).
+Resource commands are top-level (e.g. `skylight chore list`).
+
+## Global flags
+
+All commands accept these persistent flags:
+
+| Flag | Notes |
+|------|--------|
+| `--refresh-token` | OAuth2 refresh token (recommended) |
+| `--user-id` / `--token` | Bearer access token pair (alternative to refresh token) |
+| `--frame-id` | Target frame for resource commands |
+| `--config` | Config file path (default `~/.skylight/config`) |
+| `--device-fingerprint` | Stable device UUID used with OAuth |
+| `--output` / `-o` | `json` (default) or `table` |
+| `--quiet` / `-q` | Suppress non-essential success messages |
+| `--email` / `--password` | **Deprecated** — use `--refresh-token` instead |
+
+## Config
+
+```bash
+skylight config show
+skylight config get <key>
+skylight config set <key> <value>
+skylight config unset <key>
+skylight config edit
+```
+
+## Login
+
+```bash
+skylight login [--save]
+```
 
 ## Calendar
 
@@ -32,11 +63,12 @@ skylight chore streak [--days N]
 ```bash
 skylight reward list
 skylight reward create --title TITLE --points N [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
-skylight reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI]
+skylight reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
 skylight reward delete --reward-id ID
 skylight reward redeem   --reward-id ID
 skylight reward unredeem --reward-id ID
 skylight reward points
+skylight reward remove-stars --assignee-id ID --points N
 ```
 
 ## Lists
@@ -47,10 +79,11 @@ skylight list info       --list-id ID
 skylight list create     --title TITLE [--color COLOR] [--hide-from-frame]
 skylight list update     --list-id ID [--title T] [--color C] [--hide-from-frame]
 skylight list delete     --list-id ID
-skylight list add-item   --list-id ID --title TITLE
-skylight list update-item --list-id ID --item-id ITEM_ID [--title T] [--completed]
+skylight list add-item   --list-id ID --title TITLE [--position N]
+skylight list update-item --list-id ID --item-id ITEM_ID [--title T] [--completed] [--position N]
 skylight list delete-item --list-id ID --item-id ITEM_ID
 skylight list clear-completed --list-id ID
+skylight list task-box-item --title TITLE [--date DATE]
 ```
 
 ## Meals
@@ -63,6 +96,7 @@ skylight meal create-recipe --title TITLE [--description D] [--ingredients a,b] 
 skylight meal update-recipe --recipe-id ID [--title T] [--description D] [--ingredients a,b] [--url URL]
 skylight meal delete-recipe --recipe-id ID
 skylight meal sittings [--date-min DATE] [--date-max DATE]
+skylight meal get-sitting --sitting-id ID
 skylight meal create-sitting --recipe-id ID --date DATE [--summary S] [--meal-category-id ID]
 skylight meal delete-sitting --sitting-id ID [--date DATE]
 skylight meal sitting-recipe --sitting-id ID
@@ -96,6 +130,13 @@ skylight frame info
 skylight frame devices
 skylight frame avatars
 skylight frame colors
+skylight frame set-album --album-id ID   # -1 for all photos
+```
+
+## Add-ons
+
+```bash
+skylight addon list
 ```
 
 ## Bounties & Rotations
@@ -137,9 +178,9 @@ skylight grocery clear    --list-id ID
 
 ```bash
 skylight status                     # quick overview of the connected frame
-skylight home [--no-tasks] [--no-lists]   # weekly combined view of events, tasks, and lists
+skylight home [--no-tasks] [--no-lists] [--no-meals]   # weekly combined view of events, tasks, lists, meals
 skylight analytics [--days N]       # family activity statistics over a time period
-skylight watch [--interval SECONDS] [--resources rewards,chores,calendar] [--persist]
+skylight watch [--interval SECONDS] [--resources rewards,chores,calendar,lists,routines] [--persist]
 ```
 
 ## Export & Import
