@@ -383,4 +383,6 @@ func init() {
 	watchCmd.Flags().IntVar(&watchInterval, "interval", 60, "Poll interval in seconds")
 	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar,lists,routines")
 	watchCmd.Flags().BoolVar(&watchPersist, "persist", false, "Persist reward deduplication state to disk across restarts (~/.skylight/poller-state.json)")
+	registerEnumFlagCompletion(watchCmd, "resources",
+		"rewards", "chores", "calendar", "lists", "routines", "all")
 }

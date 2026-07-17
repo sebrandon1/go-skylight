@@ -58,6 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&deviceFingerprint, "device-fingerprint", "", "Device fingerprint UUID (stable per device)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", outputJSON, "Output format: json or table")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Suppress non-essential success messages")
+	registerCommonFlagCompletions()
 
 	getCmd.Hidden = true
 
