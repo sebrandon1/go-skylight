@@ -98,8 +98,20 @@ func TestGroceryAddCmd(t *testing.T) {
 	t.Cleanup(func() { groceryListID, groceryItems = origID, origItems })
 
 	out := captureStdout(func() { groceryAddCmd.Run(groceryAddCmd, nil) })
-	if !strings.Contains(out, "Added 2 item(s)") {
-		t.Errorf("expected item count in output, got: %s", out)
+	if !strings.Contains(out, "Added 2 item") {
+		t.Errorf("expected success count in output, got: %s", out)
+	}
+}
+
+func TestFormatGroceryAddFailure(t *testing.T) {
+	err := fmt.Errorf("boom")
+	got := formatGroceryAddFailure(2, "Milk", err)
+	if !strings.Contains(got, "Added 2 item(s) before error") || !strings.Contains(got, "Milk") {
+		t.Errorf("expected partial progress message, got %q", got)
+	}
+	got0 := formatGroceryAddFailure(0, "Eggs", err)
+	if !strings.Contains(got0, "Error adding item") || strings.Contains(got0, "before error") {
+		t.Errorf("expected first-item failure message, got %q", got0)
 	}
 }
 
