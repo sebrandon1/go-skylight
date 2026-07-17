@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLogin_Success(t *testing.T) {
@@ -129,6 +130,37 @@ func TestRefreshOAuthToken_MissingAccessToken(t *testing.T) {
 	_, err := RefreshOAuthToken("tok", "fp1")
 	if err == nil {
 		t.Error("expected error for missing access_token, got nil")
+	}
+}
+
+func TestPostOAuthToken_Timeout(t *testing.T) {
+	unblock := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Block until the test signals done or the client disconnects.
+		select {
+		case <-unblock:
+		case <-r.Context().Done():
+		}
+	}))
+	t.Cleanup(func() {
+		close(unblock)
+		srv.Close()
+	})
+
+	old := OAuthURL
+	OAuthURL = srv.URL
+	defer func() { OAuthURL = old }()
+
+	oldTimeout := oauthHTTPTimeout
+	oauthHTTPTimeout = 50 * time.Millisecond
+	defer func() { oauthHTTPTimeout = oldTimeout }()
+
+	_, err := RefreshOAuthToken("tok", "fp1")
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
+	if !strings.Contains(err.Error(), "deadline exceeded") && !strings.Contains(err.Error(), "context deadline") && !strings.Contains(err.Error(), "timeout") {
+		t.Errorf("expected a timeout error, got: %v", err)
 	}
 }
 
