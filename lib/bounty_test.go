@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -463,5 +464,134 @@ func TestListBountiesDateRange(t *testing.T) {
 	}
 	if !beforeT.After(afterT) {
 		t.Errorf("expected before (%s) > after (%s)", gotBefore, gotAfter)
+	}
+}
+
+func TestDeleteBounty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.DeleteBounty("frame1", "c1", "r1")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
+func TestDeleteBounty_ChoreError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "chores") {
+			w.WriteHeader(http.StatusInternalServerError)
+			if _, err := w.Write([]byte(`{"error":"chore fail"}`)); err != nil {
+				t.Errorf("write: %v", err)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.DeleteBounty("frame1", "c1", "r1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "chore") {
+		t.Errorf("expected error to mention chore, got: %v", err)
+	}
+}
+
+func TestDeleteBounty_BothError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.DeleteBounty("frame1", "c1", "r1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "chore") {
+		t.Errorf("expected error to mention chore, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "reward") {
+		t.Errorf("expected error to mention reward, got: %v", err)
+	}
+}
+
+func TestUpdateBounty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "chores"):
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(choreAPISingleResponse{
+				Data: choreAPIEntry{ID: "c1", Attributes: choreAPIAttributes{Summary: "t"}},
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		case r.Method == http.MethodPatch && strings.Contains(r.URL.Path, "rewards"):
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(rewardAPISingleResponse{
+				Data: rewardAPIEntry{ID: "r1"},
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.UpdateBounty("frame1", "c1", "r1", BountyData{Title: "t", RewardTitle: "r"})
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
+func TestUpdateBounty_ChoreError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.UpdateBounty("frame1", "c1", "r1", BountyData{Title: "t"})
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }

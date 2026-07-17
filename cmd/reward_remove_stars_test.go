@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -29,4 +32,99 @@ func TestRewardRemoveStarsCmd(t *testing.T) {
 
 func TestRewardRemoveStarsCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rewardCmd, "remove-stars")
+}
+
+// TestRewardRemoveStarsCmd_InvalidAssigneeID_Crasher is invoked as a subprocess
+// by TestRewardRemoveStarsCmd_InvalidAssigneeID to exercise the fatal() path
+// for a non-positive assignee ID without terminating the real test binary.
+func TestRewardRemoveStarsCmd_InvalidAssigneeID_Crasher(t *testing.T) {
+	if os.Getenv("WANT_REMOVE_STARS_ASSIGNEE_CRASH") != "1" {
+		t.Skip("only runs as a subprocess of TestRewardRemoveStarsCmd_InvalidAssigneeID")
+	}
+	frameID = "test-frame"
+	removeStarsAssigneeID = -1
+	removeStarsPoints = 10
+	rewardRemoveStarsCmd.Run(rewardRemoveStarsCmd, nil)
+}
+
+func TestRewardRemoveStarsCmd_InvalidAssigneeID(t *testing.T) {
+	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
+	cmd := exec.Command(os.Args[0], "-test.run=TestRewardRemoveStarsCmd_InvalidAssigneeID_Crasher")
+	cmd.Env = append(os.Environ(), "WANT_REMOVE_STARS_ASSIGNEE_CRASH=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.Success() {
+		t.Fatalf("expected command to exit with non-zero status, got err=%v", err)
+	}
+	if !strings.Contains(stderr.String(), "assignee-id") {
+		t.Errorf("expected assignee-id error on stderr, got: %s", stderr.String())
+	}
+}
+
+// TestRewardRemoveStarsCmd_InvalidPoints_Crasher is invoked as a subprocess
+// by TestRewardRemoveStarsCmd_InvalidPoints to exercise the fatal() path
+// for a non-positive points value without terminating the real test binary.
+func TestRewardRemoveStarsCmd_InvalidPoints_Crasher(t *testing.T) {
+	if os.Getenv("WANT_REMOVE_STARS_POINTS_CRASH") != "1" {
+		t.Skip("only runs as a subprocess of TestRewardRemoveStarsCmd_InvalidPoints")
+	}
+	frameID = "test-frame"
+	removeStarsAssigneeID = 1
+	removeStarsPoints = -5
+	rewardRemoveStarsCmd.Run(rewardRemoveStarsCmd, nil)
+}
+
+func TestRewardRemoveStarsCmd_InvalidPoints(t *testing.T) {
+	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
+	cmd := exec.Command(os.Args[0], "-test.run=TestRewardRemoveStarsCmd_InvalidPoints_Crasher")
+	cmd.Env = append(os.Environ(), "WANT_REMOVE_STARS_POINTS_CRASH=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.Success() {
+		t.Fatalf("expected command to exit with non-zero status, got err=%v", err)
+	}
+	if !strings.Contains(stderr.String(), "points") {
+		t.Errorf("expected points error on stderr, got: %s", stderr.String())
+	}
+}
+
+// TestRewardRemoveStarsCmd_APIError_Crasher is invoked as a subprocess by
+// TestRewardRemoveStarsCmd_APIError to exercise the fatal() path when the
+// RemoveStars API call returns a server error.
+func TestRewardRemoveStarsCmd_APIError_Crasher(t *testing.T) {
+	if os.Getenv("WANT_REMOVE_STARS_API_CRASH") != "1" {
+		t.Skip("only runs as a subprocess of TestRewardRemoveStarsCmd_APIError")
+	}
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	removeStarsAssigneeID = 1
+	removeStarsPoints = 10
+	rewardRemoveStarsCmd.Run(rewardRemoveStarsCmd, nil)
+}
+
+func TestRewardRemoveStarsCmd_APIError(t *testing.T) {
+	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
+	cmd := exec.Command(os.Args[0], "-test.run=TestRewardRemoveStarsCmd_APIError_Crasher")
+	cmd.Env = append(os.Environ(), "WANT_REMOVE_STARS_API_CRASH=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.Success() {
+		t.Fatalf("expected command to exit with non-zero status on API error, got err=%v", err)
+	}
+	if !strings.Contains(stderr.String(), "removing stars") {
+		t.Errorf("expected remove-stars error on stderr, got: %s", stderr.String())
+	}
 }

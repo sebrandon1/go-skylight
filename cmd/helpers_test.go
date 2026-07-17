@@ -641,6 +641,37 @@ func TestGetFrameOrFail_Success(t *testing.T) {
 	}
 }
 
+// TestGetFrameOrFail_Error_Crasher is invoked as a subprocess by
+// TestGetFrameOrFail_Error to exercise the fatal() path without terminating
+// the real test binary.
+func TestGetFrameOrFail_Error_Crasher(t *testing.T) {
+	if os.Getenv("WANT_GET_FRAME_ERROR_CRASH") != "1" {
+		t.Skip("only runs as a subprocess of TestGetFrameOrFail_Error")
+	}
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	getFrameOrFail(client, "f1")
+}
+
+func TestGetFrameOrFail_Error(t *testing.T) {
+	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
+	cmd := exec.Command(os.Args[0], "-test.run=TestGetFrameOrFail_Error_Crasher")
+	cmd.Env = append(os.Environ(), "WANT_GET_FRAME_ERROR_CRASH=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || exitErr.Success() {
+		t.Fatalf("expected getFrameOrFail to exit with a non-zero status, got err=%v", err)
+	}
+	if !strings.Contains(stderr.String(), "getting frame info") {
+		t.Errorf("expected error message on stderr, got: %s", stderr.String())
+	}
+}
+
 func TestPrintSuccess(t *testing.T) {
 	t.Cleanup(func() { quiet = false })
 

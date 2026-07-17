@@ -479,6 +479,184 @@ func TestUpdateListFlatJSON(t *testing.T) {
 	}
 }
 
+func TestClearCompletedListItems(t *testing.T) {
+	tests := []struct {
+		name      string
+		handler   http.HandlerFunc
+		wantCount int
+		wantErr   bool
+	}{
+		{
+			name: "no completed items",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.Method == http.MethodGet {
+					w.WriteHeader(http.StatusOK)
+					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"pending","position":0}}]}`)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			},
+			wantCount: 0,
+		},
+		{
+			name: "clears completed items",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.Method {
+				case http.MethodGet:
+					w.WriteHeader(http.StatusOK)
+					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"completed","position":0}}]}`)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				case http.MethodDelete:
+					w.WriteHeader(http.StatusNoContent)
+				default:
+					t.Errorf("unexpected method: %s %s", r.Method, r.URL.Path)
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+			},
+			wantCount: 1,
+		},
+		{
+			name: "get list error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			wantErr: true,
+		},
+		{
+			name: "delete item error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.Method == http.MethodGet {
+					w.WriteHeader(http.StatusOK)
+					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"completed","position":0}}]}`)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+					return
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+				if _, err := w.Write([]byte(`{"error":"fail"}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			count, err := client.ClearCompletedListItems("frame1", "l1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && count != tc.wantCount {
+				t.Errorf("count: want %d got %d", tc.wantCount, count)
+			}
+		})
+	}
+}
+
+func TestOrganizeGroceryList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/lists/l1/organize" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Groceries","color":"#2178AF","kind":"grocery"}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.OrganizeGroceryList("frame1", "l1")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
+func TestOrganizeGroceryList_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.OrganizeGroceryList("frame1", "l1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestOrderGroceryList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != "/api/frames/frame1/lists/l1/order" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"redirect_url":"https://instacart.example.com/cart"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	redirectURL, err := client.OrderGroceryList("frame1", "l1", "")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+	if redirectURL != "https://instacart.example.com/cart" {
+		t.Errorf("redirectURL: want https://instacart.example.com/cart, got %q", redirectURL)
+	}
+}
+
+func TestOrderGroceryList_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.OrderGroceryList("frame1", "l1", "")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
 func TestCreateTaskBoxItem(t *testing.T) {
 	tests := []struct {
 		name      string

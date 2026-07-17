@@ -71,6 +71,12 @@ func TestListChores(t *testing.T) {
 			response: `not valid json`,
 			wantErr:  true,
 		},
+		{
+			name:     "sets include_late param",
+			opts:     ChoreListOptions{IncludeLate: true},
+			status:   http.StatusOK,
+			response: `{"data":[]}`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -91,6 +97,9 @@ func TestListChores(t *testing.T) {
 				}
 				if tc.opts.AssigneeID != "" && q.Get("assignee_id") != tc.opts.AssigneeID {
 					t.Errorf("assignee_id: want %q got %q", tc.opts.AssigneeID, q.Get("assignee_id"))
+				}
+				if tc.opts.IncludeLate && q.Get("include_late") != "true" {
+					t.Errorf("include_late: want true got %q", q.Get("include_late"))
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)

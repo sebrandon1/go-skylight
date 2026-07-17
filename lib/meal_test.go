@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -816,6 +817,62 @@ func TestDeleteMealSitting(t *testing.T) {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestListMealSittings_DateParams(t *testing.T) {
+	var gotMin, gotMax string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/frames/frame1/meals/sittings" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		gotMin = r.URL.Query().Get("date_min")
+		gotMax = r.URL.Query().Get("date_max")
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":[]}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.ListMealSittings("frame1", MealSittingListOptions{DateMin: "2024-01-01", DateMax: "2024-01-31"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotMin != "2024-01-01" {
+		t.Errorf("date_min: want 2024-01-01, got %q", gotMin)
+	}
+	if gotMax != "2024-01-31" {
+		t.Errorf("date_max: want 2024-01-31, got %q", gotMax)
+	}
+}
+
+func TestCreateMealSitting_EmptyResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if _, err := w.Write([]byte(`{"data":[]}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateMealSitting("frame1", MealSittingData{RecipeID: "r1", Date: "2024-01-15"})
+	if err == nil {
+		t.Fatal("expected error for empty response, got nil")
+	}
+	if !strings.Contains(err.Error(), "empty response") {
+		t.Errorf("expected error to contain 'empty response', got: %v", err)
 	}
 }
 

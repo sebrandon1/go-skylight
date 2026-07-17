@@ -205,6 +205,62 @@ func TestLoginHeadless_InvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestFetchAuthCode_NoLocation(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
+		// Return 200 with no Location header — fetchAuthCode should error.
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `<html><body>some page</body></html>`)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	oldAuthorize := OAuthAuthorizeURL
+	OAuthAuthorizeURL = srv.URL + "/oauth/authorize"
+	defer func() { OAuthAuthorizeURL = oldAuthorize }()
+
+	hc := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	_, err := fetchAuthCode(hc, "fp1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "no Location") {
+		t.Errorf("expected error to contain 'no Location', got: %v", err)
+	}
+}
+
+func TestFetchAuthCode_NoCodeInRedirect(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
+		// Redirect to a non-login URL with no code param.
+		w.Header().Set("Location", "https://example.com/welcome")
+		w.WriteHeader(http.StatusFound)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	oldAuthorize := OAuthAuthorizeURL
+	OAuthAuthorizeURL = srv.URL + "/oauth/authorize"
+	defer func() { OAuthAuthorizeURL = oldAuthorize }()
+
+	hc := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	_, err := fetchAuthCode(hc, "fp1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "no code in redirect URL") {
+		t.Errorf("expected error to contain 'no code in redirect URL', got: %v", err)
+	}
+}
+
 func TestLoginHeadless_NotLoggedInAtAuthorize(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/session/new", func(w http.ResponseWriter, r *http.Request) {

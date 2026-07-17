@@ -124,6 +124,13 @@ func TestCreateReward(t *testing.T) {
 			status:  http.StatusInternalServerError,
 			wantErr: true,
 		},
+		{
+			name:     "empty data array returns error",
+			input:    RewardData{Title: "Test", Points: 5},
+			status:   http.StatusCreated,
+			response: `{"data":[]}`,
+			wantErr:  true,
+		},
 	}
 
 	for _, tc := range tests {
