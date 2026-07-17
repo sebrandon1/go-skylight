@@ -348,7 +348,7 @@ func TestListMealSittings(t *testing.T) {
 		{
 			name:     "returns sittings",
 			status:   http.StatusOK,
-			response: `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"Dinner"},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}]}`,
+			response: `{"data":[{"id":"1","type":"meal_sitting","attributes":{"summary":"Dinner","instances":["2024-03-10"]},"relationships":{"meal_category":{"data":{"id":"cat1","type":"meal_category"}},"meal_recipe":{"data":{"id":"r1","type":"meal_recipe"}}}}]}`,
 			wantLen:  1,
 		},
 		{
@@ -385,6 +385,41 @@ func TestListMealSittings(t *testing.T) {
 			}
 			if !tc.wantErr && len(sittings) != tc.wantLen {
 				t.Errorf("wantLen=%d got %d", tc.wantLen, len(sittings))
+			}
+		})
+	}
+}
+
+func TestMealSittingAPIEntry_DateFromInstances(t *testing.T) {
+	tests := []struct {
+		name      string
+		instances []string
+		wantDate  string
+	}{
+		{
+			name:      "first instance becomes Date",
+			instances: []string{"2026-05-03", "2026-05-10"},
+			wantDate:  "2026-05-03",
+		},
+		{
+			name:      "single instance",
+			instances: []string{"2024-03-15"},
+			wantDate:  "2024-03-15",
+		},
+		{
+			name:      "no instances leaves Date empty",
+			instances: nil,
+			wantDate:  "",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e := mealSittingAPIEntry{ID: "1"}
+			e.Attributes.Summary = "Dinner"
+			e.Attributes.Instances = tc.instances
+			s := e.toMealSitting()
+			if s.Date != tc.wantDate {
+				t.Errorf("Date: want %q got %q", tc.wantDate, s.Date)
 			}
 		})
 	}

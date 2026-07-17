@@ -539,7 +539,8 @@ type SittingWithRecipe struct {
 type mealSittingAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Summary string `json:"summary"`
+		Summary   string   `json:"summary"`
+		Instances []string `json:"instances"`
 	} `json:"attributes"`
 	Relationships struct {
 		MealCategory struct {
@@ -555,6 +556,9 @@ func (e *mealSittingAPIEntry) toMealSitting() MealSitting {
 	s := MealSitting{
 		ID:      e.ID,
 		Summary: e.Attributes.Summary,
+	}
+	if len(e.Attributes.Instances) > 0 {
+		s.Date = e.Attributes.Instances[0]
 	}
 	if e.Relationships.MealCategory.Data != nil {
 		s.MealCategoryID = e.Relationships.MealCategory.Data.ID
