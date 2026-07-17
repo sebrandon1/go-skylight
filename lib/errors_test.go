@@ -63,23 +63,42 @@ func TestCheckStatus(t *testing.T) {
 
 func TestParseRetryAfter(t *testing.T) {
 	tests := []struct {
+		name   string
 		header string
 		want   time.Duration
 	}{
-		{"", 0},
-		{"5", 5 * time.Second},
-		{"60", 60 * time.Second},
-		{"abc", 0},
-		{"-1", 0},
+		{name: "empty", header: "", want: 0},
+		{name: "delta-5", header: "5", want: 5 * time.Second},
+		{name: "delta-60", header: "60", want: 60 * time.Second},
+		{name: "garbage", header: "abc", want: 0},
+		{name: "negative", header: "-1", want: 0},
+		{name: "padded-delta", header: " 30 ", want: 30 * time.Second},
 	}
 	for _, tc := range tests {
-		t.Run(tc.header, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			got := parseRetryAfter(tc.header)
 			if got != tc.want {
 				t.Errorf("parseRetryAfter(%q) = %v, want %v", tc.header, got, tc.want)
 			}
 		})
 	}
+
+	t.Run("http-date-future", func(t *testing.T) {
+		// ~45s in the future; allow clock skew and scheduling latency.
+		future := time.Now().UTC().Add(45 * time.Second).Format(http.TimeFormat)
+		got := parseRetryAfter(future)
+		if got < 30*time.Second || got > 45*time.Second {
+			t.Errorf("parseRetryAfter(HTTP-date future) = %v, want ~45s (30-45s)", got)
+		}
+	})
+
+	t.Run("http-date-past", func(t *testing.T) {
+		past := time.Now().UTC().Add(-2 * time.Minute).Format(http.TimeFormat)
+		got := parseRetryAfter(past)
+		if got != 0 {
+			t.Errorf("parseRetryAfter(HTTP-date past) = %v, want 0", got)
+		}
+	})
 }
 
 func TestErrorTypes(t *testing.T) {
