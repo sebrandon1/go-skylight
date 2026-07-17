@@ -158,18 +158,26 @@ func (p *RewardsPoller) poll(ctx context.Context) {
 		return
 	}
 
-	var newSeen []string
+	// Bound seen-state to currently redeemed IDs only. IDs for rewards that
+	// are no longer redeemed are dropped so memory and the on-disk file stay
+	// O(active redemptions) instead of growing forever.
+	current := make(map[string]struct{})
+	var newlyRedeemed []Reward
+	p.mu.Lock()
 	for _, r := range rewards {
 		if !r.Redeemed {
 			continue
 		}
-		p.mu.Lock()
-		_, already := p.seen[r.ID]
-		p.mu.Unlock()
-		if already {
-			continue
+		current[r.ID] = struct{}{}
+		if _, already := p.seen[r.ID]; !already {
+			newlyRedeemed = append(newlyRedeemed, r)
 		}
+	}
+	changed := !sameStringSet(p.seen, current)
+	p.seen = current
+	p.mu.Unlock()
 
+	for _, r := range newlyRedeemed {
 		event := RedemptionEvent{
 			RewardID:   r.ID,
 			RewardName: r.Title,
@@ -191,18 +199,24 @@ func (p *RewardsPoller) poll(ctx context.Context) {
 				)
 			}
 		}
-
-		newSeen = append(newSeen, r.ID)
 	}
 
-	if len(newSeen) > 0 {
-		p.mu.Lock()
-		for _, id := range newSeen {
-			p.seen[id] = struct{}{}
-		}
-		p.mu.Unlock()
+	if changed || len(newlyRedeemed) > 0 {
 		p.saveState()
 	}
+}
+
+// sameStringSet reports whether a and b contain the same keys.
+func sameStringSet(a, b map[string]struct{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *RewardsPoller) resolveChildNames() map[string]string {
