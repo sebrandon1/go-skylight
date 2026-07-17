@@ -239,10 +239,15 @@ func exchangeAuthCode(code, fingerprint string) (*OAuthTokenResponse, error) {
 	})
 }
 
+// oauthHTTPTimeout is the per-request deadline for OAuth token endpoint calls.
+// It is a var so tests can substitute a shorter value.
+var oauthHTTPTimeout = 30 * time.Second
+
 // postOAuthToken posts form values to the OAuth token endpoint and returns the response.
 func postOAuthToken(data url.Values) (*OAuthTokenResponse, error) {
+	hc := &http.Client{Timeout: oauthHTTPTimeout}
 	//nolint:gosec // OAuthURL is a package-level var, not user input; swappable in tests.
-	resp, err := http.PostForm(OAuthURL, data)
+	resp, err := hc.PostForm(OAuthURL, data)
 	if err != nil {
 		return nil, fmt.Errorf("oauth token request failed: %w", err)
 	}
