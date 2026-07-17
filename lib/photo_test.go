@@ -374,4 +374,3 @@ func TestUploadPhoto_S3Error(t *testing.T) {
 		t.Fatal("expected error for S3 failure, got nil")
 	}
 }
-
