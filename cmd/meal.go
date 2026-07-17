@@ -273,6 +273,11 @@ var mealSittingRecipeCmd = &cobra.Command{
 var mealPlanCmd = &cobra.Command{
 	Use:   "plan",
 	Short: "Schedule a batch of meals from a recipe list",
+	Long: `Create a meal plan by scheduling several recipes as meal sittings.
+
+The Skylight API has no separate plan object — this command creates sittings.
+Use "meal plan-list" and "meal plan-delete" / "meal plan-clear" to inspect or
+remove planned sittings (issue #256).`,
 	Run: func(cmd *cobra.Command, args []string) {
 		requireFrameID()
 
@@ -298,6 +303,74 @@ var mealPlanCmd = &cobra.Command{
 		}
 
 		printJSON(result)
+	},
+}
+
+// meal plan-list / plan-delete / plan-clear — list & remove planned sittings (#256).
+var mealPlanListCmd = &cobra.Command{
+	Use:   "plan-list",
+	Short: "List planned meal sittings (meal plans have no separate API resource)",
+	Long: `List meal sittings in an optional date window.
+
+Meal plans created by "meal plan" are ordinary sittings; this command lists them
+so you can see what was scheduled.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+		client := getClient()
+		sittings, err := client.ListMealPlanSittings(frameID, lib.MealSittingListOptions{
+			DateMin: sittingDateMin,
+			DateMax: sittingDateMax,
+		})
+		if err != nil {
+			fatal("listing planned meals", err)
+		}
+		printOutput(sittings)
+	},
+}
+
+var mealPlanDeleteCmd = &cobra.Command{
+	Use:   "plan-delete",
+	Short: "Delete one planned meal sitting instance",
+	Long: `Delete a single planned meal sitting by sitting ID and instance date.
+
+Equivalent to "meal delete-sitting" but named for the meal-plan workflow.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+		if err := validateDate(sittingDate); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		client := getClient()
+		if err := client.DeleteMealPlanSitting(frameID, sittingID, sittingDate); err != nil {
+			fatal("deleting planned meal", err)
+		}
+		printSuccess("Planned meal sitting deleted successfully")
+	},
+}
+
+var mealPlanClearCmd = &cobra.Command{
+	Use:   "plan-clear",
+	Short: "Delete all planned meal sittings in a date range",
+	Long: `List sittings between --date-min and --date-max (inclusive) and delete each instance.
+
+Use this to undo a "meal plan" batch when you know the date window it covered.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		requireFrameID()
+		if err := validateDate(sittingDateMin); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := validateDate(sittingDateMax); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		client := getClient()
+		n, err := client.DeleteMealPlanRange(frameID, sittingDateMin, sittingDateMax)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: clearing planned meals (deleted %d before error): %v\n", n, err)
+			os.Exit(1)
+		}
+		printSuccess(fmt.Sprintf("Deleted %d planned meal sitting(s)", n))
 	},
 }
 
@@ -346,6 +419,9 @@ func init() {
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 	mealCmd.AddCommand(mealSittingRecipeCmd)
 	mealCmd.AddCommand(mealPlanCmd)
+	mealCmd.AddCommand(mealPlanListCmd)
+	mealCmd.AddCommand(mealPlanDeleteCmd)
+	mealCmd.AddCommand(mealPlanClearCmd)
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	markFlagRequired(mealRecipeInfoCmd, "recipe-id")
@@ -398,4 +474,17 @@ func init() {
 	markFlagRequired(mealPlanCmd, "recipes")
 	markFlagRequired(mealPlanCmd, "categories")
 	markFlagRequired(mealPlanCmd, "start-date")
+
+	mealPlanListCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date filter (YYYY-MM-DD)")
+	mealPlanListCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Maximum date filter (YYYY-MM-DD)")
+
+	mealPlanDeleteCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealPlanDeleteCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
+	markFlagRequired(mealPlanDeleteCmd, "sitting-id")
+	markFlagRequired(mealPlanDeleteCmd, "date")
+
+	mealPlanClearCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Range start (YYYY-MM-DD)")
+	mealPlanClearCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Range end (YYYY-MM-DD)")
+	markFlagRequired(mealPlanClearCmd, "date-min")
+	markFlagRequired(mealPlanClearCmd, "date-max")
 }
