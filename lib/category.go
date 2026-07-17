@@ -4,7 +4,7 @@ import "fmt"
 
 // ListCategories retrieves categories (family members) for a frame.
 func (c *Client) ListCategories(frameID string) ([]Category, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list categories request: %w", err)
 	}
@@ -23,7 +23,7 @@ func (c *Client) ListCategories(frameID string) ([]Category, error) {
 
 // CreateCategory creates a new category (profile/label) on a frame.
 func (c *Client) CreateCategory(frameID string, data CategoryData) (*Category, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), frameID), data)
+	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), pathSeg(frameID)), data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create category request: %w", err)
 	}
@@ -39,7 +39,7 @@ func (c *Client) CreateCategory(frameID string, data CategoryData) (*Category, e
 
 // UpdateCategory updates an existing category (profile/label).
 func (c *Client) UpdateCategory(frameID, categoryID string, data CategoryData) (*Category, error) {
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/categories/%s", c.effectiveURL(), frameID, categoryID), data)
+	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/categories/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(categoryID)), data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update category request: %w", err)
 	}
@@ -55,7 +55,7 @@ func (c *Client) UpdateCategory(frameID, categoryID string, data CategoryData) (
 
 // DeleteCategory deletes a category (profile/label).
 func (c *Client) DeleteCategory(frameID, categoryID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/categories/%s", c.effectiveURL(), frameID, categoryID))
+	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/categories/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(categoryID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete category request: %w", err)
 	}

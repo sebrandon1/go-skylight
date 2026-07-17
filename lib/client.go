@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -159,6 +160,13 @@ func (c *Client) effectiveURL() string {
 		return c.baseURL
 	}
 	return SkylightURL
+}
+
+// pathSeg escapes a single path segment (IDs from CLI/import) before URL
+// interpolation so values containing '/', '..', or percent sequences cannot
+// rewrite the request path.
+func pathSeg(s string) string {
+	return url.PathEscape(s)
 }
 
 func (c *Client) do(req *http.Request) (*http.Response, error) {

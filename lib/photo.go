@@ -12,7 +12,7 @@ import (
 // Pass PageToken "__START__" (or empty string) to start from the beginning.
 // Returns the photos, the next page token (empty when no more pages), and any error.
 func (c *Client) ListPhotos(frameID string, opts PhotoListOptions) ([]Photo, string, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/messages", c.effectiveURL(), frameID))
+	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/messages", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create list photos request: %w", err)
 	}
@@ -115,7 +115,7 @@ func (c *Client) DownloadPhoto(assetURL string) ([]byte, error) {
 func (c *Client) DeletePhotos(frameID string, messageIDs []int) error {
 	req, err := newRequestWithBody(
 		"DELETE",
-		fmt.Sprintf("%s/frames/%s/messages/destroy_multiple", c.effectiveURL(), frameID),
+		fmt.Sprintf("%s/frames/%s/messages/destroy_multiple", c.effectiveURL(), pathSeg(frameID)),
 		photoDeleteRequest{MessageIDs: messageIDs},
 	)
 	if err != nil {
