@@ -48,6 +48,15 @@ func newImportTestClient(t *testing.T, failPaths map[string]bool) *lib.Client {
 	})
 }
 
+func TestParallelImport_PanicRecovery(t *testing.T) {
+	total, failed := parallelImport([]string{"item"}, func(string) (int, int) {
+		panic("simulated goroutine panic")
+	})
+	if total != 0 || failed != 1 {
+		t.Errorf("got total=%d failed=%d, want total=0 failed=1", total, failed)
+	}
+}
+
 func TestImportRewards(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)

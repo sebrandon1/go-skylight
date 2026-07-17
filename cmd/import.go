@@ -29,9 +29,16 @@ func parallelImport[T any](items []T, fn func(T) (total, failed int)) (total, fa
 	for _, item := range items {
 		sem <- struct{}{}
 		go func(item T) {
-			defer func() { <-sem }()
-			t, f := fn(item)
-			results <- result{t, f}
+			var t, f int
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Fprintf(os.Stderr, "panic in import goroutine: %v\n", r)
+					t, f = 0, 1
+				}
+				results <- result{t, f}
+				<-sem
+			}()
+			t, f = fn(item)
 		}(item)
 	}
 	for range items {
