@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -100,18 +99,5 @@ func TestWatchCmd_InvalidInterval_Crasher(t *testing.T) {
 }
 
 func TestWatchCmd_InvalidInterval(t *testing.T) {
-	cmd := exec.Command(os.Args[0], "-test.run=TestWatchCmd_InvalidInterval_Crasher") //nolint:gosec // test binary, fixed flag
-	cmd.Env = append(os.Environ(), "WANT_WATCH_INTERVAL_CRASH=1")
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected watchCmd.Run to exit with a non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "--interval must be at least 1") {
-		t.Errorf("expected interval validation error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestWatchCmd_InvalidInterval_Crasher", "WANT_WATCH_INTERVAL_CRASH", "--interval must be at least 1")
 }

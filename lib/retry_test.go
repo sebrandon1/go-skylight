@@ -120,7 +120,6 @@ func TestDoWithRetryRespects429RetryAfter(t *testing.T) {
 func TestBackoffDelayMaxClamping(t *testing.T) {
 	base := 100 * time.Millisecond
 	max := 1 * time.Second
-	// High attempt count should clamp to max
 	d := backoffDelay(base, max, 20)
 	if d > max {
 		t.Errorf("delay %v exceeds max %v", d, max)
@@ -293,16 +292,10 @@ func TestDoWithRetry_BodyReplayOnRetry(t *testing.T) {
 }
 
 func TestDrainAndError_429Instant(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Retry-After", "0")
-		w.WriteHeader(http.StatusTooManyRequests)
-	}))
-	defer srv.Close()
-
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
+	resp := &http.Response{
+		StatusCode: http.StatusTooManyRequests,
+		Header:     http.Header{"Retry-After": []string{"0"}},
+		Body:       io.NopCloser(strings.NewReader("")),
 	}
 
 	drainErr := drainAndError(context.Background(), resp)
@@ -332,10 +325,9 @@ func TestDoWithRetryContextCancelled(t *testing.T) {
 		t.Fatal("expected error from canceled context")
 	}
 	if !errors.Is(err, context.DeadlineExceeded) {
-		// Context may surface as NetworkError wrapping the deadline error.
 		var ne *NetworkError
 		if !errors.As(err, &ne) {
-			t.Logf("got error type %T: %v", err, err)
+			t.Errorf("expected DeadlineExceeded or *NetworkError, got %T: %v", err, err)
 		}
 	}
 }

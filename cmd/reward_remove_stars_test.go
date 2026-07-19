@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 )
@@ -48,21 +46,7 @@ func TestRewardRemoveStarsCmd_InvalidAssigneeID_Crasher(t *testing.T) {
 }
 
 func TestRewardRemoveStarsCmd_InvalidAssigneeID(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestRewardRemoveStarsCmd_InvalidAssigneeID_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_REMOVE_STARS_ASSIGNEE_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected command to exit with non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "assignee-id") {
-		t.Errorf("expected assignee-id error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestRewardRemoveStarsCmd_InvalidAssigneeID_Crasher", "WANT_REMOVE_STARS_ASSIGNEE_CRASH", "assignee-id")
 }
 
 // TestRewardRemoveStarsCmd_InvalidPoints_Crasher is invoked as a subprocess
@@ -79,21 +63,7 @@ func TestRewardRemoveStarsCmd_InvalidPoints_Crasher(t *testing.T) {
 }
 
 func TestRewardRemoveStarsCmd_InvalidPoints(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestRewardRemoveStarsCmd_InvalidPoints_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_REMOVE_STARS_POINTS_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected command to exit with non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "points") {
-		t.Errorf("expected points error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestRewardRemoveStarsCmd_InvalidPoints_Crasher", "WANT_REMOVE_STARS_POINTS_CRASH", "points")
 }
 
 // TestRewardRemoveStarsCmd_APIError_Crasher is invoked as a subprocess by
@@ -112,19 +82,5 @@ func TestRewardRemoveStarsCmd_APIError_Crasher(t *testing.T) {
 }
 
 func TestRewardRemoveStarsCmd_APIError(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestRewardRemoveStarsCmd_APIError_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_REMOVE_STARS_API_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected command to exit with non-zero status on API error, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "removing stars") {
-		t.Errorf("expected remove-stars error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestRewardRemoveStarsCmd_APIError_Crasher", "WANT_REMOVE_STARS_API_CRASH", "removing stars")
 }
