@@ -88,7 +88,7 @@ func TestGetList(t *testing.T) {
 			name:      "returns list with items",
 			listID:    "1",
 			status:    http.StatusOK,
-			response:  `{"data":{"id":"1","type":"list","attributes":{"label":"Grocery","color":"#FF0000","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"pending","position":1}}]}`,
+			response:  `{"data":{"id":"1","type":"list","attributes":{"label":"Grocery","color":"#FF0000","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusPending + `","position":1}}]}`,
 			wantTitle: "Grocery",
 			wantItems: 1,
 		},
@@ -311,14 +311,14 @@ func TestAddListItem(t *testing.T) {
 			name:      "adds item",
 			input:     ListItemData{Title: "Eggs"},
 			status:    http.StatusCreated,
-			response:  `{"data":{"id":"item2","type":"list_item","attributes":{"label":"Eggs","status":"pending","position":1}}}`,
+			response:  `{"data":{"id":"item2","type":"list_item","attributes":{"label":"Eggs","status":"` + listItemStatusPending + `","position":1}}}`,
 			wantTitle: "Eggs",
 		},
 		{
 			name:      "sends label and position in request body",
 			input:     ListItemData{Title: "Milk", Position: 1},
 			status:    http.StatusCreated,
-			response:  `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"pending","position":1}}}`,
+			response:  `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusPending + `","position":1}}}`,
 			wantTitle: "Milk",
 		},
 		{
@@ -374,7 +374,7 @@ func TestUpdateListItem(t *testing.T) {
 			name:          "marks item completed",
 			input:         ListItemData{Title: "Updated Item", Completed: true},
 			status:        http.StatusOK,
-			response:      `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated Item","status":"completed","position":1}}}`,
+			response:      `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated Item","status":"` + listItemStatusCompleted + `","position":1}}}`,
 			wantCompleted: true,
 		},
 		{
@@ -492,7 +492,7 @@ func TestClearCompletedListItems(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				if r.Method == http.MethodGet {
 					w.WriteHeader(http.StatusOK)
-					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"pending","position":0}}]}`)); err != nil {
+					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"` + listItemStatusPending + `","position":0}}]}`)); err != nil {
 						t.Errorf("write: %v", err)
 					}
 				}
@@ -506,7 +506,7 @@ func TestClearCompletedListItems(t *testing.T) {
 				switch r.Method {
 				case http.MethodGet:
 					w.WriteHeader(http.StatusOK)
-					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"completed","position":0}}]}`)); err != nil {
+					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"` + listItemStatusCompleted + `","position":0}}]}`)); err != nil {
 						t.Errorf("write: %v", err)
 					}
 				case http.MethodDelete:
@@ -531,7 +531,7 @@ func TestClearCompletedListItems(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				if r.Method == http.MethodGet {
 					w.WriteHeader(http.StatusOK)
-					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"completed","position":0}}]}`)); err != nil {
+					if _, err := w.Write([]byte(`{"data":{"id":"l1","type":"list","attributes":{"label":"Test","color":"","kind":"to_do"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Item","status":"` + listItemStatusCompleted + `","position":0}}]}`)); err != nil {
 						t.Errorf("write: %v", err)
 					}
 					return

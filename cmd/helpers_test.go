@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -655,21 +654,7 @@ func TestGetFrameOrFail_Error_Crasher(t *testing.T) {
 }
 
 func TestGetFrameOrFail_Error(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestGetFrameOrFail_Error_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_GET_FRAME_ERROR_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected getFrameOrFail to exit with a non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "getting frame info") {
-		t.Errorf("expected error message on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestGetFrameOrFail_Error_Crasher", "WANT_GET_FRAME_ERROR_CRASH", "getting frame info")
 }
 
 func TestPrintSuccess(t *testing.T) {
@@ -731,19 +716,5 @@ func TestFatal_Crasher(t *testing.T) {
 }
 
 func TestFatal(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestFatal_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_FATAL_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected fatal() to exit with a non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "Error: doing the thing: boom") {
-		t.Errorf("expected error message on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestFatal_Crasher", "WANT_FATAL_CRASH", "Error: doing the thing: boom")
 }

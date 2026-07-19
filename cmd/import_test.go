@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -302,18 +300,5 @@ func TestImportCmd_FileNotFound_Crasher(t *testing.T) {
 }
 
 func TestImportCmd_FileNotFound(t *testing.T) {
-	cmd := exec.Command(os.Args[0], "-test.run=TestImportCmd_FileNotFound_Crasher") //nolint:gosec // test binary, fixed flag
-	cmd.Env = append(os.Environ(), "WANT_IMPORT_FILE_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected importCmd.Run to exit with a non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "Error reading") {
-		t.Errorf("expected file-read error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestImportCmd_FileNotFound_Crasher", "WANT_IMPORT_FILE_CRASH", "Error reading")
 }

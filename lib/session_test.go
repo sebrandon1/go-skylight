@@ -208,7 +208,6 @@ func TestLoginHeadless_InvalidCredentials(t *testing.T) {
 func TestFetchAuthCode_NoLocation(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
-		// Return 200 with no Location header — fetchAuthCode should error.
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, `<html><body>some page</body></html>`)
 	})
@@ -236,7 +235,6 @@ func TestFetchAuthCode_NoLocation(t *testing.T) {
 func TestFetchAuthCode_NoCodeInRedirect(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
-		// Redirect to a non-login URL with no code param.
 		w.Header().Set("Location", "https://example.com/welcome")
 		w.WriteHeader(http.StatusFound)
 	})

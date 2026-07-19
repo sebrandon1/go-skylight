@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -79,21 +77,7 @@ func TestLoginCmd_MissingCredentials_Crasher(t *testing.T) {
 }
 
 func TestLoginCmd_MissingCredentials(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestLoginCmd_MissingCredentials_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_LOGIN_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected loginCmd.Run to exit with a non-zero status, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "are required for login") {
-		t.Errorf("expected missing-credentials error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestLoginCmd_MissingCredentials_Crasher", "WANT_LOGIN_CRASH", "are required for login")
 }
 
 func TestLoginCmd_Success(t *testing.T) {
@@ -189,21 +173,7 @@ func TestLoginCmd_LoginFailure_Crasher(t *testing.T) {
 }
 
 func TestLoginCmd_LoginFailure(t *testing.T) {
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag is a fixed string, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run=TestLoginCmd_LoginFailure_Crasher")
-	cmd.Env = append(os.Environ(), "WANT_LOGIN_FAILURE_CRASH=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected loginCmd.Run to exit with a non-zero status on login failure, got err=%v", err)
-	}
-	if !strings.Contains(stderr.String(), "Error: logging in") {
-		t.Errorf("expected login error on stderr, got: %s", stderr.String())
-	}
+	runCrasherTest(t, "TestLoginCmd_LoginFailure_Crasher", "WANT_LOGIN_FAILURE_CRASH", "Error: logging in")
 }
 
 func TestLoginCmdExists(t *testing.T) {
