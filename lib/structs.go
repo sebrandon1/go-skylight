@@ -44,7 +44,7 @@ type CalendarEvent struct {
 	Description string `json:"description,omitempty"`
 	StartAt     string `json:"starts_at,omitempty"`
 	EndAt       string `json:"ends_at,omitempty"`
-	AllDay      bool   `json:"all_day,omitempty"`
+	AllDay      bool   `json:"all_day"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
 	CreatedAt   string `json:"created_at,omitempty"`
@@ -60,7 +60,7 @@ type CalendarEventData struct {
 	Description string `json:"description,omitempty"`
 	StartAt     string `json:"starts_at,omitempty"`
 	EndAt       string `json:"ends_at,omitempty"`
-	AllDay      bool   `json:"all_day,omitempty"`
+	AllDay      *bool  `json:"all_day,omitempty"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
 	EventType   string `json:"event_type,omitempty"`
@@ -238,7 +238,7 @@ type List struct {
 type ListItem struct {
 	ID        string `json:"id,omitempty"`
 	Title     string `json:"label,omitempty"`
-	Completed bool   `json:"completed,omitempty"`
+	Completed bool   `json:"completed"`
 	Status    string `json:"status,omitempty"`
 	Position  int    `json:"position,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
@@ -355,7 +355,7 @@ type Reward struct {
 	Points     int    `json:"points,omitempty"`
 	EmojiIcon  string `json:"emoji_icon,omitempty"`
 	CategoryID string `json:"category_id,omitempty"`
-	Redeemed   bool   `json:"redeemed,omitempty"`
+	Redeemed   bool   `json:"redeemed"`
 }
 
 // rewardAPIResponse wraps the JSON-API envelope for reward list responses.

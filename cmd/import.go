@@ -195,7 +195,8 @@ func importSittings(client *lib.Client, sittings []lib.MealSitting) (total, fail
 
 func importCalendarEvents(client *lib.Client, events []lib.CalendarEvent) (total, failed int) {
 	return parallelImport(events, func(e lib.CalendarEvent) (int, int) {
-		if _, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: e.AllDay}); err != nil {
+		allDay := e.AllDay
+		if _, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: &allDay}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating calendar event %q: %v\n", e.Title, err)
 			return 1, 1
 		}

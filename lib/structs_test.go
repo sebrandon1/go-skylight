@@ -1,6 +1,10 @@
 package lib
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
 
 func TestToCalendarEventNilCategory(t *testing.T) {
 	entry := calendarAPIEntry{ID: "e1"}
@@ -256,5 +260,25 @@ func TestToAvatar(t *testing.T) {
 	}
 	if a.ImageURL != "http://example.com/cat.png" {
 		t.Errorf("ImageURL = %q, want %q", a.ImageURL, "http://example.com/cat.png")
+	}
+}
+
+func TestListItemCompletedFalseJSON(t *testing.T) {
+	b, err := json.Marshal(ListItem{ID: "i1", Completed: false})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"completed":false`) {
+		t.Errorf("expected completed:false in JSON, got: %s", b)
+	}
+}
+
+func TestRewardRedeemedFalseJSON(t *testing.T) {
+	b, err := json.Marshal(Reward{ID: "r1", Redeemed: false})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"redeemed":false`) {
+		t.Errorf("expected redeemed:false in JSON, got: %s", b)
 	}
 }
