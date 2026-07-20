@@ -76,13 +76,14 @@ func TestListLists(t *testing.T) {
 
 func TestGetList(t *testing.T) {
 	tests := []struct {
-		name      string
-		listID    string
-		status    int
-		response  string
-		wantTitle string
-		wantItems int
-		wantErr   bool
+		name               string
+		listID             string
+		status             int
+		response           string
+		wantTitle          string
+		wantItems          int
+		wantItemCreatedAt  string
+		wantErr            bool
 	}{
 		{
 			name:      "returns list with items",
@@ -91,6 +92,15 @@ func TestGetList(t *testing.T) {
 			response:  `{"data":{"id":"1","type":"list","attributes":{"label":"Grocery","color":"#FF0000","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusPending + `","position":1}}]}`,
 			wantTitle: "Grocery",
 			wantItems: 1,
+		},
+		{
+			name:              "item created_at populated from included",
+			listID:            "1",
+			status:            http.StatusOK,
+			response:          `{"data":{"id":"1","type":"list","attributes":{"label":"Grocery","color":"#FF0000","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusPending + `","position":1,"created_at":"2026-01-01T00:00:00Z"}}]}`,
+			wantTitle:         "Grocery",
+			wantItems:         1,
+			wantItemCreatedAt: "2026-01-01T00:00:00Z",
 		},
 		{
 			name:    "server error returns error",
@@ -130,6 +140,9 @@ func TestGetList(t *testing.T) {
 			}
 			if len(list.Items) != tc.wantItems {
 				t.Errorf("Items: want %d got %d", tc.wantItems, len(list.Items))
+			}
+			if tc.wantItemCreatedAt != "" && len(list.Items) > 0 && list.Items[0].CreatedAt != tc.wantItemCreatedAt {
+				t.Errorf("Items[0].CreatedAt: want %q got %q", tc.wantItemCreatedAt, list.Items[0].CreatedAt)
 			}
 		})
 	}
@@ -300,12 +313,13 @@ func TestDeleteList(t *testing.T) {
 
 func TestAddListItem(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     ListItemData
-		status    int
-		response  string
-		wantTitle string
-		wantErr   bool
+		name          string
+		input         ListItemData
+		status        int
+		response      string
+		wantTitle     string
+		wantCreatedAt string
+		wantErr       bool
 	}{
 		{
 			name:      "adds item",
@@ -320,6 +334,14 @@ func TestAddListItem(t *testing.T) {
 			status:    http.StatusCreated,
 			response:  `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusPending + `","position":1}}}`,
 			wantTitle: "Milk",
+		},
+		{
+			name:          "created_at populated from response",
+			input:         ListItemData{Title: "Eggs"},
+			status:        http.StatusCreated,
+			response:      `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Eggs","status":"` + listItemStatusPending + `","position":1,"created_at":"2026-01-01T00:00:00Z"}}}`,
+			wantTitle:     "Eggs",
+			wantCreatedAt: "2026-01-01T00:00:00Z",
 		},
 		{
 			name:    "server error returns error",
@@ -354,8 +376,14 @@ func TestAddListItem(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
-			if !tc.wantErr && item.Title != tc.wantTitle {
+			if tc.wantErr {
+				return
+			}
+			if item.Title != tc.wantTitle {
 				t.Errorf("Title: want %q got %q", tc.wantTitle, item.Title)
+			}
+			if tc.wantCreatedAt != "" && item.CreatedAt != tc.wantCreatedAt {
+				t.Errorf("CreatedAt: want %q got %q", tc.wantCreatedAt, item.CreatedAt)
 			}
 		})
 	}
