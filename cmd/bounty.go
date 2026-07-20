@@ -90,7 +90,7 @@ var bountyDeleteCmd = &cobra.Command{
 			fatal("deleting bounty", err)
 		}
 
-		printSuccess("Bounty deleted.")
+		printSuccessf("Bounty deleted successfully.")
 	},
 }
 

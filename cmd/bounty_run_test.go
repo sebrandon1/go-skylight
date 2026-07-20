@@ -61,7 +61,7 @@ func TestBountyDeleteCmd(t *testing.T) {
 	t.Cleanup(func() { bountyChoreID, bountyRewardID = origChoreID, origRewardID })
 
 	out := captureStdout(func() { bountyDeleteCmd.Run(bountyDeleteCmd, nil) })
-	if !strings.Contains(out, "Bounty deleted.") {
+	if !strings.Contains(out, "Bounty deleted successfully.") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
 }

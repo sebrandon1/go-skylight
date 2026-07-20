@@ -160,7 +160,7 @@ var rewardPointsCmd = &cobra.Command{
 			fatal("listing categories", err)
 		}
 
-		printJSON(resolveRewardPointNames(points, categories))
+		printOutput(resolveRewardPointNames(points, categories))
 	},
 }
 

@@ -137,9 +137,13 @@ func printBountiesTable(bounties []lib.Bounty) {
 
 func printSourceCalendarsTable(cals []lib.SourceCalendar) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tNAME\tPROVIDER\tCOLOR")
+	fmt.Fprintln(w, "ID\tNAME\tPROVIDER\tENABLED")
 	for _, c := range cals {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", c.ID, c.Name, c.Provider, c.Color)
+		enabled := boolNo
+		if c.Enabled {
+			enabled = boolYes
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", c.ID, c.Name, c.Provider, enabled)
 	}
 	w.Flush()
 }
@@ -230,6 +234,15 @@ func printRoutinesTable(routines []lib.Routine) {
 	fmt.Fprintln(w, "ID\tTITLE\tASSIGNEE\tSTEPS")
 	for _, r := range routines {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", r.ID, r.Title, r.AssigneeID, len(r.Steps))
+	}
+	w.Flush()
+}
+
+func printPointsTable(entries []pointEntry) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "NAME\tBALANCE")
+	for _, e := range entries {
+		fmt.Fprintf(w, "%s\t%d\n", e.Name, e.Balance)
 	}
 	w.Flush()
 }

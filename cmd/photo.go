@@ -172,7 +172,7 @@ var photoDownloadCmd = &cobra.Command{
 				fmt.Fprintf(os.Stderr, "Error: writing %s: %v\n", filename, err)
 				continue
 			}
-			fmt.Printf("Saved %s\n", filename)
+			printSuccessf("Saved %s\n", filename)
 		}
 	},
 }

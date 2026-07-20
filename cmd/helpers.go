@@ -192,6 +192,8 @@ func printTableOutputMore(data any) bool {
 		printPhotosTable(v)
 	case []lib.Routine:
 		printRoutinesTable(v)
+	case []pointEntry:
+		printPointsTable(v)
 	default:
 		return false
 	}
