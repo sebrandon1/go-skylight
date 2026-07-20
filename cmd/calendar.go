@@ -73,11 +73,12 @@ var calendarCreateCmd = &cobra.Command{
 
 		client := getClient()
 
+		allDay := calendarAllDay
 		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
 			Title:   calendarTitle,
 			StartAt: calendarStartAt,
 			EndAt:   calendarEndAt,
-			AllDay:  calendarAllDay,
+			AllDay:  &allDay,
 		})
 		if err != nil {
 			fatal("creating calendar event", err)
@@ -140,7 +141,8 @@ var calendarUpdateCmd = &cobra.Command{
 			data.EndAt = calendarEndAt
 		}
 		if cmd.Flags().Changed("all-day") {
-			data.AllDay = calendarAllDay
+			allDay := calendarAllDay
+			data.AllDay = &allDay
 		}
 
 		event, err := client.UpdateCalendarEvent(frameID, calendarEventID, data)
@@ -165,10 +167,11 @@ var calendarCreateCountdownCmd = &cobra.Command{
 
 		client := getClient()
 
+		allDayTrue := true
 		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
 			Title:     calendarTitle,
 			StartAt:   calendarCountdownDate,
-			AllDay:    true,
+			AllDay:    &allDayTrue,
 			EventType: lib.CalendarEventTypeCountdown,
 		})
 		if err != nil {

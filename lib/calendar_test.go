@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -115,13 +116,15 @@ func TestListCalendarEvents(t *testing.T) {
 }
 
 func TestCreateCalendarEvent(t *testing.T) {
+	trueVal := true
 	tests := []struct {
-		name      string
-		input     CalendarEventData
-		status    int
-		response  string
-		wantTitle string
-		wantErr   bool
+		name           string
+		input          CalendarEventData
+		status         int
+		response       string
+		wantTitle      string
+		wantBodyAllDay *bool
+		wantErr        bool
 	}{
 		{
 			name:      "creates event",
@@ -138,6 +141,14 @@ func TestCreateCalendarEvent(t *testing.T) {
 			wantTitle: "Birthday Party",
 		},
 		{
+			name:           "AllDay true is sent in request body",
+			input:          CalendarEventData{Title: "Holiday", AllDay: &trueVal},
+			status:         http.StatusCreated,
+			response:       `{"data":{"id":"4","type":"calendar_event","attributes":{"summary":"Holiday","all_day":true},"relationships":{"categories":{"data":[]}}}}`,
+			wantTitle:      "Holiday",
+			wantBodyAllDay: &trueVal,
+		},
+		{
 			name:    "not found returns error",
 			input:   CalendarEventData{Title: "Test"},
 			status:  http.StatusNotFound,
@@ -147,12 +158,16 @@ func TestCreateCalendarEvent(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			var capturedBody map[string]any
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPost {
 					t.Errorf("expected POST, got %s", r.Method)
 				}
 				if r.URL.Path != "/api/frames/frame1/calendar_events" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				if err := json.NewDecoder(r.Body).Decode(&capturedBody); err != nil {
+					t.Errorf("decoding request body: %v", err)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
@@ -173,22 +188,33 @@ func TestCreateCalendarEvent(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
-			if !tc.wantErr && event.Title != tc.wantTitle {
+			if tc.wantErr {
+				return
+			}
+			if event.Title != tc.wantTitle {
 				t.Errorf("Title: want %q got %q", tc.wantTitle, event.Title)
+			}
+			if tc.wantBodyAllDay != nil {
+				got, ok := capturedBody["all_day"].(bool)
+				if !ok || got != *tc.wantBodyAllDay {
+					t.Errorf("request body all_day: want %v got %v (present=%v)", *tc.wantBodyAllDay, got, ok)
+				}
 			}
 		})
 	}
 }
 
 func TestUpdateCalendarEvent(t *testing.T) {
+	falseVal := false
 	tests := []struct {
-		name      string
-		eventID   string
-		input     CalendarEventData
-		status    int
-		response  string
-		wantTitle string
-		wantErr   bool
+		name           string
+		eventID        string
+		input          CalendarEventData
+		status         int
+		response       string
+		wantTitle      string
+		wantBodyAllDay *bool
+		wantErr        bool
 	}{
 		{
 			name:      "updates event",
@@ -197,6 +223,14 @@ func TestUpdateCalendarEvent(t *testing.T) {
 			status:    http.StatusOK,
 			response:  `{"data":{"id":"1","type":"calendar_event","attributes":{"summary":"Updated Event","starts_at":"","ends_at":"","all_day":false},"relationships":{"categories":{"data":[]}}}}`,
 			wantTitle: "Updated Event",
+		},
+		{
+			name:           "AllDay false is sent in request body",
+			eventID:        "evt1",
+			input:          CalendarEventData{AllDay: &falseVal},
+			status:         http.StatusOK,
+			response:       `{"data":{"id":"1","type":"calendar_event","attributes":{"summary":"","starts_at":"","ends_at":"","all_day":false},"relationships":{"categories":{"data":[]}}}}`,
+			wantBodyAllDay: &falseVal,
 		},
 		{
 			name:    "server error returns error",
@@ -224,10 +258,12 @@ func TestUpdateCalendarEvent(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			var capturedBody map[string]any
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPut {
 					t.Errorf("expected PUT, got %s", r.Method)
 				}
+				_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
 				if tc.response != "" {
@@ -247,8 +283,17 @@ func TestUpdateCalendarEvent(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
-			if !tc.wantErr && event.Title != tc.wantTitle {
+			if tc.wantErr {
+				return
+			}
+			if tc.wantTitle != "" && event.Title != tc.wantTitle {
 				t.Errorf("Title: want %q got %q", tc.wantTitle, event.Title)
+			}
+			if tc.wantBodyAllDay != nil {
+				got, ok := capturedBody["all_day"].(bool)
+				if !ok || got != *tc.wantBodyAllDay {
+					t.Errorf("request body all_day: want %v got %v (present=%v)", *tc.wantBodyAllDay, got, ok)
+				}
 			}
 		})
 	}
@@ -304,14 +349,14 @@ func TestDeleteCalendarEvent(t *testing.T) {
 
 func TestListSourceCalendars(t *testing.T) {
 	tests := []struct {
-		name          string
-		status        int
-		response      string
-		wantLen       int
-		wantProvider  string
-		checkEnabled  bool
-		wantEnabled   bool
-		wantErr       bool
+		name         string
+		status       int
+		response     string
+		wantLen      int
+		wantProvider string
+		checkEnabled bool
+		wantEnabled  bool
+		wantErr      bool
 	}{
 		{
 			name:         "returns calendars",

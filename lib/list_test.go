@@ -76,14 +76,14 @@ func TestListLists(t *testing.T) {
 
 func TestGetList(t *testing.T) {
 	tests := []struct {
-		name               string
-		listID             string
-		status             int
-		response           string
-		wantTitle          string
-		wantItems          int
-		wantItemCreatedAt  string
-		wantErr            bool
+		name              string
+		listID            string
+		status            int
+		response          string
+		wantTitle         string
+		wantItems         int
+		wantItemCreatedAt string
+		wantErr           bool
 	}{
 		{
 			name:      "returns list with items",
