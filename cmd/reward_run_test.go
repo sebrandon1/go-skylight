@@ -40,6 +40,93 @@ func TestRewardListCmd(t *testing.T) {
 	}
 }
 
+func rewardFilterMockHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// CategoryID comes from relationships.category.data.id in JSON-API format.
+		fmt.Fprint(w, `{"data":[`+
+			`{"id":"r1","attributes":{"name":"Cheap","point_value":10},"relationships":{"category":{"data":{"id":"cat1","type":"category"}}}},`+
+			`{"id":"r2","attributes":{"name":"Pricey","point_value":50},"relationships":{"category":{"data":{"id":"cat2","type":"category"}}}}`+
+			`]}`)
+	}
+}
+
+func TestRewardListCmd_FilterByAssigneeID(t *testing.T) {
+	newCmdTestClient(t, rewardFilterMockHandler())
+	origAssigneeID := rewardListAssigneeID
+	rewardListAssigneeID = "cat1"
+	t.Cleanup(func() { rewardListAssigneeID = origAssigneeID })
+
+	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	if !strings.Contains(out, "Cheap") {
+		t.Errorf("expected matching reward in output, got: %s", out)
+	}
+	if strings.Contains(out, "Pricey") {
+		t.Errorf("expected non-matching reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterByPointsMin(t *testing.T) {
+	newCmdTestClient(t, rewardFilterMockHandler())
+	origMin := rewardListPointsMin
+	rewardListPointsMin = 30
+	t.Cleanup(func() { rewardListPointsMin = origMin })
+
+	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	if !strings.Contains(out, "Pricey") {
+		t.Errorf("expected high-points reward in output, got: %s", out)
+	}
+	if strings.Contains(out, "Cheap") {
+		t.Errorf("expected low-points reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterByPointsMax(t *testing.T) {
+	newCmdTestClient(t, rewardFilterMockHandler())
+	origMax := rewardListPointsMax
+	rewardListPointsMax = 20
+	t.Cleanup(func() { rewardListPointsMax = origMax })
+
+	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	if !strings.Contains(out, "Cheap") {
+		t.Errorf("expected low-points reward in output, got: %s", out)
+	}
+	if strings.Contains(out, "Pricey") {
+		t.Errorf("expected high-points reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterCombined(t *testing.T) {
+	newCmdTestClient(t, rewardFilterMockHandler())
+	origAssigneeID, origMax := rewardListAssigneeID, rewardListPointsMax
+	rewardListAssigneeID = "cat1"
+	rewardListPointsMax = 20
+	t.Cleanup(func() {
+		rewardListAssigneeID = origAssigneeID
+		rewardListPointsMax = origMax
+	})
+
+	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	if !strings.Contains(out, "Cheap") {
+		t.Errorf("expected matching reward in output, got: %s", out)
+	}
+	if strings.Contains(out, "Pricey") {
+		t.Errorf("expected non-matching reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterNoMatches(t *testing.T) {
+	newCmdTestClient(t, rewardFilterMockHandler())
+	origAssigneeID := rewardListAssigneeID
+	rewardListAssigneeID = "cat-nonexistent"
+	t.Cleanup(func() { rewardListAssigneeID = origAssigneeID })
+
+	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	if !strings.Contains(out, "[]") {
+		t.Errorf("expected empty JSON array when no rewards match, got: %s", out)
+	}
+}
+
 func TestRewardCreateCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
 	origTitle, origPoints := rewardTitle, rewardPoints

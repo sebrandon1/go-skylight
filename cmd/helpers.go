@@ -24,6 +24,29 @@ const (
 // several commands' flag registrations is safe).
 var dryRun bool
 
+// activeCatNames holds the category ID → name map used by table renderers to
+// resolve raw IDs to human-readable names. Set by list commands that support
+// table output before calling printOutput.
+var activeCatNames map[string]string
+
+// loadCatNames fetches category names for table rendering. Errors are silently
+// ignored so that a failed category lookup never blocks the primary output.
+func loadCatNames(client *lib.Client) {
+	cats, err := client.ListCategories(frameID)
+	if err != nil {
+		return
+	}
+	activeCatNames = buildCatNames(cats)
+}
+
+// maybeLoadCatNames populates activeCatNames only when table output is active,
+// so JSON-mode invocations incur no extra API call.
+func maybeLoadCatNames(client *lib.Client) {
+	if outputFormat == outputTable {
+		loadCatNames(client)
+	}
+}
+
 func fatal(msg string, err error) {
 	fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
 	os.Exit(1)
@@ -117,6 +140,16 @@ func resolveRewardPointNames(points []lib.RewardPointEntry, categories []lib.Cat
 		entries = append(entries, pointEntry{Name: name, Balance: p.CurrentPointBalance})
 	}
 	return entries
+}
+
+func resolveCatName(id string) string {
+	if id == "" {
+		return ""
+	}
+	if n := activeCatNames[id]; n != "" {
+		return n
+	}
+	return id
 }
 
 func buildCatNames(categories []lib.Category) map[string]string {

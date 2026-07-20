@@ -37,3 +37,48 @@ func TestPrintRoutinesTable(t *testing.T) {
 		t.Errorf("expected step count in output, got: %s", out)
 	}
 }
+
+func TestPrintChoresTable_ResolvesCatName(t *testing.T) {
+	orig := activeCatNames
+	activeCatNames = map[string]string{"cat1": "Alice"}
+	t.Cleanup(func() { activeCatNames = orig })
+
+	chores := []lib.Chore{{ID: "c1", Title: "Dishes", AssigneeID: "cat1"}}
+	out := captureStdout(func() { printChoresTable(chores) })
+	if !strings.Contains(out, "Alice") {
+		t.Errorf("expected resolved name in ASSIGNEE column, got: %s", out)
+	}
+	if strings.Contains(out, "cat1") {
+		t.Errorf("expected raw ID to be replaced by name, got: %s", out)
+	}
+}
+
+func TestPrintRewardsTable_ResolvesCatName(t *testing.T) {
+	orig := activeCatNames
+	activeCatNames = map[string]string{"cat2": "Bob"}
+	t.Cleanup(func() { activeCatNames = orig })
+
+	rewards := []lib.Reward{{ID: "r1", Title: "Candy", CategoryID: "cat2"}}
+	out := captureStdout(func() { printRewardsTable(rewards) })
+	if !strings.Contains(out, "Bob") {
+		t.Errorf("expected resolved name in CATEGORY column, got: %s", out)
+	}
+	if strings.Contains(out, "cat2") {
+		t.Errorf("expected raw ID to be replaced by name, got: %s", out)
+	}
+}
+
+func TestPrintRoutinesTable_ResolvesCatName(t *testing.T) {
+	orig := activeCatNames
+	activeCatNames = map[string]string{"a1": "Charlie"}
+	t.Cleanup(func() { activeCatNames = orig })
+
+	routines := []lib.Routine{{ID: "r1", Title: "Morning", AssigneeID: "a1"}}
+	out := captureStdout(func() { printRoutinesTable(routines) })
+	if !strings.Contains(out, "Charlie") {
+		t.Errorf("expected resolved name in ASSIGNEE column, got: %s", out)
+	}
+	if strings.Contains(out, "a1") {
+		t.Errorf("expected raw ID to be replaced by name, got: %s", out)
+	}
+}

@@ -43,8 +43,19 @@ func TestRequireFrameID_PassesWhenSet(t *testing.T) {
 	frameID = "f1"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	// Should return without exiting when frameID is set.
 	requireFrameID()
+}
+
+func TestRequireFrameID_ExitsWhenEmpty_Crasher(t *testing.T) {
+	if os.Getenv("WANT_REQUIRE_FRAME_ID_CRASH") != "1" {
+		t.Skip("only runs as a subprocess of TestRequireFrameID_ExitsWhenEmpty")
+	}
+	frameID = ""
+	requireFrameID()
+}
+
+func TestRequireFrameID_ExitsWhenEmpty(t *testing.T) {
+	runCrasherTest(t, "TestRequireFrameID_ExitsWhenEmpty_Crasher", "WANT_REQUIRE_FRAME_ID_CRASH", "skylight frame devices")
 }
 
 func TestGetClient_ReturnsAutoClient(t *testing.T) {

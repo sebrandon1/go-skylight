@@ -11,7 +11,7 @@ func printChoresTable(chores []lib.Chore) {
 	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tDUE DATE\tPOINTS\tASSIGNEE")
 	for _, c := range chores {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\n",
-			c.ID, c.Title, c.Status, c.DueDate, c.Points, c.AssigneeID)
+			c.ID, c.Title, c.Status, c.DueDate, c.Points, resolveCatName(c.AssigneeID))
 	}
 	w.Flush()
 }
@@ -25,7 +25,7 @@ func printRewardsTable(rewards []lib.Reward) {
 			redeemed = boolYes
 		}
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\n",
-			r.ID, r.Title, r.Points, r.EmojiIcon, redeemed, r.CategoryID)
+			r.ID, r.Title, r.Points, r.EmojiIcon, redeemed, resolveCatName(r.CategoryID))
 	}
 	w.Flush()
 }
@@ -233,7 +233,7 @@ func printRoutinesTable(routines []lib.Routine) {
 	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTITLE\tASSIGNEE\tSTEPS")
 	for _, r := range routines {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", r.ID, r.Title, r.AssigneeID, len(r.Steps))
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", r.ID, r.Title, resolveCatName(r.AssigneeID), len(r.Steps))
 	}
 	w.Flush()
 }

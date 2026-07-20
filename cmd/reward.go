@@ -6,12 +6,15 @@ import (
 )
 
 var (
-	rewardID          string
-	rewardTitle       string
-	rewardPoints      int
-	rewardEmojiIcon   string
-	rewardNoRespawn   bool
-	rewardCategoryIDs []int
+	rewardID             string
+	rewardTitle          string
+	rewardPoints         int
+	rewardEmojiIcon      string
+	rewardNoRespawn      bool
+	rewardCategoryIDs    []int
+	rewardListAssigneeID string
+	rewardListPointsMin  int
+	rewardListPointsMax  int
 )
 
 var rewardCmd = &cobra.Command{
@@ -41,6 +44,22 @@ var rewardListCmd = &cobra.Command{
 			fatal("listing rewards", err)
 		}
 
+		filtered := rewards[:0:0]
+		for _, r := range rewards {
+			if rewardListAssigneeID != "" && r.CategoryID != rewardListAssigneeID {
+				continue
+			}
+			if rewardListPointsMin > 0 && r.Points < rewardListPointsMin {
+				continue
+			}
+			if rewardListPointsMax > 0 && r.Points > rewardListPointsMax {
+				continue
+			}
+			filtered = append(filtered, r)
+		}
+		rewards = filtered
+
+		maybeLoadCatNames(client)
 		printOutput(rewards)
 	},
 }
@@ -209,6 +228,10 @@ func init() {
 	rewardCmd.AddCommand(rewardUnredeemCmd)
 	rewardCmd.AddCommand(rewardPointsCmd)
 	rewardCmd.AddCommand(rewardRemoveStarsCmd)
+
+	rewardListCmd.Flags().StringVar(&rewardListAssigneeID, "assignee-id", "", "Filter by assignee/category ID")
+	rewardListCmd.Flags().IntVar(&rewardListPointsMin, "points-min", 0, "Filter rewards with points >= this value")
+	rewardListCmd.Flags().IntVar(&rewardListPointsMax, "points-max", 0, "Filter rewards with points <= this value")
 
 	rewardCreateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardCreateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")

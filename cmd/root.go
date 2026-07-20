@@ -143,7 +143,7 @@ func tryLegacyEmailPasswordAuth() error {
 
 func requireFrameID() {
 	if frameID == "" {
-		fmt.Fprintln(os.Stderr, "Error: --frame-id is required")
+		fmt.Fprintln(os.Stderr, "Error: --frame-id is required. Set --frame-id or SKYLIGHT_FRAME_ID; run 'skylight frame devices' to find your frame ID.")
 		os.Exit(1)
 	}
 }

@@ -628,6 +628,106 @@ func TestResolveRewardPointNames(t *testing.T) {
 	}
 }
 
+func TestResolveCatName(t *testing.T) {
+	orig := activeCatNames
+	t.Cleanup(func() { activeCatNames = orig })
+
+	activeCatNames = nil
+	if got := resolveCatName(""); got != "" {
+		t.Errorf("empty id: got %q, want %q", got, "")
+	}
+	if got := resolveCatName("42"); got != "42" {
+		t.Errorf("nil map: got %q, want %q", got, "42")
+	}
+
+	activeCatNames = map[string]string{"42": "Alice"}
+	if got := resolveCatName("42"); got != "Alice" {
+		t.Errorf("found: got %q, want Alice", got)
+	}
+	if got := resolveCatName("99"); got != "99" {
+		t.Errorf("not found: got %q, want %q", got, "99")
+	}
+}
+
+func TestLoadCatNames_Success(t *testing.T) {
+	orig := activeCatNames
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() {
+		activeCatNames = orig
+		frameID = origFrameID
+	})
+
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"1","attributes":{"label":"Alice","color":"#FF0000"}}]}`)
+	})
+	loadCatNames(client)
+	if activeCatNames["1"] != "Alice" {
+		t.Errorf("expected activeCatNames[\"1\"] == \"Alice\", got %q", activeCatNames["1"])
+	}
+}
+
+func TestMaybeLoadCatNames_TableMode(t *testing.T) {
+	origFmt := outputFormat
+	outputFormat = outputTable
+	t.Cleanup(func() { outputFormat = origFmt })
+
+	orig := activeCatNames
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() {
+		activeCatNames = orig
+		frameID = origFrameID
+	})
+
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"z1","attributes":{"label":"Zara","color":"#000"}}]}`)
+	})
+	maybeLoadCatNames(client)
+	if activeCatNames["z1"] != "Zara" {
+		t.Errorf("expected activeCatNames to be populated in table mode, got %v", activeCatNames)
+	}
+}
+
+func TestMaybeLoadCatNames_JSONMode(t *testing.T) {
+	origFmt := outputFormat
+	outputFormat = outputJSON
+	t.Cleanup(func() { outputFormat = origFmt })
+
+	orig := activeCatNames
+	activeCatNames = nil
+	t.Cleanup(func() { activeCatNames = orig })
+
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("maybeLoadCatNames should not make HTTP calls in JSON mode")
+	})
+	maybeLoadCatNames(client)
+	if activeCatNames != nil {
+		t.Errorf("expected activeCatNames to stay nil in JSON mode, got %v", activeCatNames)
+	}
+}
+
+func TestLoadCatNames_ErrorSilenced(t *testing.T) {
+	orig := activeCatNames
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() {
+		activeCatNames = orig
+		frameID = origFrameID
+	})
+	activeCatNames = nil
+
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	loadCatNames(client)
+	if activeCatNames != nil {
+		t.Errorf("expected activeCatNames to remain nil on error, got %v", activeCatNames)
+	}
+}
+
 func TestGetFrameOrFail_Success(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
