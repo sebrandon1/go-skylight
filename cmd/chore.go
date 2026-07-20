@@ -99,6 +99,7 @@ var choreListCmd = &cobra.Command{
 			fatal("listing chores", err)
 		}
 
+		maybeLoadCatNames(client)
 		printOutput(chores)
 	},
 }

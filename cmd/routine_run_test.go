@@ -88,6 +88,29 @@ func TestRoutineReorderCmd(t *testing.T) {
 	}
 }
 
+func TestRoutineListCmd_TableMode(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/categories") {
+			fmt.Fprint(w, `{"data":[{"id":"a1","attributes":{"label":"Bob","color":"#00FF00"}}]}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"title":"Morning","assignee_id":"a1","steps":[]}}]}`)
+	})
+
+	origFmt := outputFormat
+	outputFormat = outputTable
+	t.Cleanup(func() { outputFormat = origFmt })
+
+	out := captureStdout(func() { routineListCmd.Run(routineListCmd, nil) })
+	if !strings.Contains(out, "Morning") {
+		t.Errorf("expected routine title in table output, got: %s", out)
+	}
+	if !strings.Contains(out, "Bob") {
+		t.Errorf("expected resolved category name in ASSIGNEE column, got: %s", out)
+	}
+}
+
 func TestRoutineCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "routine")
 }

@@ -31,6 +31,7 @@ var routineListCmd = &cobra.Command{
 			fatal("listing routines", err)
 		}
 
+		maybeLoadCatNames(client)
 		printOutput(routines)
 	},
 }
