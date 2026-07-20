@@ -308,9 +308,10 @@ type listItemAPIEntry struct {
 	ID         string `json:"id"`
 	Type       string `json:"type"`
 	Attributes struct {
-		Label    string `json:"label"`
-		Status   string `json:"status"`
-		Position int    `json:"position"`
+		Label     string `json:"label"`
+		Status    string `json:"status"`
+		Position  int    `json:"position"`
+		CreatedAt string `json:"created_at"`
 	} `json:"attributes"`
 }
 
@@ -326,6 +327,7 @@ func (e *listItemAPIEntry) toListItem() ListItem {
 		Status:    e.Attributes.Status,
 		Completed: e.Attributes.Status == listItemStatusCompleted,
 		Position:  e.Attributes.Position,
+		CreatedAt: e.Attributes.CreatedAt,
 	}
 }
 
