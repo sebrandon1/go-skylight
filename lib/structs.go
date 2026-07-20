@@ -86,6 +86,8 @@ type calendarAPIEntry struct {
 		EndsAt      string `json:"ends_at"`
 		AllDay      bool   `json:"all_day"`
 		Color       string `json:"color"`
+		CreatedAt   string `json:"created_at"`
+		UpdatedAt   string `json:"updated_at"`
 	} `json:"attributes"`
 	Relationships struct {
 		Categories struct {
@@ -103,6 +105,8 @@ func (e *calendarAPIEntry) toCalendarEvent() CalendarEvent {
 		EndAt:       e.Attributes.EndsAt,
 		AllDay:      e.Attributes.AllDay,
 		Color:       e.Attributes.Color,
+		CreatedAt:   e.Attributes.CreatedAt,
+		UpdatedAt:   e.Attributes.UpdatedAt,
 	}
 	if len(e.Relationships.Categories.Data) > 0 {
 		ev.CategoryID = e.Relationships.Categories.Data[0].ID
@@ -139,6 +143,7 @@ func (e *sourceCalendarAPIEntry) toSourceCalendar() SourceCalendar {
 		ID:       e.ID,
 		Name:     e.Attributes.Label,
 		Provider: e.Attributes.Kind,
+		Enabled:  e.Attributes.Enabled,
 	}
 }
 
@@ -281,6 +286,8 @@ type listAPIEntry struct {
 		Color         string `json:"color"`
 		Kind          string `json:"kind"`
 		HideFromFrame bool   `json:"hide_from_frame"`
+		CreatedAt     string `json:"created_at"`
+		UpdatedAt     string `json:"updated_at"`
 	} `json:"attributes"`
 }
 
@@ -291,6 +298,8 @@ func (e *listAPIEntry) toList() List {
 		Color:         e.Attributes.Color,
 		Kind:          e.Attributes.Kind,
 		HideFromFrame: e.Attributes.HideFromFrame,
+		CreatedAt:     e.Attributes.CreatedAt,
+		UpdatedAt:     e.Attributes.UpdatedAt,
 	}
 }
 
@@ -471,6 +480,8 @@ type recipeAPIEntry struct {
 		Ingredients []string `json:"ingredients"`
 		URL         string   `json:"url"`
 		ImageURL    string   `json:"image_url"`
+		CreatedAt   string   `json:"created_at"`
+		UpdatedAt   string   `json:"updated_at"`
 	} `json:"attributes"`
 	Relationships struct {
 		MealCategory struct {
@@ -487,6 +498,8 @@ func (e *recipeAPIEntry) toRecipe() Recipe {
 		Ingredients: e.Attributes.Ingredients,
 		URL:         e.Attributes.URL,
 		ImageURL:    e.Attributes.ImageURL,
+		CreatedAt:   e.Attributes.CreatedAt,
+		UpdatedAt:   e.Attributes.UpdatedAt,
 	}
 	if e.Relationships.MealCategory.Data != nil {
 		r.MealCategoryID = e.Relationships.MealCategory.Data.ID
