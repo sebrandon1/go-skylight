@@ -594,6 +594,72 @@ func TestClearCompletedListItems(t *testing.T) {
 	}
 }
 
+func TestAddListItem_Completed(t *testing.T) {
+	var gotStatus string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body listItemSendData
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		gotStatus = body.Status
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if _, err := w.Write([]byte(`{"data":{"id":"i1","type":"list_item","attributes":{"label":"Done","status":"` + listItemStatusCompleted + `","position":1}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	item, err := client.AddListItem("frame1", "l1", ListItemData{Title: "Done", Completed: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !item.Completed {
+		t.Error("expected item.Completed=true")
+	}
+	if gotStatus != listItemStatusCompleted {
+		t.Errorf("request status: want %q, got %q", listItemStatusCompleted, gotStatus)
+	}
+}
+
+func TestUpdateListItem_ExplicitPending(t *testing.T) {
+	var gotStatus string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body listItemSendData
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		gotStatus = body.Status
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"data":{"id":"i1","type":"list_item","attributes":{"label":"","status":"` + listItemStatusPending + `","position":0}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	item, err := client.UpdateListItem("frame1", "l1", "i1", ListItemData{Completed: false, Title: "", Position: 0})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if item.Completed {
+		t.Error("expected item.Completed=false")
+	}
+	if gotStatus != listItemStatusPending {
+		t.Errorf("request status: want %q, got %q", listItemStatusPending, gotStatus)
+	}
+}
+
 func TestOrganizeGroceryList(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -638,6 +704,18 @@ func TestOrganizeGroceryList_Error(t *testing.T) {
 	}
 }
 
+func TestOrganizeGroceryList_BadURL(t *testing.T) {
+	old := SkylightURL
+	SkylightURL = "://bad"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	err := client.OrganizeGroceryList("frame1", "l1")
+	if err == nil {
+		t.Error("expected error for bad URL, got nil")
+	}
+}
+
 func TestOrderGroceryList(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -665,6 +743,48 @@ func TestOrderGroceryList(t *testing.T) {
 	}
 	if redirectURL != "https://instacart.example.com/cart" {
 		t.Errorf("redirectURL: want https://instacart.example.com/cart, got %q", redirectURL)
+	}
+}
+
+func TestOrderGroceryList_WithRetailer(t *testing.T) {
+	var gotRetailer string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		gotRetailer, _ = body["retailer"].(string)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"redirect_url":"https://instacart.example.com/cart"}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.OrderGroceryList("frame1", "l1", "costco")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotRetailer != "costco" {
+		t.Errorf("retailer: want costco, got %q", gotRetailer)
+	}
+}
+
+func TestOrderGroceryList_BadURL(t *testing.T) {
+	old := SkylightURL
+	SkylightURL = "://bad"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.OrderGroceryList("frame1", "l1", "")
+	if err == nil {
+		t.Error("expected error for bad URL, got nil")
 	}
 }
 

@@ -348,6 +348,59 @@ func TestUploadPhoto_EmptyUploadURL(t *testing.T) {
 	}
 }
 
+func TestUploadPhoto_BadURL(t *testing.T) {
+	old := SkylightURL
+	SkylightURL = "://bad"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	if err == nil {
+		t.Error("expected error for bad URL, got nil")
+	}
+}
+
+func TestUploadPhoto_S3NetworkError(t *testing.T) {
+	s3Srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	s3URL := s3Srv.URL
+	s3Srv.Close()
+
+	skylightSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		body := `{"data":{"url":"` + s3URL + `","key":"k1","get_url":"","message_ids":[1],"frame_names":["frame1"]}}`
+		if _, err := w.Write([]byte(body)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer skylightSrv.Close()
+
+	old := SkylightURL
+	SkylightURL = skylightSrv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	if err == nil {
+		t.Fatal("expected error for S3 network error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to upload photo to S3") {
+		t.Errorf("expected S3 upload error, got: %v", err)
+	}
+}
+
+func TestDownloadPhoto_NetworkError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	rawURL := srv.URL + "/photo.jpg"
+	srv.Close()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.DownloadPhoto(rawURL)
+	if err == nil {
+		t.Error("expected error for connection refused, got nil")
+	}
+}
+
 func TestUploadPhoto_S3Error(t *testing.T) {
 	s3Srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
