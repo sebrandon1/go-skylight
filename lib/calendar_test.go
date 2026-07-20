@@ -304,12 +304,14 @@ func TestDeleteCalendarEvent(t *testing.T) {
 
 func TestListSourceCalendars(t *testing.T) {
 	tests := []struct {
-		name         string
-		status       int
-		response     string
-		wantLen      int
-		wantProvider string
-		wantErr      bool
+		name          string
+		status        int
+		response      string
+		wantLen       int
+		wantProvider  string
+		checkEnabled  bool
+		wantEnabled   bool
+		wantErr       bool
 	}{
 		{
 			name:         "returns calendars",
@@ -317,6 +319,16 @@ func TestListSourceCalendars(t *testing.T) {
 			response:     `{"data":[{"id":"1","type":"source_calendar_detail","attributes":{"label":"Google Calendar","kind":"google","editable":true}}]}`,
 			wantLen:      1,
 			wantProvider: "google",
+			checkEnabled: true,
+			wantEnabled:  true,
+		},
+		{
+			name:         "editable false maps to Enabled false",
+			status:       http.StatusOK,
+			response:     `{"data":[{"id":"2","type":"source_calendar_detail","attributes":{"label":"Read-only","kind":"gmail","editable":false}}]}`,
+			wantLen:      1,
+			checkEnabled: true,
+			wantEnabled:  false,
 		},
 		{
 			name:    "server error returns error",
@@ -361,6 +373,9 @@ func TestListSourceCalendars(t *testing.T) {
 			}
 			if tc.wantProvider != "" && len(calendars) > 0 && calendars[0].Provider != tc.wantProvider {
 				t.Errorf("Provider: want %q got %q", tc.wantProvider, calendars[0].Provider)
+			}
+			if tc.checkEnabled && len(calendars) > 0 && calendars[0].Enabled != tc.wantEnabled {
+				t.Errorf("Enabled: want %v got %v", tc.wantEnabled, calendars[0].Enabled)
 			}
 		})
 	}
