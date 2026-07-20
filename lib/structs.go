@@ -119,7 +119,7 @@ type SourceCalendar struct {
 	ID       string `json:"id,omitempty"`
 	Name     string `json:"label,omitempty"`
 	Color    string `json:"color,omitempty"`
-	Enabled  bool   `json:"enabled,omitempty"`
+	Enabled  bool   `json:"enabled"`
 	Provider string `json:"kind,omitempty"`
 }
 
