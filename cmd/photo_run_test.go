@@ -18,7 +18,9 @@ func TestPhotoListCmd(t *testing.T) {
 
 	stdout := captureStdout(func() {
 		_ = captureStderr(func() {
-			photoListCmd.Run(photoListCmd, nil)
+			if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
 		})
 	})
 	if !strings.Contains(stdout, "p1") {
@@ -37,7 +39,11 @@ func TestPhotoListCmd_PrintsNextPageToken(t *testing.T) {
 	outputFormat = outputTable
 	t.Cleanup(func() { outputFormat = orig })
 
-	stderr := captureStderr(func() { photoListCmd.Run(photoListCmd, nil) })
+	stderr := captureStderr(func() {
+		if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(stderr, "next123") {
 		t.Errorf("expected next page token on stderr, got: %s", stderr)
 	}
@@ -56,7 +62,11 @@ func TestPhotoListCmd_JSONIncludesNextPageToken(t *testing.T) {
 
 	var stderr string
 	stdout := captureStdout(func() {
-		stderr = captureStderr(func() { photoListCmd.Run(photoListCmd, nil) })
+		stderr = captureStderr(func() {
+			if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
 	})
 	if !strings.Contains(stdout, "next_page_token") || !strings.Contains(stdout, "tok-json") {
 		t.Errorf("expected next_page_token in JSON stdout, got: %s", stdout)
@@ -95,7 +105,11 @@ func TestPhotoUploadCmd(t *testing.T) {
 	photoFile, photoCaption = imgPath, "test caption"
 	t.Cleanup(func() { photoFile, photoCaption = origFile, origCaption })
 
-	out := captureStdout(func() { photoUploadCmd.Run(photoUploadCmd, nil) })
+	out := captureStdout(func() {
+		if err := photoUploadCmd.RunE(photoUploadCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "k1") {
 		t.Errorf("expected upload result with key in output, got: %s", out)
 	}
@@ -110,7 +124,11 @@ func TestPhotoDeleteCmd(t *testing.T) {
 	photoMessageID = []string{"1", "2"}
 	t.Cleanup(func() { photoMessageID = origIDs })
 
-	out := captureStdout(func() { photoDeleteCmd.Run(photoDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := photoDeleteCmd.RunE(photoDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Photos deleted successfully") {
 		t.Errorf("expected success message, got: %s", out)
 	}
@@ -141,7 +159,11 @@ func TestPhotoDownloadCmd(t *testing.T) {
 		photoDownloadAll, photoMessageID, photoOutputDir = origAll, origIDs, origDir
 	})
 
-	out := captureStdout(func() { photoDownloadCmd.Run(photoDownloadCmd, nil) })
+	out := captureStdout(func() {
+		if err := photoDownloadCmd.RunE(photoDownloadCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Saved") {
 		t.Errorf("expected save confirmation, got: %s", out)
 	}
@@ -163,7 +185,11 @@ func TestPhotoDownloadCmd_NoMatches(t *testing.T) {
 	photoMessageID = nil
 	t.Cleanup(func() { photoDownloadAll, photoMessageID = origAll, origIDs })
 
-	out := captureStdout(func() { photoDownloadCmd.Run(photoDownloadCmd, nil) })
+	out := captureStdout(func() {
+		if err := photoDownloadCmd.RunE(photoDownloadCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "No matching photos found") {
 		t.Errorf("expected no-matches message, got: %s", out)
 	}

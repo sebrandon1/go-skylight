@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -37,8 +36,10 @@ Events created here appear alongside any connected source calendars
 var calendarListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List calendar events",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		for _, f := range []struct {
 			name string
@@ -46,32 +47,43 @@ var calendarListCmd = &cobra.Command{
 		}{{"start-date", calendarStartDate}, {"end-date", calendarEndDate}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					return err
 				}
 			}
 		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
-		frame := getFrameOrFail(client, frameID)
+		frame, err := getFrameOrFail(client, frameID)
+		if err != nil {
+			return err
+		}
 
 		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate, frame.TimeZone)
 		if err != nil {
-			fatal("listing calendar events", err)
+			return fmt.Errorf("listing calendar events: %w", err)
 		}
 
 		printOutput(events)
+		return nil
 	},
 }
 
 var calendarCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a calendar event",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		allDay := calendarAllDay
 		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
@@ -81,54 +93,71 @@ var calendarCreateCmd = &cobra.Command{
 			AllDay:  &allDay,
 		})
 		if err != nil {
-			fatal("creating calendar event", err)
+			return fmt.Errorf("creating calendar event: %w", err)
 		}
 
 		printJSON(event)
+		return nil
 	},
 }
 
 var calendarDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a calendar event",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
-
-		err := client.DeleteCalendarEvent(frameID, calendarEventID)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting calendar event", err)
+			return err
+		}
+
+		if err := client.DeleteCalendarEvent(frameID, calendarEventID); err != nil {
+			return fmt.Errorf("deleting calendar event: %w", err)
 		}
 
 		printSuccess("Calendar event deleted successfully")
+		return nil
 	},
 }
 
 var sourceCalendarsCmd = &cobra.Command{
 	Use:   "sources",
 	Short: "List source calendars",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		calendars, err := client.ListSourceCalendars(frameID)
 		if err != nil {
-			fatal("listing source calendars", err)
+			return fmt.Errorf("listing source calendars: %w", err)
 		}
 
 		printOutput(calendars)
+		return nil
 	},
 }
 
 var calendarUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a calendar event",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.CalendarEventData{}
 		if cmd.Flags().Changed("title") {
@@ -147,25 +176,30 @@ var calendarUpdateCmd = &cobra.Command{
 
 		event, err := client.UpdateCalendarEvent(frameID, calendarEventID, data)
 		if err != nil {
-			fatal("updating calendar event", err)
+			return fmt.Errorf("updating calendar event: %w", err)
 		}
 
 		printJSON(event)
+		return nil
 	},
 }
 
 var calendarCreateCountdownCmd = &cobra.Command{
 	Use:   "create-countdown",
 	Short: "Create a countdown event",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if err := validateDate(calendarCountdownDate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if err := validateDate(calendarCountdownDate); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		allDayTrue := true
 		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
@@ -175,36 +209,43 @@ var calendarCreateCountdownCmd = &cobra.Command{
 			EventType: lib.CalendarEventTypeCountdown,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: creating countdown event: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("creating countdown event: %w", err)
 		}
 
 		printJSON(event)
+		return nil
 	},
 }
 
 var calendarWeekCmd = &cobra.Command{
 	Use:   "week",
 	Short: "Show a 7-day Mon-Sun view of calendar events",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if cmd.Flags().Changed("date") {
 			if err := validateDate(calendarWeekDate); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 		}
 
 		monday, err := weekStart(calendarWeekDate)
 		if err != nil {
-			fatal("computing week start", err)
+			return fmt.Errorf("computing week start: %w", err)
 		}
 		sunday := monday.AddDate(0, 0, 6)
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
-		frame := getFrameOrFail(client, frameID)
+		frame, err := getFrameOrFail(client, frameID)
+		if err != nil {
+			return err
+		}
 
 		events, err := client.ListCalendarEvents(
 			frameID,
@@ -213,11 +254,12 @@ var calendarWeekCmd = &cobra.Command{
 			frame.TimeZone,
 		)
 		if err != nil {
-			fatal("listing calendar events", err)
+			return fmt.Errorf("listing calendar events: %w", err)
 		}
 
 		days := buildCalendarWeeklyView(events, monday)
 		printOutput(days)
+		return nil
 	},
 }
 

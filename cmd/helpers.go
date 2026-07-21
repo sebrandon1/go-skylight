@@ -47,11 +47,6 @@ func maybeLoadCatNames(client *lib.Client) {
 	}
 }
 
-func fatal(msg string, err error) {
-	fmt.Fprintf(os.Stderr, "Error: %s: %v\n", msg, err)
-	os.Exit(1)
-}
-
 // printSuccess prints a human-readable confirmation message, unless --quiet
 // was set, in which case it's suppressed. Use for post-mutation confirmations
 // (e.g. "X deleted successfully") — never for primary command output.
@@ -90,12 +85,12 @@ func markFlagRequired(cmd *cobra.Command, name string) {
 	}
 }
 
-func getFrameOrFail(client *lib.Client, id string) *lib.Frame {
+func getFrameOrFail(client *lib.Client, id string) (*lib.Frame, error) {
 	frame, err := client.GetFrame(id)
 	if err != nil {
-		fatal("getting frame info", err)
+		return nil, fmt.Errorf("getting frame info: %w", err)
 	}
-	return frame
+	return frame, nil
 }
 
 // validateDate returns an error if date is non-empty and not in YYYY-MM-DD format.
@@ -163,7 +158,7 @@ func buildCatNames(categories []lib.Category) map[string]string {
 func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		fatal("marshaling JSON", err)
+		panic(fmt.Sprintf("marshaling JSON: %v", err))
 	}
 	fmt.Println(string(output))
 }

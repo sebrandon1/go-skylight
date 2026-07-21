@@ -48,7 +48,9 @@ func TestConfigShowAllNotSet(t *testing.T) {
 
 	var buf bytes.Buffer
 	configShowCmd.SetOut(&buf)
-	configShowCmd.Run(configShowCmd, nil)
+	if err := configShowCmd.RunE(configShowCmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	out := buf.String()
 	if !strings.Contains(out, "Config file:") {
@@ -71,7 +73,9 @@ func TestConfigShowMasksSensitiveKeys(t *testing.T) {
 
 	var buf bytes.Buffer
 	configShowCmd.SetOut(&buf)
-	configShowCmd.Run(configShowCmd, nil)
+	if err := configShowCmd.RunE(configShowCmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	out := buf.String()
 	if strings.Contains(out, "mysecrettoken") {
@@ -89,7 +93,9 @@ func TestConfigShowNonSensitiveUnmasked(t *testing.T) {
 
 	var buf bytes.Buffer
 	configShowCmd.SetOut(&buf)
-	configShowCmd.Run(configShowCmd, nil)
+	if err := configShowCmd.RunE(configShowCmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	out := buf.String()
 	if !strings.Contains(out, "frame-abc-123") {

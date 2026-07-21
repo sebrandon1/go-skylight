@@ -33,7 +33,11 @@ func TestCalendarListCmd(t *testing.T) {
 	calendarStartDate, calendarEndDate = "2026-01-01", "2026-01-07"
 	t.Cleanup(func() { calendarStartDate, calendarEndDate = origStart, origEnd })
 
-	out := captureStdout(func() { calendarListCmd.Run(calendarListCmd, nil) })
+	out := captureStdout(func() {
+		if err := calendarListCmd.RunE(calendarListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Meeting") {
 		t.Errorf("expected event in output, got: %s", out)
 	}
@@ -45,7 +49,11 @@ func TestCalendarCreateCmd(t *testing.T) {
 	calendarTitle, calendarStartAt = "New Event", "2026-01-01T10:00:00Z"
 	t.Cleanup(func() { calendarTitle, calendarStartAt = origTitle, origStart })
 
-	out := captureStdout(func() { calendarCreateCmd.Run(calendarCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := calendarCreateCmd.RunE(calendarCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "New Event") {
 		t.Errorf("expected created event in output, got: %s", out)
 	}
@@ -57,7 +65,11 @@ func TestCalendarDeleteCmd(t *testing.T) {
 	calendarEventID = "event1"
 	t.Cleanup(func() { calendarEventID = origID })
 
-	out := captureStdout(func() { calendarDeleteCmd.Run(calendarDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := calendarDeleteCmd.RunE(calendarDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -66,7 +78,11 @@ func TestCalendarDeleteCmd(t *testing.T) {
 func TestSourceCalendarsCmd(t *testing.T) {
 	newCmdTestClient(t, calendarMockHandler())
 
-	out := captureStdout(func() { sourceCalendarsCmd.Run(sourceCalendarsCmd, nil) })
+	out := captureStdout(func() {
+		if err := sourceCalendarsCmd.RunE(sourceCalendarsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Family") {
 		t.Errorf("expected source calendar in output, got: %s", out)
 	}
@@ -84,7 +100,11 @@ func TestCalendarUpdateCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { calendarUpdateCmd.Run(calendarUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := calendarUpdateCmd.RunE(calendarUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated event in output, got: %s", out)
 	}
@@ -96,7 +116,11 @@ func TestCalendarCreateCountdownCmd(t *testing.T) {
 	calendarTitle, calendarCountdownDate = "Birthday", "2026-06-01"
 	t.Cleanup(func() { calendarTitle, calendarCountdownDate = origTitle, origDate })
 
-	out := captureStdout(func() { calendarCreateCountdownCmd.Run(calendarCreateCountdownCmd, nil) })
+	out := captureStdout(func() {
+		if err := calendarCreateCountdownCmd.RunE(calendarCreateCountdownCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "New Event") {
 		t.Errorf("expected created countdown event in output, got: %s", out)
 	}
@@ -105,7 +129,11 @@ func TestCalendarCreateCountdownCmd(t *testing.T) {
 func TestCalendarWeekCmd(t *testing.T) {
 	newCmdTestClient(t, calendarMockHandler())
 
-	out := captureStdout(func() { calendarWeekCmd.Run(calendarWeekCmd, nil) })
+	out := captureStdout(func() {
+		if err := calendarWeekCmd.RunE(calendarWeekCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if out == "" {
 		t.Error("expected non-empty weekly view output")
 	}

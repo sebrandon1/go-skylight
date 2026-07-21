@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -82,21 +80,3 @@ func assertCommandRegistered(t *testing.T, parent *cobra.Command, use string) {
 	t.Errorf("%q command not registered on %q", use, parent.Use)
 }
 
-// runCrasherTest runs testName as a subprocess with envVar="1" set, and
-// asserts that it exits non-zero with wantStderr appearing in stderr.
-func runCrasherTest(t *testing.T, testName, envVar, wantStderr string) {
-	t.Helper()
-	//nolint:gosec // os.Args[0] is the test binary itself and the flag value is static, not user input.
-	cmd := exec.Command(os.Args[0], "-test.run="+testName)
-	cmd.Env = append(os.Environ(), envVar+"=1")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok || exitErr.Success() {
-		t.Fatalf("expected %s to exit non-zero, got err=%v", testName, err)
-	}
-	if !strings.Contains(stderr.String(), wantStderr) {
-		t.Errorf("expected %q on stderr, got: %s", wantStderr, stderr.String())
-	}
-}

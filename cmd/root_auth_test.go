@@ -46,16 +46,14 @@ func TestRequireFrameID_PassesWhenSet(t *testing.T) {
 	requireFrameID()
 }
 
-func TestRequireFrameID_ExitsWhenEmpty_Crasher(t *testing.T) {
-	if os.Getenv("WANT_REQUIRE_FRAME_ID_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestRequireFrameID_ExitsWhenEmpty")
-	}
+func TestRequireFrameID_ReturnsErrorWhenEmpty(t *testing.T) {
+	origFrameID := frameID
 	frameID = ""
-	requireFrameID()
-}
+	t.Cleanup(func() { frameID = origFrameID })
 
-func TestRequireFrameID_ExitsWhenEmpty(t *testing.T) {
-	runCrasherTest(t, "TestRequireFrameID_ExitsWhenEmpty_Crasher", "WANT_REQUIRE_FRAME_ID_CRASH", "skylight frame devices")
+	if err := requireFrameID(); err == nil {
+		t.Error("expected error when frameID is empty")
+	}
 }
 
 func TestGetClient_ReturnsAutoClient(t *testing.T) {
@@ -66,7 +64,10 @@ func TestGetClient_ReturnsAutoClient(t *testing.T) {
 	}
 	autoClient = want
 
-	got := getClient()
+	got, err := getClient()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if got != want {
 		t.Error("expected getClient to return the package-level autoClient unchanged")
 	}
@@ -77,12 +78,26 @@ func TestGetClient_BuildsFromUserIDAndToken(t *testing.T) {
 	autoClient = nil
 	userID, token = "u1", "t1"
 
-	got := getClient()
+	got, err := getClient()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if got == nil {
 		t.Fatal("expected a non-nil client")
 	}
 	if got.UserID != "u1" || got.APIToken != "t1" {
 		t.Errorf("got UserID=%q APIToken=%q, want u1/t1", got.UserID, got.APIToken)
+	}
+}
+
+func TestGetClient_ReturnsErrorWithNoCredentials(t *testing.T) {
+	resetAuthState(t)
+	autoClient = nil
+	userID, token = "", ""
+
+	_, err := getClient()
+	if err == nil {
+		t.Fatal("expected error when no credentials are set, got nil")
 	}
 }
 

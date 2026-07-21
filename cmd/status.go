@@ -13,14 +13,21 @@ import (
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Quick overview of the connected frame",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
 		today := time.Now().Format(lib.DateFormat)
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {
-			fatal("getting frame", err)
+			return fmt.Errorf("getting frame: %w", err)
 		}
 
 		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
@@ -29,22 +36,22 @@ var statusCmd = &cobra.Command{
 			Status: lib.ChoreStatusPending,
 		})
 		if err != nil {
-			fatal("listing chores", err)
+			return fmt.Errorf("listing chores: %w", err)
 		}
 
 		events, err := client.ListCalendarEvents(frameID, today, today, frame.TimeZone)
 		if err != nil {
-			fatal("listing calendar events", err)
+			return fmt.Errorf("listing calendar events: %w", err)
 		}
 
 		categories, err := client.ListCategories(frameID)
 		if err != nil {
-			fatal("listing categories", err)
+			return fmt.Errorf("listing categories: %w", err)
 		}
 
 		points, err := client.GetRewardPoints(frameID)
 		if err != nil {
-			fatal("getting reward points", err)
+			return fmt.Errorf("getting reward points: %w", err)
 		}
 
 		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
@@ -52,12 +59,12 @@ var statusCmd = &cobra.Command{
 			DateMax: today,
 		})
 		if err != nil {
-			fatal("listing meal sittings", err)
+			return fmt.Errorf("listing meal sittings: %w", err)
 		}
 
 		lists, err := client.ListLists(frameID)
 		if err != nil {
-			fatal("listing lists", err)
+			return fmt.Errorf("listing lists: %w", err)
 		}
 		incompleteItems, listErrors := countIncompleteListItems(client, frameID, lists)
 
@@ -83,7 +90,7 @@ var statusCmd = &cobra.Command{
 				"incomplete_list_items": incompleteItems,
 				"list_errors":           listErrors,
 			})
-			return
+			return nil
 		}
 
 		fmt.Printf("Frame:   %s\n", frame.Name)
@@ -96,6 +103,7 @@ var statusCmd = &cobra.Command{
 		}
 		fmt.Printf("Lists:   %s\n", listsLine)
 		fmt.Printf("Points:  %s\n", pointsStr)
+		return nil
 	},
 }
 

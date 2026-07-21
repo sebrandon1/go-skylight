@@ -26,7 +26,11 @@ func categoryMockHandler() http.HandlerFunc {
 func TestCategoryListCmd(t *testing.T) {
 	newCmdTestClient(t, categoryMockHandler())
 
-	out := captureStdout(func() { categoryListCmd.Run(categoryListCmd, nil) })
+	out := captureStdout(func() {
+		if err := categoryListCmd.RunE(categoryListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Mom") {
 		t.Errorf("expected category name in output, got: %s", out)
 	}
@@ -38,7 +42,11 @@ func TestCategoryCreateCmd(t *testing.T) {
 	categoryName = "Mom"
 	t.Cleanup(func() { categoryName = origName })
 
-	out := captureStdout(func() { categoryCreateCmd.Run(categoryCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := categoryCreateCmd.RunE(categoryCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Mom") {
 		t.Errorf("expected created category in output, got: %s", out)
 	}
@@ -50,7 +58,11 @@ func TestCategoryDeleteCmd(t *testing.T) {
 	categoryID = "cat1"
 	t.Cleanup(func() { categoryID = origID })
 
-	out := captureStdout(func() { categoryDeleteCmd.Run(categoryDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := categoryDeleteCmd.RunE(categoryDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -68,7 +80,11 @@ func TestCategoryUpdateCmd(t *testing.T) {
 		t.Fatalf("setting name flag: %v", err)
 	}
 
-	out := captureStdout(func() { categoryUpdateCmd.Run(categoryUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := categoryUpdateCmd.RunE(categoryUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated category in output, got: %s", out)
 	}

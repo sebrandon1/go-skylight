@@ -18,9 +18,33 @@ func TestChoreStreakCmd(t *testing.T) {
 		}
 	})
 
-	out := captureStdout(func() { choreStreakCmd.Run(choreStreakCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreStreakCmd.RunE(choreStreakCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if out == "" {
 		t.Error("expected non-empty streak output")
+	}
+}
+
+func TestChoreStreakCmd_ChoreFetchError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/categories"):
+			fmt.Fprint(w, `{"data":[]}`)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	})
+
+	err := choreStreakCmd.RunE(choreStreakCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when chore API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing chores") {
+		t.Errorf("expected 'listing chores' in error, got: %v", err)
 	}
 }
 

@@ -17,16 +17,25 @@ var analyticsDays int
 var analyticsCmd = &cobra.Command{
 	Use:   "analytics",
 	Short: "Family activity statistics over a time period",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		now := time.Now()
 		start := now.AddDate(0, 0, -analyticsDays)
 		startStr := start.Format(lib.DateFormat)
 		endStr := now.Format(lib.DateFormat)
 
-		frame := getFrameOrFail(client, frameID)
+		frame, err := getFrameOrFail(client, frameID)
+		if err != nil {
+			return err
+		}
 
 		var (
 			categories []lib.Category
@@ -71,16 +80,16 @@ var analyticsCmd = &cobra.Command{
 		wg.Wait()
 
 		if catErr != nil {
-			fatal("listing categories", catErr)
+			return fmt.Errorf("listing categories: %w", catErr)
 		}
 		if choreErr != nil {
-			fatal("listing chores", choreErr)
+			return fmt.Errorf("listing chores: %w", choreErr)
 		}
 		if rewardErr != nil {
-			fatal("listing rewards", rewardErr)
+			return fmt.Errorf("listing rewards: %w", rewardErr)
 		}
 		if pointsErr != nil {
-			fatal("getting reward points", pointsErr)
+			return fmt.Errorf("getting reward points: %w", pointsErr)
 		}
 		if eventErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: calendar events unavailable: %v\n", eventErr)
@@ -92,10 +101,11 @@ var analyticsCmd = &cobra.Command{
 
 		if outputFormat == outputJSON {
 			printJSON(stats)
-			return
+			return nil
 		}
 
 		printAnalyticsText(stats)
+		return nil
 	},
 }
 

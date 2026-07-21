@@ -38,7 +38,11 @@ func TestWatchCmd_StopsOnContextCancel(t *testing.T) {
 	watchInterval, watchResources, watchPersist = 1, "chores", false
 	t.Cleanup(func() { watchInterval, watchResources, watchPersist = origInterval, origResources, origPersist })
 
-	out := captureStdout(func() { watchCmd.Run(watchCmd, nil) })
+	out := captureStdout(func() {
+		if err := watchCmd.RunE(watchCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Watching") || !strings.Contains(out, "Stopped.") {
 		t.Errorf("expected watch start/stop messages, got: %s", out)
 	}
@@ -63,7 +67,11 @@ func TestWatchCmd_PersistRewards(t *testing.T) {
 	watchInterval, watchResources, watchPersist = 1, "rewards", true
 	t.Cleanup(func() { watchInterval, watchResources, watchPersist = origInterval, origResources, origPersist })
 
-	out := captureStdout(func() { watchCmd.Run(watchCmd, nil) })
+	out := captureStdout(func() {
+		if err := watchCmd.RunE(watchCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "rewards persisted") {
 		t.Errorf("expected persist label in output, got: %s", out)
 	}
@@ -81,23 +89,75 @@ func TestWatchCmd_PersistWithoutRewardsWarns(t *testing.T) {
 	watchInterval, watchResources, watchPersist = 1, "chores", true
 	t.Cleanup(func() { watchInterval, watchResources, watchPersist = origInterval, origResources, origPersist })
 
-	stderr := captureStderr(func() { watchCmd.Run(watchCmd, nil) })
+	stderr := captureStderr(func() {
+		if err := watchCmd.RunE(watchCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(stderr, "--persist has no effect") {
 		t.Errorf("expected persist warning on stderr, got: %s", stderr)
 	}
 }
 
-// TestWatchCmd_InvalidInterval_Crasher is invoked as a subprocess by
-// TestWatchCmd_InvalidInterval to exercise watchCmd's os.Exit(1) path
-// without terminating the real test binary.
-func TestWatchCmd_InvalidInterval_Crasher(t *testing.T) {
-	if os.Getenv("WANT_WATCH_INTERVAL_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestWatchCmd_InvalidInterval")
-	}
+func TestWatchCmd_InvalidInterval(t *testing.T) {
+	origInterval := watchInterval
 	watchInterval = 0
-	watchCmd.Run(watchCmd, nil)
+	t.Cleanup(func() { watchInterval = origInterval })
+
+	err := watchCmd.RunE(watchCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid interval, got nil")
+	}
+	if !strings.Contains(err.Error(), "--interval must be at least 1") {
+		t.Errorf("expected '--interval must be at least 1' in error, got: %v", err)
+	}
 }
 
-func TestWatchCmd_InvalidInterval(t *testing.T) {
-	runCrasherTest(t, "TestWatchCmd_InvalidInterval_Crasher", "WANT_WATCH_INTERVAL_CRASH", "--interval must be at least 1")
+func TestWatchCmd_MissingFrameID(t *testing.T) {
+	origFrameID, origInterval := frameID, watchInterval
+	frameID = ""
+	watchInterval = 1
+	t.Cleanup(func() { frameID, watchInterval = origFrameID, origInterval })
+
+	err := watchCmd.RunE(watchCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for missing frame ID, got nil")
+	}
+	if !strings.Contains(err.Error(), "--frame-id is required") {
+		t.Errorf("expected '--frame-id is required' in error, got: %v", err)
+	}
+}
+
+func TestWatchCmd_AllInvalidResources(t *testing.T) {
+	newCmdTestClient(t, watchRunMockHandler())
+	origResources, origInterval := watchResources, watchInterval
+	watchResources = "bogus"
+	watchInterval = 1
+	t.Cleanup(func() { watchResources, watchInterval = origResources, origInterval })
+
+	err := watchCmd.RunE(watchCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for all-invalid resources, got nil")
+	}
+	if !strings.Contains(err.Error(), "no valid resources specified") {
+		t.Errorf("expected 'no valid resources specified' in error, got: %v", err)
+	}
+}
+
+func TestWatchCmd_FrameAPIError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	origResources, origInterval := watchResources, watchInterval
+	watchResources = "chores"
+	watchInterval = 1
+	t.Cleanup(func() { watchResources, watchInterval = origResources, origInterval })
+
+	err := watchCmd.RunE(watchCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when frame API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "getting frame info") {
+		t.Errorf("expected 'getting frame info' in error, got: %v", err)
+	}
 }

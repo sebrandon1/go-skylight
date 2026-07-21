@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -43,10 +42,15 @@ list by date range, and --status to filter by pending/complete/skipped.
 var choreListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List chores",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		for _, f := range []struct {
 			name string
@@ -54,23 +58,21 @@ var choreListCmd = &cobra.Command{
 		}{{"date", choreDate}, {"after", choreAfter}, {"before", choreBefore}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					return err
 				}
 			}
 		}
 
 		if cmd.Flags().Changed("status") {
 			if err := validateEnum(choreStatus, choreStatuses); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 		}
 
 		if cmd.Flags().Changed("week") {
 			monday, err := weekStart(choreWeek)
 			if err != nil {
-				fatal("computing week start", err)
+				return fmt.Errorf("computing week start: %w", err)
 			}
 			sunday := monday.AddDate(0, 0, 6)
 			chores, err := client.ListChores(frameID, lib.ChoreListOptions{
@@ -79,11 +81,11 @@ var choreListCmd = &cobra.Command{
 				IncludeLate: true,
 			})
 			if err != nil {
-				fatal("listing chores", err)
+				return fmt.Errorf("listing chores: %w", err)
 			}
 			days := buildWeeklyView(chores, monday)
 			printOutput(days)
-			return
+			return nil
 		}
 
 		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
@@ -96,26 +98,31 @@ var choreListCmd = &cobra.Command{
 			UpForGrabs:  choreUpForGrabs,
 		})
 		if err != nil {
-			fatal("listing chores", err)
+			return fmt.Errorf("listing chores: %w", err)
 		}
 
 		maybeLoadCatNames(client)
 		printOutput(chores)
+		return nil
 	},
 }
 
 var choreCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a chore",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if err := validateDate(choreDate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if err := validateDate(choreDate); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.ChoreData{
 			Title:       choreTitle,
@@ -124,7 +131,6 @@ var choreCreateCmd = &cobra.Command{
 			Points:      chorePoints,
 		}
 		var chore *lib.Chore
-		var err error
 		if choreUpForGrabs {
 			chore, err = client.CreateUpForGrabsChore(frameID, data)
 		} else {
@@ -133,72 +139,87 @@ var choreCreateCmd = &cobra.Command{
 			chore, err = client.CreateChore(frameID, data)
 		}
 		if err != nil {
-			fatal("creating chore", err)
+			return fmt.Errorf("creating chore: %w", err)
 		}
 
 		printJSON(chore)
+		return nil
 	},
 }
 
 var choreDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a chore",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if dryRun {
 			printDryRun("delete chore %s", choreID)
-			return
+			return nil
 		}
 
-		client := getClient()
-
-		err := client.DeleteChore(frameID, choreID)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting chore", err)
+			return err
+		}
+
+		if err := client.DeleteChore(frameID, choreID); err != nil {
+			return fmt.Errorf("deleting chore: %w", err)
 		}
 
 		printSuccess("Chore deleted successfully")
+		return nil
 	},
 }
 
 var choreCompleteCmd = &cobra.Command{
 	Use:   "complete",
 	Short: "Mark a chore as completed",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.CompleteChore(frameID, choreID); err != nil {
-			fatal("completing chore", err)
+			return fmt.Errorf("completing chore: %w", err)
 		}
 
 		printSuccess("Chore completed successfully")
+		return nil
 	},
 }
 
 var choreUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a chore",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if cmd.Flags().Changed("date") {
 			if err := validateDate(choreDate); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 		}
 
 		if cmd.Flags().Changed("status") {
 			if err := validateEnum(choreStatus, choreStatuses); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.ChoreData{}
 		if cmd.Flags().Changed("title") {
@@ -222,10 +243,11 @@ var choreUpdateCmd = &cobra.Command{
 
 		chore, err := client.UpdateChore(frameID, choreID, data)
 		if err != nil {
-			fatal("updating chore", err)
+			return fmt.Errorf("updating chore: %w", err)
 		}
 
 		printJSON(chore)
+		return nil
 	},
 }
 
@@ -243,33 +265,45 @@ and recurring; up-for-grabs or non-recurring chores cannot be skipped.
   skylight chore skip --chore-id 12345678-2026-06-25
 
 The date suffix in the chore ID identifies the specific instance.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.SkipChore(frameID, choreID); err != nil {
-			fatal("skipping chore", err)
+			return fmt.Errorf("skipping chore: %w", err)
 		}
 
 		printSuccess("Chore skipped successfully")
+		return nil
 	},
 }
 
 var choreClaimCmd = &cobra.Command{
 	Use:   "claim",
 	Short: "Claim an up-for-grabs chore",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		chore, err := client.ClaimChore(frameID, choreID, choreAssigneeID)
 		if err != nil {
-			fatal("claiming chore", err)
+			return fmt.Errorf("claiming chore: %w", err)
 		}
 
 		printJSON(chore)
+		return nil
 	},
 }
 

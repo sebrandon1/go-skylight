@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
@@ -21,28 +23,39 @@ var routineCmd = &cobra.Command{
 var routineListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List routines",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		routines, err := client.ListRoutines(frameID)
 		if err != nil {
-			fatal("listing routines", err)
+			return fmt.Errorf("listing routines: %w", err)
 		}
 
 		maybeLoadCatNames(client)
 		printOutput(routines)
+		return nil
 	},
 }
 
 var routineCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a routine",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		routine, err := client.CreateRoutine(frameID, lib.RoutineData{
 			Title:      routineTitle,
@@ -50,20 +63,26 @@ var routineCreateCmd = &cobra.Command{
 			Steps:      filterEmptyStrings(routineSteps),
 		})
 		if err != nil {
-			fatal("creating routine", err)
+			return fmt.Errorf("creating routine: %w", err)
 		}
 
 		printJSON(routine)
+		return nil
 	},
 }
 
 var routineUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a routine",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.RoutineData{}
 		if cmd.Flags().Changed("title") {
@@ -78,42 +97,55 @@ var routineUpdateCmd = &cobra.Command{
 
 		routine, err := client.UpdateRoutine(frameID, routineID, data)
 		if err != nil {
-			fatal("updating routine", err)
+			return fmt.Errorf("updating routine: %w", err)
 		}
 
 		printJSON(routine)
+		return nil
 	},
 }
 
 var routineDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a routine",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.DeleteRoutine(frameID, routineID); err != nil {
-			fatal("deleting routine", err)
+			return fmt.Errorf("deleting routine: %w", err)
 		}
 
 		printSuccess("Routine deleted successfully")
+		return nil
 	},
 }
 
 var routineReorderCmd = &cobra.Command{
 	Use:   "reorder",
 	Short: "Set the display order of routines",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.ReorderRoutines(frameID, routineIDs); err != nil {
-			fatal("reordering routines", err)
+			return fmt.Errorf("reordering routines: %w", err)
 		}
 
 		printSuccess("Routines reordered successfully")
+		return nil
 	},
 }
 

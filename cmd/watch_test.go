@@ -8,7 +8,10 @@ import (
 func TestParseWatchResources_All(t *testing.T) {
 	cases := []string{"", "all"}
 	for _, c := range cases {
-		got := parseWatchResources(c)
+		got, err := parseWatchResources(c)
+		if err != nil {
+			t.Fatalf("parseWatchResources(%q): unexpected error: %v", c, err)
+		}
 		if len(got) != len(allWatchResources) {
 			t.Errorf("parseWatchResources(%q): expected %d resources, got %d: %v", c, len(allWatchResources), len(got), got)
 		}
@@ -16,7 +19,10 @@ func TestParseWatchResources_All(t *testing.T) {
 }
 
 func TestParseWatchResources_Specific(t *testing.T) {
-	got := parseWatchResources("rewards,chores")
+	got, err := parseWatchResources("rewards,chores")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(got) != 2 {
 		t.Fatalf("expected 2 resources, got %d: %v", len(got), got)
 	}
@@ -26,14 +32,20 @@ func TestParseWatchResources_Specific(t *testing.T) {
 }
 
 func TestParseWatchResources_Single(t *testing.T) {
-	got := parseWatchResources("calendar")
+	got, err := parseWatchResources("calendar")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(got) != 1 || got[0] != "calendar" {
 		t.Errorf("expected [calendar], got %v", got)
 	}
 }
 
 func TestParseWatchResources_TrimsSpaces(t *testing.T) {
-	got := parseWatchResources(" rewards , chores ")
+	got, err := parseWatchResources(" rewards , chores ")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(got) != 2 {
 		t.Fatalf("expected 2 resources, got %d: %v", len(got), got)
 	}
@@ -91,7 +103,10 @@ func TestWatchState_TracksSeenEvents(t *testing.T) {
 }
 
 func TestParseWatchResources_IgnoresInvalid(t *testing.T) {
-	got := parseWatchResources("rewards,bogus,chores")
+	got, err := parseWatchResources("rewards,bogus,chores")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(got) != 2 {
 		t.Fatalf("expected 2 valid resources, got %d: %v", len(got), got)
 	}

@@ -57,31 +57,37 @@ var importCmd = &cobra.Command{
 Each resource type is created in the target frame. IDs from the source frame are
 ignored — new IDs are assigned by the API. Use --resources to import only specific
 types. Use --dry-run to preview what would be created without making API calls.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		raw, err := os.ReadFile(importFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", importFile, err)
-			os.Exit(1)
+			return fmt.Errorf("reading %s: %w", importFile, err)
 		}
 
 		var data ExportData
 		if err := json.Unmarshal(raw, &data); err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing export file: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("parsing export file: %w", err)
 		}
 
-		resources := parseResourceList(importResources, allExportResources)
+		resources, err := parseResourceList(importResources, allExportResources)
+		if err != nil {
+			return err
+		}
 		want := toWantMap(resources)
 
 		if importDryRun {
 			runImportDryRun(data, want)
-			return
+			return nil
 		}
 
-		client := getClient()
-		runImport(client, data, want)
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+		return runImport(client, data, want)
 	},
 }
 
@@ -102,7 +108,7 @@ func runImportDryRun(data ExportData, want map[string]bool) {
 	}
 }
 
-func runImport(client *lib.Client, data ExportData, want map[string]bool) {
+func runImport(client *lib.Client, data ExportData, want map[string]bool) error {
 	var total, failed int
 	add := func(t, f int) { total += t; failed += f }
 
@@ -127,8 +133,9 @@ func runImport(client *lib.Client, data ExportData, want map[string]bool) {
 
 	printSuccessf("Imported %d/%d items successfully.\n", total-failed, total)
 	if failed > 0 {
-		os.Exit(1)
+		return fmt.Errorf("%d/%d items failed to import", failed, total)
 	}
+	return nil
 }
 
 func importRewards(client *lib.Client, rewards []lib.Reward) (total, failed int) {

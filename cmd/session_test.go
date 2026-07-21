@@ -65,19 +65,18 @@ func withHeadlessLoginServer(t *testing.T) {
 	})
 }
 
-// TestLoginCmd_MissingCredentials_Crasher is invoked as a subprocess by
-// TestLoginCmd_MissingCredentials to exercise loginCmd's os.Exit(1) path
-// without terminating the real test binary.
-func TestLoginCmd_MissingCredentials_Crasher(t *testing.T) {
-	if os.Getenv("WANT_LOGIN_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestLoginCmd_MissingCredentials")
-	}
-	email, password = "", ""
-	loginCmd.Run(loginCmd, nil)
-}
-
 func TestLoginCmd_MissingCredentials(t *testing.T) {
-	runCrasherTest(t, "TestLoginCmd_MissingCredentials_Crasher", "WANT_LOGIN_CRASH", "are required for login")
+	origEmail, origPassword := email, password
+	email, password = "", ""
+	t.Cleanup(func() { email, password = origEmail, origPassword })
+
+	err := loginCmd.RunE(loginCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for missing credentials, got nil")
+	}
+	if !strings.Contains(err.Error(), "are required for login") {
+		t.Errorf("expected 'are required for login' in error, got: %v", err)
+	}
 }
 
 func TestLoginCmd_Success(t *testing.T) {
@@ -91,7 +90,11 @@ func TestLoginCmd_Success(t *testing.T) {
 		email, password, deviceFingerprint, saveCredentials = origEmail, origPassword, origFingerprint, origSave
 	})
 
-	out := captureStdout(func() { loginCmd.Run(loginCmd, nil) })
+	out := captureStdout(func() {
+		if err := loginCmd.RunE(loginCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	if !strings.Contains(out, "Login successful!") {
 		t.Errorf("expected success message, got: %s", out)
@@ -112,7 +115,11 @@ func TestLoginCmd_GeneratesFingerprintWhenMissing(t *testing.T) {
 		email, password, deviceFingerprint, saveCredentials = origEmail, origPassword, origFingerprint, origSave
 	})
 
-	out := captureStdout(func() { loginCmd.Run(loginCmd, nil) })
+	out := captureStdout(func() {
+		if err := loginCmd.RunE(loginCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Fingerprint:") {
 		t.Errorf("expected a generated fingerprint in output, got: %s", out)
 	}
@@ -136,7 +143,11 @@ func TestLoginCmd_SavesCredentials(t *testing.T) {
 			origEmail, origPassword, origFingerprint, origSave, origConfigPath, origFrameID
 	})
 
-	out := captureStdout(func() { loginCmd.Run(loginCmd, nil) })
+	out := captureStdout(func() {
+		if err := loginCmd.RunE(loginCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Credentials saved to "+path) {
 		t.Errorf("expected save confirmation, got: %s", out)
 	}
@@ -154,26 +165,27 @@ func TestLoginCmd_SavesCredentials(t *testing.T) {
 	}
 }
 
-// TestLoginCmd_LoginFailure_Crasher is invoked as a subprocess by
-// TestLoginCmd_LoginFailure to exercise loginCmd's fatal()-triggered
-// os.Exit(1) path without terminating the real test binary.
-func TestLoginCmd_LoginFailure_Crasher(t *testing.T) {
-	if os.Getenv("WANT_LOGIN_FAILURE_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestLoginCmd_LoginFailure")
-	}
-
+func TestLoginCmd_LoginFailure(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
+
+	origAuth := lib.AuthSessionURL
 	lib.AuthSessionURL = srv.URL + "/auth/session"
+	t.Cleanup(func() { lib.AuthSessionURL = origAuth })
 
+	origEmail, origPassword := email, password
 	email, password = "u@example.com", "pw"
-	loginCmd.Run(loginCmd, nil)
-}
+	t.Cleanup(func() { email, password = origEmail, origPassword })
 
-func TestLoginCmd_LoginFailure(t *testing.T) {
-	runCrasherTest(t, "TestLoginCmd_LoginFailure_Crasher", "WANT_LOGIN_FAILURE_CRASH", "Error: logging in")
+	err := loginCmd.RunE(loginCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for login failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "logging in") {
+		t.Errorf("expected 'logging in' in error, got: %v", err)
+	}
 }
 
 func TestLoginCmdExists(t *testing.T) {

@@ -24,7 +24,10 @@ func TestToWantMap(t *testing.T) {
 
 func TestParseExportResources_All(t *testing.T) {
 	for _, input := range []string{"", "all"} {
-		got := parseExportResources(input)
+		got, err := parseExportResources(input)
+		if err != nil {
+			t.Fatalf("parseExportResources(%q): unexpected error: %v", input, err)
+		}
 		if len(got) != len(allExportResources) {
 			t.Errorf("parseExportResources(%q): expected %d resources, got %d", input, len(allExportResources), len(got))
 		}
@@ -32,14 +35,20 @@ func TestParseExportResources_All(t *testing.T) {
 }
 
 func TestParseExportResources_Specific(t *testing.T) {
-	got := parseExportResources("chores,rewards")
+	got, err := parseExportResources("chores,rewards")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(got) != 2 || got[0] != exportResourceChores || got[1] != exportResourceRewards {
 		t.Errorf("unexpected result: %v", got)
 	}
 }
 
 func TestParseExportResources_TrimsSpaces(t *testing.T) {
-	got := parseExportResources(" chores , rewards ")
+	got, err := parseExportResources(" chores , rewards ")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(got) != 2 || got[0] != exportResourceChores || got[1] != exportResourceRewards {
 		t.Errorf("unexpected result: %v", got)
 	}
@@ -47,12 +56,17 @@ func TestParseExportResources_TrimsSpaces(t *testing.T) {
 
 func TestParseExportResources_SkipsUnknown(t *testing.T) {
 	// #266: unknown tokens are warned and dropped; valid ones remain
+	var got []string
 	stderr := captureStderr(func() {
-		got := parseExportResources("chores,bogus,rewards")
-		if len(got) != 2 || got[0] != exportResourceChores || got[1] != exportResourceRewards {
-			t.Errorf("unexpected result: %v", got)
+		var err error
+		got, err = parseExportResources("chores,bogus,rewards")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
 		}
 	})
+	if len(got) != 2 || got[0] != exportResourceChores || got[1] != exportResourceRewards {
+		t.Errorf("unexpected result: %v", got)
+	}
 	if !strings.Contains(stderr, "bogus") {
 		t.Errorf("expected warning for unknown resource, got: %s", stderr)
 	}
@@ -205,7 +219,11 @@ func TestExportCmd_AllResourcesToStdout(t *testing.T) {
 		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
 	})
 
-	out := captureStdout(func() { exportCmd.Run(exportCmd, nil) })
+	out := captureStdout(func() {
+		if err := exportCmd.RunE(exportCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	var data ExportData
 	if err := json.Unmarshal([]byte(out), &data); err != nil {
@@ -230,7 +248,11 @@ func TestExportCmd_ResourceFilter(t *testing.T) {
 		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
 	})
 
-	out := captureStdout(func() { exportCmd.Run(exportCmd, nil) })
+	out := captureStdout(func() {
+		if err := exportCmd.RunE(exportCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	var data ExportData
 	if err := json.Unmarshal([]byte(out), &data); err != nil {
@@ -258,7 +280,11 @@ func TestExportCmd_WritesToFile(t *testing.T) {
 		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
 	})
 
-	out := captureStdout(func() { exportCmd.Run(exportCmd, nil) })
+	out := captureStdout(func() {
+		if err := exportCmd.RunE(exportCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Exported to "+path) {
 		t.Errorf("expected confirmation message, got: %s", out)
 	}

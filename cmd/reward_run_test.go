@@ -34,7 +34,11 @@ func rewardMockHandler() http.HandlerFunc {
 func TestRewardListCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
 
-	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Ice cream") {
 		t.Errorf("expected reward in output, got: %s", out)
 	}
@@ -57,7 +61,11 @@ func TestRewardListCmd_FilterByAssigneeID(t *testing.T) {
 	rewardListAssigneeID = "cat1"
 	t.Cleanup(func() { rewardListAssigneeID = origAssigneeID })
 
-	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Cheap") {
 		t.Errorf("expected matching reward in output, got: %s", out)
 	}
@@ -72,7 +80,11 @@ func TestRewardListCmd_FilterByPointsMin(t *testing.T) {
 	rewardListPointsMin = 30
 	t.Cleanup(func() { rewardListPointsMin = origMin })
 
-	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Pricey") {
 		t.Errorf("expected high-points reward in output, got: %s", out)
 	}
@@ -87,7 +99,11 @@ func TestRewardListCmd_FilterByPointsMax(t *testing.T) {
 	rewardListPointsMax = 20
 	t.Cleanup(func() { rewardListPointsMax = origMax })
 
-	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Cheap") {
 		t.Errorf("expected low-points reward in output, got: %s", out)
 	}
@@ -106,7 +122,11 @@ func TestRewardListCmd_FilterCombined(t *testing.T) {
 		rewardListPointsMax = origMax
 	})
 
-	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Cheap") {
 		t.Errorf("expected matching reward in output, got: %s", out)
 	}
@@ -121,7 +141,11 @@ func TestRewardListCmd_FilterNoMatches(t *testing.T) {
 	rewardListAssigneeID = "cat-nonexistent"
 	t.Cleanup(func() { rewardListAssigneeID = origAssigneeID })
 
-	out := captureStdout(func() { rewardListCmd.Run(rewardListCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "[]") {
 		t.Errorf("expected empty JSON array when no rewards match, got: %s", out)
 	}
@@ -133,7 +157,11 @@ func TestRewardCreateCmd(t *testing.T) {
 	rewardTitle, rewardPoints = "Ice cream", 10
 	t.Cleanup(func() { rewardTitle, rewardPoints = origTitle, origPoints })
 
-	out := captureStdout(func() { rewardCreateCmd.Run(rewardCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardCreateCmd.RunE(rewardCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Ice cream") {
 		t.Errorf("expected created reward in output, got: %s", out)
 	}
@@ -150,7 +178,11 @@ func TestRewardCreateCmd_WithOptionalFields(t *testing.T) {
 			origTitle, origPoints, origEmoji, origNoRespawn, origCatIDs
 	})
 
-	out := captureStdout(func() { rewardCreateCmd.Run(rewardCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardCreateCmd.RunE(rewardCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Ice cream") {
 		t.Errorf("expected created reward in output, got: %s", out)
 	}
@@ -162,7 +194,11 @@ func TestRewardDeleteCmd(t *testing.T) {
 	rewardID = "reward1"
 	t.Cleanup(func() { rewardID = origID })
 
-	out := captureStdout(func() { rewardDeleteCmd.Run(rewardDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardDeleteCmd.RunE(rewardDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -177,7 +213,11 @@ func TestRewardDeleteCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { rewardDeleteCmd.Run(rewardDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardDeleteCmd.RunE(rewardDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
@@ -189,7 +229,11 @@ func TestRewardRedeemCmd(t *testing.T) {
 	rewardID = "reward1"
 	t.Cleanup(func() { rewardID = origID })
 
-	out := captureStdout(func() { rewardRedeemCmd.Run(rewardRedeemCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardRedeemCmd.RunE(rewardRedeemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "redeemed successfully") {
 		t.Errorf("expected redeem confirmation, got: %s", out)
 	}
@@ -204,7 +248,11 @@ func TestRewardRedeemCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { rewardRedeemCmd.Run(rewardRedeemCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardRedeemCmd.RunE(rewardRedeemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
@@ -216,7 +264,11 @@ func TestRewardUnredeemCmd(t *testing.T) {
 	rewardID = "reward1"
 	t.Cleanup(func() { rewardID = origID })
 
-	out := captureStdout(func() { rewardUnredeemCmd.Run(rewardUnredeemCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardUnredeemCmd.RunE(rewardUnredeemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "unredeemed successfully") {
 		t.Errorf("expected unredeem confirmation, got: %s", out)
 	}
@@ -231,7 +283,11 @@ func TestRewardUnredeemCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { rewardUnredeemCmd.Run(rewardUnredeemCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardUnredeemCmd.RunE(rewardUnredeemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
@@ -240,7 +296,11 @@ func TestRewardUnredeemCmd_DryRun(t *testing.T) {
 func TestRewardPointsCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
 
-	out := captureStdout(func() { rewardPointsCmd.Run(rewardPointsCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardPointsCmd.RunE(rewardPointsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, `"name": "Mom"`) {
 		t.Errorf("expected resolved category name in output, got: %s", out)
 	}
@@ -261,7 +321,11 @@ func TestRewardUpdateCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { rewardUpdateCmd.Run(rewardUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardUpdateCmd.RunE(rewardUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated reward in output, got: %s", out)
 	}
@@ -283,7 +347,11 @@ func TestRewardUpdateCmd_WithOptionalFields(t *testing.T) {
 		t.Fatalf("setting category-ids flag: %v", err)
 	}
 
-	out := captureStdout(func() { rewardUpdateCmd.Run(rewardUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := rewardUpdateCmd.RunE(rewardUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") && !strings.Contains(out, "reward1") {
 		t.Errorf("expected updated reward in output, got: %s", out)
 	}

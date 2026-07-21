@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -24,14 +23,19 @@ var groceryCmd = &cobra.Command{
 var groceryListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List grocery lists",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		all, err := client.ListLists(frameID)
 		if err != nil {
-			fatal("listing lists", err)
+			return fmt.Errorf("listing lists: %w", err)
 		}
 
 		grocery := []lib.List{}
@@ -42,56 +46,74 @@ var groceryListCmd = &cobra.Command{
 		}
 
 		printOutput(grocery)
+		return nil
 	},
 }
 
 var groceryCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a grocery list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		list, err := client.CreateList(frameID, lib.ListData{
 			Title: groceryTitle,
 			Kind:  lib.ListKindGrocery,
 		})
 		if err != nil {
-			fatal("creating grocery list", err)
+			return fmt.Errorf("creating grocery list: %w", err)
 		}
 
 		printJSON(list)
+		return nil
 	},
 }
 
 var groceryOrganizeCmd = &cobra.Command{
 	Use:   "organize",
 	Short: "Deduplicate and sort a grocery list by aisle",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.OrganizeGroceryList(frameID, groceryListID); err != nil {
-			fatal("organizing grocery list", err)
+			return fmt.Errorf("organizing grocery list: %w", err)
 		}
 
 		printSuccess("Grocery list organized successfully")
+		return nil
 	},
 }
 
 var groceryOrderCmd = &cobra.Command{
 	Use:   "order",
 	Short: "Send grocery list to Instacart",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		url, err := client.OrderGroceryList(frameID, groceryListID, groceryRetailer)
 		if err != nil {
-			fatal("ordering grocery list", err)
+			return fmt.Errorf("ordering grocery list: %w", err)
 		}
 
 		if url != "" {
@@ -99,94 +121,107 @@ var groceryOrderCmd = &cobra.Command{
 		} else {
 			printSuccess("Order submitted successfully")
 		}
+		return nil
 	},
 }
 
 var groceryShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Display the current grocery list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		list, err := client.GetList(frameID, groceryListID)
 		if err != nil {
-			fatal("getting grocery list", err)
+			return fmt.Errorf("getting grocery list: %w", err)
 		}
 
 		printOutput(list)
+		return nil
 	},
 }
 
 var groceryAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add items to a grocery list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		added := 0
 		for _, item := range groceryItems {
 			if _, err := client.AddListItem(frameID, groceryListID, lib.ListItemData{Title: item}); err != nil {
-				// Mirror list clear-completed: report progress before exit so
-				// partial adds are visible when a later item fails.
-				fmt.Fprintln(os.Stderr, formatGroceryAddFailure(added, item, err))
-				os.Exit(1)
+				if added > 0 {
+					return fmt.Errorf("added %d item(s) before error on %q: %w", added, item, err)
+				}
+				return fmt.Errorf("adding item %q: %w", item, err)
 			}
 			added++
 		}
 
 		printSuccessf("Added %d item(s) to grocery list\n", added)
+		return nil
 	},
-}
-
-// formatGroceryAddFailure reports how many items were already created when a
-// later add fails (partial progress), matching list clear-completed UX.
-func formatGroceryAddFailure(added int, item string, err error) string {
-	if added > 0 {
-		return fmt.Sprintf("Added %d item(s) before error on %q: %v", added, item, err)
-	}
-	return fmt.Sprintf("Error adding item %q: %v", item, err)
 }
 
 var groceryAddRecipeCmd = &cobra.Command{
 	Use:   "add-recipe",
 	Short: "Add all ingredients from a recipe to the grocery list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.AddRecipeToGroceryList(frameID, groceryRecipeID); err != nil {
-			fatal("adding recipe to grocery list", err)
+			return fmt.Errorf("adding recipe to grocery list: %w", err)
 		}
 
 		printSuccess("Recipe added to grocery list successfully")
+		return nil
 	},
 }
 
 var groceryClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "Clear completed items from a grocery list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		n, err := client.ClearCompletedListItems(frameID, groceryListID)
 		if err != nil {
-			// Match list clear-completed: surface partial progress before exit (#246).
 			if n > 0 {
-				fmt.Fprintf(os.Stderr, "Deleted %d item(s) before error: %v\n", n, err)
-			} else {
-				fmt.Fprintf(os.Stderr, "Error clearing grocery list: %v\n", err)
+				return fmt.Errorf("deleted %d item(s) before error: %w", n, err)
 			}
-			os.Exit(1)
+			return fmt.Errorf("clearing grocery list: %w", err)
 		}
 
 		printSuccessf("Cleared %d completed item(s) from grocery list\n", n)
+		return nil
 	},
 }
 

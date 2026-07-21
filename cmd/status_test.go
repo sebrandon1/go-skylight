@@ -38,7 +38,11 @@ func TestStatusCmd_Text(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	out := captureStdout(func() { statusCmd.Run(statusCmd, nil) })
+	out := captureStdout(func() {
+		if err := statusCmd.RunE(statusCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	if !strings.Contains(out, "Kitchen") {
 		t.Errorf("expected frame name in output, got: %s", out)
@@ -59,7 +63,11 @@ func TestStatusCmd_JSON(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = outputJSON
 
-	out := captureStdout(func() { statusCmd.Run(statusCmd, nil) })
+	out := captureStdout(func() {
+		if err := statusCmd.RunE(statusCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	if !strings.Contains(out, `"frame": "Kitchen"`) {
 		t.Errorf("expected frame name in JSON output, got: %s", out)
@@ -101,7 +109,11 @@ func TestStatusCmd_NoPoints(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	out := captureStdout(func() { statusCmd.Run(statusCmd, nil) })
+	out := captureStdout(func() {
+		if err := statusCmd.RunE(statusCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	if !strings.Contains(out, "Points:  none") {
 		t.Errorf("expected 'none' for empty points, got: %s", out)
@@ -133,10 +145,28 @@ func TestStatusCmd_ListErrorsSurfaced(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	out := captureStdout(func() { statusCmd.Run(statusCmd, nil) })
+	out := captureStdout(func() {
+		if err := statusCmd.RunE(statusCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 
 	if !strings.Contains(out, "Lists:   1 active, 0 incomplete items (1 lists unavailable)") {
 		t.Errorf("expected list-fetch failure to be surfaced, got: %s", out)
+	}
+}
+
+func TestStatusCmd_GetFrameError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	err := statusCmd.RunE(statusCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when frame API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "getting frame") {
+		t.Errorf("expected 'getting frame' in error, got: %v", err)
 	}
 }
 

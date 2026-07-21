@@ -14,29 +14,34 @@ var (
 var rewardRemoveStarsCmd = &cobra.Command{
 	Use:   "remove-stars",
 	Short: "Remove stars from a user balance (admin only)",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if removeStarsAssigneeID <= 0 {
-			fatal("removing stars", fmt.Errorf("--assignee-id must be a positive integer"))
+			return fmt.Errorf("--assignee-id must be a positive integer")
 		}
 
 		if removeStarsPoints <= 0 {
-			fatal("removing stars", fmt.Errorf("--points must be a positive integer"))
+			return fmt.Errorf("--points must be a positive integer")
 		}
 
-		client := getClient()
-
-		err := client.RemoveStars(frameID, removeStarsAssigneeID, removeStarsPoints)
+		client, err := getClient()
 		if err != nil {
-			fatal("removing stars", err)
+			return err
+		}
+
+		if err := client.RemoveStars(frameID, removeStarsAssigneeID, removeStarsPoints); err != nil {
+			return fmt.Errorf("removing stars: %w", err)
 		}
 
 		points, err := client.GetRewardPoints(frameID)
 		if err != nil {
-			fatal("fetching updated reward points", err)
+			return fmt.Errorf("fetching updated reward points: %w", err)
 		}
 		printJSON(points)
+		return nil
 	},
 }
 

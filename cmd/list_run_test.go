@@ -36,7 +36,11 @@ func listMockHandler() http.HandlerFunc {
 func TestListListCmd(t *testing.T) {
 	newCmdTestClient(t, listMockHandler())
 
-	out := captureStdout(func() { listListCmd.Run(listListCmd, nil) })
+	out := captureStdout(func() {
+		if err := listListCmd.RunE(listListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected list in output, got: %s", out)
 	}
@@ -48,7 +52,11 @@ func TestListGetCmd(t *testing.T) {
 	listID = "list1"
 	t.Cleanup(func() { listID = origID })
 
-	out := captureStdout(func() { listGetCmd.Run(listGetCmd, nil) })
+	out := captureStdout(func() {
+		if err := listGetCmd.RunE(listGetCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected list in output, got: %s", out)
 	}
@@ -60,7 +68,11 @@ func TestListCreateCmd(t *testing.T) {
 	listTitle = "Groceries"
 	t.Cleanup(func() { listTitle = origTitle })
 
-	out := captureStdout(func() { listCreateCmd.Run(listCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := listCreateCmd.RunE(listCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected created list in output, got: %s", out)
 	}
@@ -78,7 +90,11 @@ func TestListCreateCmd_HideFromFrame(t *testing.T) {
 		t.Fatalf("setting hide-from-frame flag: %v", err)
 	}
 
-	out := captureStdout(func() { listCreateCmd.Run(listCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := listCreateCmd.RunE(listCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected created list in output, got: %s", out)
 	}
@@ -90,7 +106,11 @@ func TestListDeleteCmd(t *testing.T) {
 	listID = "list1"
 	t.Cleanup(func() { listID = origID })
 
-	out := captureStdout(func() { listDeleteCmd.Run(listDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := listDeleteCmd.RunE(listDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -105,7 +125,11 @@ func TestListDeleteCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { listDeleteCmd.Run(listDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := listDeleteCmd.RunE(listDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
@@ -117,7 +141,11 @@ func TestListAddItemCmd(t *testing.T) {
 	listID, listItemTitle = "list1", "Eggs"
 	t.Cleanup(func() { listID, listItemTitle = origID, origTitle })
 
-	out := captureStdout(func() { listAddItemCmd.Run(listAddItemCmd, nil) })
+	out := captureStdout(func() {
+		if err := listAddItemCmd.RunE(listAddItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Eggs") {
 		t.Errorf("expected added item in output, got: %s", out)
 	}
@@ -129,7 +157,11 @@ func TestListDeleteItemCmd(t *testing.T) {
 	listID, listItemID = "list1", "item1"
 	t.Cleanup(func() { listID, listItemID = origID, origItemID })
 
-	out := captureStdout(func() { listDeleteItemCmd.Run(listDeleteItemCmd, nil) })
+	out := captureStdout(func() {
+		if err := listDeleteItemCmd.RunE(listDeleteItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -144,7 +176,11 @@ func TestListDeleteItemCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { listDeleteItemCmd.Run(listDeleteItemCmd, nil) })
+	out := captureStdout(func() {
+		if err := listDeleteItemCmd.RunE(listDeleteItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
@@ -162,7 +198,11 @@ func TestListUpdateCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { listUpdateCmd.Run(listUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := listUpdateCmd.RunE(listUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated list in output, got: %s", out)
 	}
@@ -180,7 +220,11 @@ func TestListUpdateItemCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { listUpdateItemCmd.Run(listUpdateItemCmd, nil) })
+	out := captureStdout(func() {
+		if err := listUpdateItemCmd.RunE(listUpdateItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated item in output, got: %s", out)
 	}
@@ -192,7 +236,11 @@ func TestTaskBoxItemCreateCmd(t *testing.T) {
 	listItemTitle = "Pack bag"
 	t.Cleanup(func() { listItemTitle = origTitle })
 
-	out := captureStdout(func() { taskBoxItemCreateCmd.Run(taskBoxItemCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := taskBoxItemCreateCmd.RunE(taskBoxItemCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Pack bag") {
 		t.Errorf("expected created task box item in output, got: %s", out)
 	}
@@ -212,7 +260,11 @@ func TestListClearCompletedCmd(t *testing.T) {
 	listID = "list1"
 	t.Cleanup(func() { listID = origID })
 
-	out := captureStdout(func() { listClearCompletedCmd.Run(listClearCompletedCmd, nil) })
+	out := captureStdout(func() {
+		if err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Deleted 1 completed item") {
 		t.Errorf("expected deletion count in output, got: %s", out)
 	}

@@ -64,7 +64,7 @@ var configCmd = &cobra.Command{
 var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Display all current configuration values",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		path := configPath
 		if path == "" {
 			path = defaultConfigPath()
@@ -75,6 +75,7 @@ var configShowCmd = &cobra.Command{
 		for _, key := range knownConfigKeys {
 			fmt.Fprintf(cmd.OutOrStdout(), "%-32s %s\n", key, maskValue(key, *vals[key]))
 		}
+		return nil
 	},
 }
 

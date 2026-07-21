@@ -29,9 +29,10 @@ var (
 var version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:     "skylight",
-	Short:   "Skylight CLI interacts with the Skylight Calendar API",
-	Version: version,
+	Use:          "skylight",
+	Short:        "Skylight CLI interacts with the Skylight Calendar API",
+	Version:      version,
+	SilenceUsage: true,
 }
 
 // SetVersion sets the version string for the root command.
@@ -141,22 +142,22 @@ func tryLegacyEmailPasswordAuth() error {
 	return nil
 }
 
-func requireFrameID() {
+func requireFrameID() error {
 	if frameID == "" {
-		fmt.Fprintln(os.Stderr, "Error: --frame-id is required. Set --frame-id or SKYLIGHT_FRAME_ID; run 'skylight frame devices' to find your frame ID.")
-		os.Exit(1)
+		return fmt.Errorf("--frame-id is required. Set --frame-id or SKYLIGHT_FRAME_ID; run 'skylight frame devices' to find your frame ID")
 	}
+	return nil
 }
 
-func getClient() *lib.Client {
+func getClient() (*lib.Client, error) {
 	if autoClient != nil {
-		return autoClient
+		return autoClient, nil
 	}
 	client, err := lib.NewClientWithToken(userID, token)
 	if err != nil {
-		fatal("creating client", err)
+		return nil, fmt.Errorf("creating client: %w", err)
 	}
-	return client
+	return client, nil
 }
 
 // persistRotatedToken writes a newly rotated refresh token back to the config

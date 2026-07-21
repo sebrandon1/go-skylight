@@ -18,14 +18,24 @@ var (
 var homeCmd = &cobra.Command{
 	Use:   "home",
 	Short: "Weekly combined view of events, tasks, and lists",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		monday, _ := weekStart("")
 		sunday := monday.AddDate(0, 0, 6)
 		today := time.Now().Format(lib.DateFormat)
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		frame, err := getFrameOrFail(client, frameID)
+		if err != nil {
+			return err
+		}
 
 		var (
 			events   []lib.CalendarEvent
@@ -39,14 +49,9 @@ var homeCmd = &cobra.Command{
 			wg       sync.WaitGroup
 		)
 
-		// Frame info is only needed for TimeZone, used by the calendar events
-		// call. Fetch it inside this goroutine (rather than serially before
-		// the fan-out) so it runs concurrently with the chores/lists calls
-		// instead of blocking them.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			frame := getFrameOrFail(client, frameID)
 			events, evtErr = client.ListCalendarEvents(frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
 		}()
 
@@ -84,16 +89,16 @@ var homeCmd = &cobra.Command{
 		wg.Wait()
 
 		if evtErr != nil {
-			fatal("listing calendar events", evtErr)
+			return fmt.Errorf("listing calendar events: %w", evtErr)
 		}
 		if choreErr != nil {
-			fatal("listing chores", choreErr)
+			return fmt.Errorf("listing chores: %w", choreErr)
 		}
 		if listErr != nil {
-			fatal("listing lists", listErr)
+			return fmt.Errorf("listing lists: %w", listErr)
 		}
 		if mealErr != nil {
-			fatal("listing meal sittings", mealErr)
+			return fmt.Errorf("listing meal sittings: %w", mealErr)
 		}
 
 		if outputFormat == outputJSON {
@@ -105,10 +110,11 @@ var homeCmd = &cobra.Command{
 				"lists":      lists,
 				"meals":      meals,
 			})
-			return
+			return nil
 		}
 
 		printHomeTable(events, chores, lists, meals, monday)
+		return nil
 	},
 }
 
