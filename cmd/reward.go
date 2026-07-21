@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
@@ -34,14 +36,19 @@ balances per family member.
 var rewardListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List rewards",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		rewards, err := client.ListRewards(frameID)
 		if err != nil {
-			fatal("listing rewards", err)
+			return fmt.Errorf("listing rewards: %w", err)
 		}
 
 		filtered := rewards[:0:0]
@@ -61,16 +68,22 @@ var rewardListCmd = &cobra.Command{
 
 		maybeLoadCatNames(client)
 		printOutput(rewards)
+		return nil
 	},
 }
 
 var rewardCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a reward",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.RewardData{
 			Title:  rewardTitle,
@@ -88,108 +101,135 @@ var rewardCreateCmd = &cobra.Command{
 		}
 		reward, err := client.CreateReward(frameID, data)
 		if err != nil {
-			fatal("creating reward", err)
+			return fmt.Errorf("creating reward: %w", err)
 		}
 
 		printJSON(reward)
+		return nil
 	},
 }
 
 var rewardDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a reward",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if dryRun {
 			printDryRun("delete reward %s", rewardID)
-			return
+			return nil
 		}
 
-		client := getClient()
-
-		err := client.DeleteReward(frameID, rewardID)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting reward", err)
+			return err
+		}
+
+		if err := client.DeleteReward(frameID, rewardID); err != nil {
+			return fmt.Errorf("deleting reward: %w", err)
 		}
 
 		printSuccess("Reward deleted successfully")
+		return nil
 	},
 }
 
 var rewardRedeemCmd = &cobra.Command{
 	Use:   "redeem",
 	Short: "Redeem a reward",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if dryRun {
 			printDryRun("redeem reward %s", rewardID)
-			return
+			return nil
 		}
 
-		client := getClient()
-
-		err := client.RedeemReward(frameID, rewardID)
+		client, err := getClient()
 		if err != nil {
-			fatal("redeeming reward", err)
+			return err
+		}
+
+		if err := client.RedeemReward(frameID, rewardID); err != nil {
+			return fmt.Errorf("redeeming reward: %w", err)
 		}
 
 		printSuccess("Reward redeemed successfully")
+		return nil
 	},
 }
 
 var rewardUnredeemCmd = &cobra.Command{
 	Use:   "unredeem",
 	Short: "Unredeem a reward",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if dryRun {
 			printDryRun("unredeem reward %s", rewardID)
-			return
+			return nil
 		}
 
-		client := getClient()
-
-		err := client.UnredeemReward(frameID, rewardID)
+		client, err := getClient()
 		if err != nil {
-			fatal("unredeeming reward", err)
+			return err
+		}
+
+		if err := client.UnredeemReward(frameID, rewardID); err != nil {
+			return fmt.Errorf("unredeeming reward: %w", err)
 		}
 
 		printSuccess("Reward unredeemed successfully")
+		return nil
 	},
 }
 
 var rewardPointsCmd = &cobra.Command{
 	Use:   "points",
 	Short: "Get reward points",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		points, err := client.GetRewardPoints(frameID)
 		if err != nil {
-			fatal("getting reward points", err)
+			return fmt.Errorf("getting reward points: %w", err)
 		}
 
 		categories, err := client.ListCategories(frameID)
 		if err != nil {
-			fatal("listing categories", err)
+			return fmt.Errorf("listing categories: %w", err)
 		}
 
 		printOutput(resolveRewardPointNames(points, categories))
+		return nil
 	},
 }
 
 var rewardUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a reward",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.RewardData{}
 		if cmd.Flags().Changed("title") {
@@ -212,10 +252,11 @@ var rewardUpdateCmd = &cobra.Command{
 
 		reward, err := client.UpdateReward(frameID, rewardID, data)
 		if err != nil {
-			fatal("updating reward", err)
+			return fmt.Errorf("updating reward: %w", err)
 		}
 
 		printJSON(reward)
+		return nil
 	},
 }
 

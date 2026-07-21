@@ -34,43 +34,51 @@ var photoCmd = &cobra.Command{
 var photoListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List photos on a frame",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		photos, nextToken, err := client.ListPhotos(frameID, lib.PhotoListOptions{
 			PageToken: photoPageToken,
 		})
 		if err != nil {
-			fatal("listing photos", err)
+			return fmt.Errorf("listing photos: %w", err)
 		}
 
-		// #264: include next_page_token in JSON so scripts need not parse stderr
+		// include next_page_token in JSON so scripts can paginate without parsing stderr
 		if outputFormat != outputTable {
 			printJSON(map[string]any{
 				"photos":          photos,
 				"next_page_token": nextToken,
 			})
-			return
+			return nil
 		}
 
 		printOutput(photos)
 		if nextToken != "" {
 			fmt.Fprintf(os.Stderr, "Next page token: %s\n", nextToken)
 		}
+		return nil
 	},
 }
 
 var photoUploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload a photo to a frame",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		data, err := os.ReadFile(photoFile)
 		if err != nil {
-			fatal("reading file", err)
+			return fmt.Errorf("reading file: %w", err)
 		}
 
 		ext := strings.TrimPrefix(filepath.Ext(photoFile), ".")
@@ -78,55 +86,68 @@ var photoUploadCmd = &cobra.Command{
 			ext = photoExtJPG[1:]
 		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		result, err := client.UploadPhoto(frameID, ext, data, photoCaption)
 		if err != nil {
-			fatal("uploading photo", err)
+			return fmt.Errorf("uploading photo: %w", err)
 		}
 
 		printJSON(result)
+		return nil
 	},
 }
 
 var photoDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete one or more photos by message ID",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		ids := make([]int, 0, len(photoMessageID))
 		for _, s := range photoMessageID {
 			id, err := strconv.Atoi(s)
 			if err != nil {
-				fatal(fmt.Sprintf("invalid message ID %q", s), err)
+				return fmt.Errorf("invalid message ID %q: %w", s, err)
 			}
 			ids = append(ids, id)
 		}
 
-		client := getClient()
-
-		err := client.DeletePhotos(frameID, ids)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting photos", err)
+			return err
+		}
+
+		if err := client.DeletePhotos(frameID, ids); err != nil {
+			return fmt.Errorf("deleting photos: %w", err)
 		}
 
 		printSuccess("Photos deleted successfully")
+		return nil
 	},
 }
 
 var photoDownloadCmd = &cobra.Command{
 	Use:   "download",
 	Short: "Download photos from a frame to local files",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if !photoDownloadAll && len(photoMessageID) == 0 {
-			fmt.Fprintln(os.Stderr, "Error: specify --message-id or --all")
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if !photoDownloadAll && len(photoMessageID) == 0 {
+			return fmt.Errorf("specify --message-id or --all")
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		wantIDs := make(map[string]bool, len(photoMessageID))
 		for _, id := range photoMessageID {
@@ -138,7 +159,7 @@ var photoDownloadCmd = &cobra.Command{
 		for {
 			photos, nextToken, err := client.ListPhotos(frameID, lib.PhotoListOptions{PageToken: pageToken})
 			if err != nil {
-				fatal("listing photos", err)
+				return fmt.Errorf("listing photos: %w", err)
 			}
 			for _, p := range photos {
 				if photoDownloadAll || wantIDs[p.ID] {
@@ -153,27 +174,28 @@ var photoDownloadCmd = &cobra.Command{
 
 		if len(toDownload) == 0 {
 			fmt.Println("No matching photos found")
-			return
+			return nil
 		}
 
 		if err := os.MkdirAll(photoOutputDir, 0o755); err != nil {
-			fatal("creating output directory", err)
+			return fmt.Errorf("creating output directory: %w", err)
 		}
 
 		for _, p := range toDownload {
 			data, err := client.DownloadPhoto(p.AssetURL)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: downloading %s: %v\n", p.ID, err)
+				fmt.Fprintf(os.Stderr, "warning: downloading %s: %v\n", p.ID, err)
 				continue
 			}
 			ext := photoAssetExt(p.AssetURL, p.AssetType)
 			filename := filepath.Join(photoOutputDir, p.ID+ext)
 			if err := os.WriteFile(filename, data, 0o600); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: writing %s: %v\n", filename, err)
+				fmt.Fprintf(os.Stderr, "warning: writing %s: %v\n", filename, err)
 				continue
 			}
 			printSuccessf("Saved %s\n", filename)
 		}
+		return nil
 	},
 }
 

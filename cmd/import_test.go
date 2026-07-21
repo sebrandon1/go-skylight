@@ -267,7 +267,11 @@ func TestImportCmd_Run(t *testing.T) {
 	importDryRun = false
 	t.Cleanup(func() { importFile, importResources, importDryRun = origFile, origResources, origDryRun })
 
-	out := captureStdout(func() { importCmd.Run(importCmd, nil) })
+	out := captureStdout(func() {
+		if err := importCmd.RunE(importCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Imported") {
 		t.Errorf("expected import summary in output, got: %s", out)
 	}
@@ -284,21 +288,27 @@ func TestImportCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { importCmd.Run(importCmd, nil) })
+	out := captureStdout(func() {
+		if err := importCmd.RunE(importCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
 }
 
-func TestImportCmd_FileNotFound_Crasher(t *testing.T) {
-	if os.Getenv("WANT_IMPORT_FILE_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestImportCmd_FileNotFound")
-	}
+func TestImportCmd_FileNotFound(t *testing.T) {
+	origFrameID, origFile := frameID, importFile
 	frameID = "test-frame"
 	importFile = "/nonexistent/path/export.json"
-	importCmd.Run(importCmd, nil)
-}
+	t.Cleanup(func() { frameID, importFile = origFrameID, origFile })
 
-func TestImportCmd_FileNotFound(t *testing.T) {
-	runCrasherTest(t, "TestImportCmd_FileNotFound_Crasher", "WANT_IMPORT_FILE_CRASH", "Error reading")
+	err := importCmd.RunE(importCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for missing import file, got nil")
+	}
+	if !strings.Contains(err.Error(), "reading") {
+		t.Errorf("expected 'reading' in error, got: %v", err)
+	}
 }

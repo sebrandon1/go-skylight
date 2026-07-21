@@ -39,7 +39,11 @@ func TestBountyCreateCmd(t *testing.T) {
 	bountyTitle, bountyPoints, bountyRewardTitle = "Dishes", 10, "Ice cream"
 	t.Cleanup(func() { bountyTitle, bountyPoints, bountyRewardTitle = origTitle, origPoints, origRewardTitle })
 
-	out := captureStdout(func() { bountyCreateCmd.Run(bountyCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := bountyCreateCmd.RunE(bountyCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") || !strings.Contains(out, "Ice cream") {
 		t.Errorf("expected chore and reward in output, got: %s", out)
 	}
@@ -48,7 +52,11 @@ func TestBountyCreateCmd(t *testing.T) {
 func TestBountyListCmd(t *testing.T) {
 	newCmdTestClient(t, bountyMockHandler())
 
-	out := captureStdout(func() { bountyListCmd.Run(bountyListCmd, nil) })
+	out := captureStdout(func() {
+		if err := bountyListCmd.RunE(bountyListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") {
 		t.Errorf("expected matched bounty in output, got: %s", out)
 	}
@@ -60,8 +68,12 @@ func TestBountyDeleteCmd(t *testing.T) {
 	bountyChoreID, bountyRewardID = "c1", "r1"
 	t.Cleanup(func() { bountyChoreID, bountyRewardID = origChoreID, origRewardID })
 
-	out := captureStdout(func() { bountyDeleteCmd.Run(bountyDeleteCmd, nil) })
-	if !strings.Contains(out, "Bounty deleted successfully.") {
+	out := captureStdout(func() {
+		if err := bountyDeleteCmd.RunE(bountyDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Bounty deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
 }
@@ -78,9 +90,30 @@ func TestBountyUpdateCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { bountyUpdateCmd.Run(bountyUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := bountyUpdateCmd.RunE(bountyUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated bounty in output, got: %s", out)
+	}
+}
+
+func TestBountyCreateCmd_InvalidDate(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTeapot) // won't be reached
+	})
+	orig := bountyDueDate
+	bountyDueDate = "not-a-date"
+	t.Cleanup(func() { bountyDueDate = orig })
+
+	err := bountyCreateCmd.RunE(bountyCreateCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid date, got nil")
+	}
+	if !strings.Contains(err.Error(), "due-date") && !strings.Contains(err.Error(), "YYYY-MM-DD") {
+		t.Errorf("expected date validation error, got: %v", err)
 	}
 }
 

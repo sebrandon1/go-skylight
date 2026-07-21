@@ -59,16 +59,28 @@ var exportCmd = &cobra.Command{
 Resources exported: chores, rewards, lists, recipes, sittings, calendar.
 Time-bounded resources (chores, sittings, calendar) use --days to set the window
 centered on today. Use --resources to limit which resource types are included.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		resources := parseResourceList(exportResources, allExportResources)
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		resources, err := parseResourceList(exportResources, allExportResources)
+		if err != nil {
+			return err
+		}
 		now := time.Now()
 		start := now.AddDate(0, 0, -exportDays).Format(lib.DateFormat)
 		end := now.AddDate(0, 0, exportDays).Format(lib.DateFormat)
 
-		frame := getFrameOrFail(client, frameID)
+		frame, err := getFrameOrFail(client, frameID)
+		if err != nil {
+			return err
+		}
 
 		data := ExportData{
 			ExportedAt: now.Format(time.RFC3339),
@@ -183,27 +195,23 @@ centered on today. Use --resources to limit which resource types are included.`,
 			}
 		}
 		if len(errs) > 0 {
-			for _, e := range errs {
-				fmt.Fprintf(os.Stderr, "Error exporting %s\n", e)
-			}
-			os.Exit(1)
+			return fmt.Errorf("export failed: %s", strings.Join(errs, "; "))
 		}
 
 		out, err := json.MarshalIndent(data, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error encoding export: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("encoding export: %w", err)
 		}
 
 		if exportOutputFile == "" || exportOutputFile == "-" {
 			fmt.Println(string(out))
-			return
+			return nil
 		}
 		if err := os.WriteFile(exportOutputFile, out, 0o600); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", exportOutputFile, err)
-			os.Exit(1)
+			return fmt.Errorf("writing %s: %w", exportOutputFile, err)
 		}
 		fmt.Printf("Exported to %s\n", exportOutputFile)
+		return nil
 	},
 }
 
@@ -215,13 +223,13 @@ func toWantMap(resources []string) map[string]bool {
 	return m
 }
 
-func parseExportResources(s string) []string {
+func parseExportResources(s string) ([]string, error) {
 	return parseResourceList(s, allExportResources)
 }
 
-func parseResourceList(s string, all []string) []string {
+func parseResourceList(s string, all []string) ([]string, error) {
 	if s == "" || s == resourceAll {
-		return all
+		return all, nil
 	}
 	valid := make(map[string]bool, len(all))
 	for _, r := range all {
@@ -241,10 +249,9 @@ func parseResourceList(s string, all []string) []string {
 		out = append(out, r)
 	}
 	if len(out) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: no valid resources specified")
-		os.Exit(1)
+		return nil, fmt.Errorf("no valid resources specified")
 	}
-	return out
+	return out, nil
 }
 
 func init() {

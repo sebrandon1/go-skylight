@@ -34,7 +34,11 @@ func groceryMockHandler() http.HandlerFunc {
 func TestGroceryListCmd(t *testing.T) {
 	newCmdTestClient(t, groceryMockHandler())
 
-	out := captureStdout(func() { groceryListCmd.Run(groceryListCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryListCmd.RunE(groceryListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected grocery list in output, got: %s", out)
 	}
@@ -49,7 +53,11 @@ func TestGroceryCreateCmd(t *testing.T) {
 	groceryTitle = "Groceries"
 	t.Cleanup(func() { groceryTitle = origTitle })
 
-	out := captureStdout(func() { groceryCreateCmd.Run(groceryCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryCreateCmd.RunE(groceryCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected created list in output, got: %s", out)
 	}
@@ -61,7 +69,11 @@ func TestGroceryOrganizeCmd(t *testing.T) {
 	groceryListID = "list1"
 	t.Cleanup(func() { groceryListID = origID })
 
-	out := captureStdout(func() { groceryOrganizeCmd.Run(groceryOrganizeCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryOrganizeCmd.RunE(groceryOrganizeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "organized successfully") {
 		t.Errorf("expected organize confirmation, got: %s", out)
 	}
@@ -73,7 +85,11 @@ func TestGroceryOrderCmd_WithURL(t *testing.T) {
 	groceryListID = "list1"
 	t.Cleanup(func() { groceryListID = origID })
 
-	out := captureStdout(func() { groceryOrderCmd.Run(groceryOrderCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryOrderCmd.RunE(groceryOrderCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Order URL:") {
 		t.Errorf("expected order URL in output, got: %s", out)
 	}
@@ -85,7 +101,11 @@ func TestGroceryShowCmd(t *testing.T) {
 	groceryListID = "list1"
 	t.Cleanup(func() { groceryListID = origID })
 
-	out := captureStdout(func() { groceryShowCmd.Run(groceryShowCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryShowCmd.RunE(groceryShowCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected list in output, got: %s", out)
 	}
@@ -97,21 +117,13 @@ func TestGroceryAddCmd(t *testing.T) {
 	groceryListID, groceryItems = "list1", []string{"Eggs", "Milk"}
 	t.Cleanup(func() { groceryListID, groceryItems = origID, origItems })
 
-	out := captureStdout(func() { groceryAddCmd.Run(groceryAddCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryAddCmd.RunE(groceryAddCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Added 2 item") {
 		t.Errorf("expected success count in output, got: %s", out)
-	}
-}
-
-func TestFormatGroceryAddFailure(t *testing.T) {
-	err := fmt.Errorf("boom")
-	got := formatGroceryAddFailure(2, "Milk", err)
-	if !strings.Contains(got, "Added 2 item(s) before error") || !strings.Contains(got, "Milk") {
-		t.Errorf("expected partial progress message, got %q", got)
-	}
-	got0 := formatGroceryAddFailure(0, "Eggs", err)
-	if !strings.Contains(got0, "Error adding item") || strings.Contains(got0, "before error") {
-		t.Errorf("expected first-item failure message, got %q", got0)
 	}
 }
 
@@ -121,7 +133,11 @@ func TestGroceryAddRecipeCmd(t *testing.T) {
 	groceryRecipeID = "recipe1"
 	t.Cleanup(func() { groceryRecipeID = origID })
 
-	out := captureStdout(func() { groceryAddRecipeCmd.Run(groceryAddRecipeCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryAddRecipeCmd.RunE(groceryAddRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "added to grocery list successfully") {
 		t.Errorf("expected confirmation, got: %s", out)
 	}
@@ -133,7 +149,11 @@ func TestGroceryClearCmd(t *testing.T) {
 	groceryListID = "list1"
 	t.Cleanup(func() { groceryListID = origID })
 
-	out := captureStdout(func() { groceryClearCmd.Run(groceryClearCmd, nil) })
+	out := captureStdout(func() {
+		if err := groceryClearCmd.RunE(groceryClearCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Cleared") {
 		t.Errorf("expected clear confirmation, got: %s", out)
 	}

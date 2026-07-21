@@ -24,10 +24,15 @@ var rotationCmd = &cobra.Command{
 var rotationCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a rotating chore schedule across family members",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		result, err := client.CreateChoreRotation(frameID, lib.RotationData{
 			Chores:      rotationChores,
@@ -37,15 +42,15 @@ var rotationCreateCmd = &cobra.Command{
 			Points:      rotationPoints,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: creating rotation: %v\n", err)
 			if result != nil && len(result.Chores) > 0 {
 				fmt.Fprintf(os.Stderr, "Partial result (%d chores created):\n", len(result.Chores))
 				printJSON(result)
 			}
-			os.Exit(1)
+			return fmt.Errorf("creating rotation: %w", err)
 		}
 
 		printJSON(result)
+		return nil
 	},
 }
 

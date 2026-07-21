@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -54,16 +55,24 @@ Use --persist to persist reward deduplication state to disk
 reward redemptions. Has no effect unless rewards is in --resources.
 
 Press Ctrl+C to stop.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if watchInterval < 1 {
-			fmt.Fprintln(os.Stderr, "Error: --interval must be at least 1")
-			os.Exit(1)
+			return fmt.Errorf("--interval must be at least 1")
 		}
 
-		requireFrameID()
-		client := getClient()
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		resources := parseWatchResources(watchResources)
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		resources, err := parseWatchResources(watchResources)
+		if err != nil {
+			return err
+		}
 
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -71,7 +80,10 @@ Press Ctrl+C to stop.`,
 		ticker := time.NewTicker(time.Duration(watchInterval) * time.Second)
 		defer ticker.Stop()
 
-		frame := getFrameOrFail(client, frameID)
+		frame, err := getFrameOrFail(client, frameID)
+		if err != nil {
+			return err
+		}
 
 		state := &watchState{
 			seenRewardIDs:  make(map[string]struct{}),
@@ -86,11 +98,11 @@ Press Ctrl+C to stop.`,
 
 		var poller *lib.RewardsPoller
 		if watchPersist {
-			if containsResource(resources, watchResourceRewards) {
+			if slices.Contains(resources, watchResourceRewards) {
 				poller = lib.NewRewardsPoller(client, frameID, time.Duration(watchInterval)*time.Second, "")
 				poller.Start(ctx)
 				defer poller.Stop()
-				pollResources = filterOutResource(resources, watchResourceRewards)
+				pollResources = slices.DeleteFunc(slices.Clone(resources), func(r string) bool { return r == watchResourceRewards })
 			} else {
 				fmt.Fprintln(os.Stderr, "Warning: --persist has no effect without rewards in --resources")
 			}
@@ -116,7 +128,7 @@ Press Ctrl+C to stop.`,
 			select {
 			case <-ctx.Done():
 				fmt.Println("\nStopped.")
-				return
+				return nil
 			case <-ticker.C:
 				poll(client, state, pollResources)
 			case e := <-pollerEvents:
@@ -136,24 +148,6 @@ type watchState struct {
 	timezone       string
 }
 
-func containsResource(resources []string, target string) bool {
-	for _, r := range resources {
-		if r == target {
-			return true
-		}
-	}
-	return false
-}
-
-func filterOutResource(resources []string, target string) []string {
-	out := make([]string, 0, len(resources))
-	for _, r := range resources {
-		if r != target {
-			out = append(out, r)
-		}
-	}
-	return out
-}
 
 func printRedemptionEvent(e lib.RedemptionEvent) {
 	ts := e.ObservedAt.Format("15:04:05")
@@ -171,9 +165,9 @@ func printRedemptionEvent(e lib.RedemptionEvent) {
 	}
 }
 
-func parseWatchResources(s string) []string {
+func parseWatchResources(s string) ([]string, error) {
 	if s == "" || s == resourceAll {
-		return allWatchResources
+		return allWatchResources, nil
 	}
 	var out []string
 	for _, r := range strings.Split(s, ",") {
@@ -188,10 +182,9 @@ func parseWatchResources(s string) []string {
 		out = append(out, r)
 	}
 	if len(out) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: no valid resources specified")
-		os.Exit(1)
+		return nil, fmt.Errorf("no valid resources specified")
 	}
-	return out
+	return out, nil
 }
 
 func poll(client *lib.Client, state *watchState, resources []string) {

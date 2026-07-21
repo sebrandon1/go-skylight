@@ -45,61 +45,84 @@ range in one call.
 var mealCategoriesCmd = &cobra.Command{
 	Use:   "categories",
 	Short: "List meal categories",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		categories, err := client.ListMealCategories(frameID)
 		if err != nil {
-			fatal("listing meal categories", err)
+			return fmt.Errorf("listing meal categories: %w", err)
 		}
 
 		printOutput(categories)
+		return nil
 	},
 }
 
 var mealRecipesCmd = &cobra.Command{
 	Use:   "recipes",
 	Short: "List recipes",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		recipes, err := client.ListRecipes(frameID)
 		if err != nil {
-			fatal("listing recipes", err)
+			return fmt.Errorf("listing recipes: %w", err)
 		}
 
 		printOutput(recipes)
+		return nil
 	},
 }
 
 var mealRecipeInfoCmd = &cobra.Command{
 	Use:   "recipe-info",
 	Short: "Get recipe details",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		recipe, err := client.GetRecipe(frameID, recipeID)
 		if err != nil {
-			fatal("getting recipe", err)
+			return fmt.Errorf("getting recipe: %w", err)
 		}
 
 		printJSON(recipe)
+		return nil
 	},
 }
 
 var mealCreateRecipeCmd = &cobra.Command{
 	Use:   "create-recipe",
 	Short: "Create a recipe",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		recipe, err := client.CreateRecipe(frameID, lib.RecipeData{
 			Title:          recipeTitle,
@@ -109,35 +132,43 @@ var mealCreateRecipeCmd = &cobra.Command{
 			MealCategoryID: recipeCategoryID,
 		})
 		if err != nil {
-			fatal("creating recipe", err)
+			return fmt.Errorf("creating recipe: %w", err)
 		}
 
 		printJSON(recipe)
+		return nil
 	},
 }
 
 var mealDeleteRecipeCmd = &cobra.Command{
 	Use:   "delete-recipe",
 	Short: "Delete a recipe",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
-
-		err := client.DeleteRecipe(frameID, recipeID)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting recipe", err)
+			return err
+		}
+
+		if err := client.DeleteRecipe(frameID, recipeID); err != nil {
+			return fmt.Errorf("deleting recipe: %w", err)
 		}
 
 		printSuccess("Recipe deleted successfully")
+		return nil
 	},
 }
 
 var mealSittingsCmd = &cobra.Command{
 	Use:   "sittings",
 	Short: "List meal sittings",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		for _, f := range []struct {
 			name string
@@ -145,38 +176,45 @@ var mealSittingsCmd = &cobra.Command{
 		}{{"date-min", sittingDateMin}, {"date-max", sittingDateMax}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					os.Exit(1)
+					return err
 				}
 			}
 		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
 			DateMin: sittingDateMin,
 			DateMax: sittingDateMax,
 		})
 		if err != nil {
-			fatal("listing meal sittings", err)
+			return fmt.Errorf("listing meal sittings: %w", err)
 		}
 
 		printOutput(sittings)
+		return nil
 	},
 }
 
 var mealCreateSittingCmd = &cobra.Command{
 	Use:   "create-sitting",
 	Short: "Create a meal sitting",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if err := validateDate(sittingDate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if err := validateDate(sittingDate); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		sitting, err := client.CreateMealSitting(frameID, lib.MealSittingData{
 			Summary:        sittingSummary,
@@ -185,103 +223,129 @@ var mealCreateSittingCmd = &cobra.Command{
 			MealCategoryID: mealCategoryID,
 		})
 		if err != nil {
-			fatal("creating meal sitting", err)
+			return fmt.Errorf("creating meal sitting: %w", err)
 		}
 
 		printJSON(sitting)
+		return nil
 	},
 }
 
 var mealDeleteSittingCmd = &cobra.Command{
 	Use:   "delete-sitting",
 	Short: "Delete a meal sitting instance",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if err := validateDate(sittingDate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if err := validateDate(sittingDate); err != nil {
+			return err
+		}
 
-		err := client.DeleteMealSitting(frameID, sittingID, sittingDate)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting meal sitting", err)
+			return err
+		}
+
+		if err := client.DeleteMealSitting(frameID, sittingID, sittingDate); err != nil {
+			return fmt.Errorf("deleting meal sitting: %w", err)
 		}
 
 		printSuccess("Meal sitting deleted successfully")
+		return nil
 	},
 }
 
 var mealAddToGroceryCmd = &cobra.Command{
 	Use:   "add-to-grocery",
 	Short: "Add recipe ingredients to grocery list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
-
-		err := client.AddRecipeToGroceryList(frameID, recipeID)
+		client, err := getClient()
 		if err != nil {
-			fatal("adding to grocery list", err)
+			return err
+		}
+
+		if err := client.AddRecipeToGroceryList(frameID, recipeID); err != nil {
+			return fmt.Errorf("adding to grocery list: %w", err)
 		}
 
 		printSuccess("Recipe added to grocery list successfully")
+		return nil
 	},
 }
 
 var mealGetSittingCmd = &cobra.Command{
 	Use:   "get-sitting",
 	Short: "Get meal sitting details",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		sitting, err := client.GetMealSitting(frameID, sittingID)
 		if err != nil {
-			fatal("getting meal sitting", err)
+			return fmt.Errorf("getting meal sitting: %w", err)
 		}
 
 		printJSON(sitting)
+		return nil
 	},
 }
 
 var mealSittingRecipeCmd = &cobra.Command{
 	Use:   "sitting-recipe",
 	Short: "View recipe details from a meal sitting",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		result, err := client.GetSittingRecipe(frameID, sittingID)
 		if err != nil {
-			fatal("getting sitting recipe", err)
+			return fmt.Errorf("getting sitting recipe: %w", err)
 		}
 
 		if result.Recipe == nil {
 			fmt.Println("No recipe linked to this meal sitting")
-			return
+			return nil
 		}
 
 		printJSON(result)
+		return nil
 	},
 }
 
 var mealPlanCmd = &cobra.Command{
 	Use:   "plan",
 	Short: "Schedule a batch of meals from a recipe list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if err := validateDate(mealPlanStartDate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if err := validateDate(mealPlanStartDate); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		result, err := client.PlanMeals(frameID, lib.MealPlanData{
 			RecipeIDs:   mealPlanRecipeIDs,
@@ -289,25 +353,30 @@ var mealPlanCmd = &cobra.Command{
 			StartDate:   mealPlanStartDate,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: planning meals: %v\n", err)
 			if result != nil && len(result.Sittings) > 0 {
 				fmt.Fprintf(os.Stderr, "Partial result (%d sittings created):\n", len(result.Sittings))
 				printJSON(result)
 			}
-			os.Exit(1)
+			return fmt.Errorf("planning meals: %w", err)
 		}
 
 		printJSON(result)
+		return nil
 	},
 }
 
 var mealUpdateRecipeCmd = &cobra.Command{
 	Use:   "update-recipe",
 	Short: "Update a recipe",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.RecipeData{}
 		if cmd.Flags().Changed("title") {
@@ -325,10 +394,11 @@ var mealUpdateRecipeCmd = &cobra.Command{
 
 		recipe, err := client.UpdateRecipe(frameID, recipeID, data)
 		if err != nil {
-			fatal("updating recipe", err)
+			return fmt.Errorf("updating recipe: %w", err)
 		}
 
 		printJSON(recipe)
+		return nil
 	},
 }
 

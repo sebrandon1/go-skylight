@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -34,15 +33,19 @@ points to redeem the paired reward.
 var bountyCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a bounty (chore + paired reward)",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		if err := validateDate(bountyDueDate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		client := getClient()
+		if err := validateDate(bountyDueDate); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		bounty, err := client.CreateBounty(frameID, lib.BountyData{
 			Title:       bountyTitle,
@@ -54,60 +57,77 @@ var bountyCreateCmd = &cobra.Command{
 			EmojiIcon:   bountyEmojiIcon,
 		})
 		if err != nil {
-			fatal("creating bounty", err)
+			return fmt.Errorf("creating bounty: %w", err)
 		}
 
 		printJSON(bounty)
+		return nil
 	},
 }
 
 var bountyListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List bounties (matched chore+reward pairs)",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		bounties, err := client.ListBounties(frameID)
 		if err != nil {
-			fatal("listing bounties", err)
+			return fmt.Errorf("listing bounties: %w", err)
 		}
 
 		printOutput(bounties)
+		return nil
 	},
 }
 
 var bountyDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a bounty (removes both the chore and the paired reward)",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-
-		client := getClient()
-
-		if err := client.DeleteBounty(frameID, bountyChoreID, bountyRewardID); err != nil {
-			fatal("deleting bounty", err)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
 		}
 
-		printSuccessf("Bounty deleted successfully.")
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.DeleteBounty(frameID, bountyChoreID, bountyRewardID); err != nil {
+			return fmt.Errorf("deleting bounty: %w", err)
+		}
+
+		printSuccess("Bounty deleted successfully")
+		return nil
 	},
 }
 
 var bountyUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a bounty's chore and paired reward",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if cmd.Flags().Changed("due-date") {
 			if err := validateDate(bountyDueDate); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.BountyData{}
 		if cmd.Flags().Changed("title") {
@@ -128,10 +148,11 @@ var bountyUpdateCmd = &cobra.Command{
 
 		bounty, err := client.UpdateBounty(frameID, bountyChoreID, bountyRewardID, data)
 		if err != nil {
-			fatal("updating bounty", err)
+			return fmt.Errorf("updating bounty: %w", err)
 		}
 
 		printJSON(bounty)
+		return nil
 	},
 }
 

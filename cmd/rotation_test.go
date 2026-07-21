@@ -23,9 +23,30 @@ func TestRotationCreateCmd(t *testing.T) {
 			origChores, origAssignees, origStart, origWeeks
 	})
 
-	out := captureStdout(func() { rotationCreateCmd.Run(rotationCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := rotationCreateCmd.RunE(rotationCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") {
 		t.Errorf("expected created rotation chores in output, got: %s", out)
+	}
+}
+
+func TestRotationCreateCmd_APIError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	orig := rotationChores
+	rotationChores = []string{"Dishes"}
+	t.Cleanup(func() { rotationChores = orig })
+
+	err := rotationCreateCmd.RunE(rotationCreateCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when rotation API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "creating rotation") {
+		t.Errorf("expected 'creating rotation' in error, got: %v", err)
 	}
 }
 

@@ -32,7 +32,11 @@ func TestAnalyticsCmd_JSON(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = outputJSON
 
-	out := captureStdout(func() { analyticsCmd.Run(analyticsCmd, nil) })
+	out := captureStdout(func() {
+		if err := analyticsCmd.RunE(analyticsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, `"period_days"`) {
 		t.Errorf("expected analytics stats in JSON output, got: %s", out)
 	}
@@ -43,7 +47,11 @@ func TestAnalyticsCmd_Text(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	out := captureStdout(func() { analyticsCmd.Run(analyticsCmd, nil) })
+	out := captureStdout(func() {
+		if err := analyticsCmd.RunE(analyticsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Analytics:") {
 		t.Errorf("expected analytics text report, got: %s", out)
 	}
@@ -70,9 +78,39 @@ func TestAnalyticsCmd_CalendarErrorIsNonFatal(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	out := captureStdout(func() { analyticsCmd.Run(analyticsCmd, nil) })
+	out := captureStdout(func() {
+		if err := analyticsCmd.RunE(analyticsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Analytics:") {
 		t.Errorf("expected analytics report despite calendar error, got: %s", out)
+	}
+}
+
+func TestAnalyticsCmd_ChoresFetchError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/chores"):
+			w.WriteHeader(http.StatusInternalServerError)
+		case strings.HasSuffix(r.URL.Path, "/categories"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/rewards"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/reward_points"):
+			fmt.Fprint(w, `[]`)
+		default:
+			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+		}
+	})
+
+	err := analyticsCmd.RunE(analyticsCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when chores API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing chores") {
+		t.Errorf("expected 'listing chores' in error, got: %v", err)
 	}
 }
 

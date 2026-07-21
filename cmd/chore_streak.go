@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -122,9 +123,15 @@ var choreStreakCmd = &cobra.Command{
 Reports current streak, longest streak, and overall completion rate over
 the requested window (default: last 30 days). Days with no assigned chores
 for a given member are ignored and do not break streaks.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		now := time.Now()
 		end := now.Format(lib.DateFormat)
@@ -154,10 +161,10 @@ for a given member are ignored and do not break streaks.`,
 		wg.Wait()
 
 		if catErr != nil {
-			fatal("listing categories", catErr)
+			return fmt.Errorf("listing categories: %w", catErr)
 		}
 		if choreErr != nil {
-			fatal("listing chores", choreErr)
+			return fmt.Errorf("listing chores: %w", choreErr)
 		}
 
 		catNames := buildCatNames(categories)
@@ -170,6 +177,7 @@ for a given member are ignored and do not break streaks.`,
 		results := computeChoreStreaks(chores, dates, catNames)
 
 		printOutput(results)
+		return nil
 	},
 }
 

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -36,44 +35,61 @@ Lists have a title, color, and kind (e.g. to_do, shopping). Use
 var listListCmd = &cobra.Command{
 	Use:   "all", //nolint:goconst // subcommand name, not the --resources sentinel value (resourceAll) elsewhere in the package.
 	Short: "List all lists",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		lists, err := client.ListLists(frameID)
 		if err != nil {
-			fatal("listing lists", err)
+			return fmt.Errorf("listing lists: %w", err)
 		}
 
 		printOutput(lists)
+		return nil
 	},
 }
 
 var listGetCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get a specific list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		list, err := client.GetList(frameID, listID)
 		if err != nil {
-			fatal("getting list", err)
+			return fmt.Errorf("getting list: %w", err)
 		}
 
 		printJSON(list)
+		return nil
 	},
 }
 
 var listCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.ListData{
 			Title: listTitle,
@@ -84,84 +100,106 @@ var listCreateCmd = &cobra.Command{
 		}
 		list, err := client.CreateList(frameID, data)
 		if err != nil {
-			fatal("creating list", err)
+			return fmt.Errorf("creating list: %w", err)
 		}
 
 		printJSON(list)
+		return nil
 	},
 }
 
 var listDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if dryRun {
 			printDryRun("delete list %s", listID)
-			return
+			return nil
 		}
 
-		client := getClient()
-
-		err := client.DeleteList(frameID, listID)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting list", err)
+			return err
+		}
+
+		if err := client.DeleteList(frameID, listID); err != nil {
+			return fmt.Errorf("deleting list: %w", err)
 		}
 
 		printSuccess("List deleted successfully")
+		return nil
 	},
 }
 
 var listAddItemCmd = &cobra.Command{
 	Use:   "add-item",
 	Short: "Add an item to a list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		item, err := client.AddListItem(frameID, listID, lib.ListItemData{
 			Title:    listItemTitle,
 			Position: listItemPosition,
 		})
 		if err != nil {
-			fatal("adding list item", err)
+			return fmt.Errorf("adding list item: %w", err)
 		}
 
 		printJSON(item)
+		return nil
 	},
 }
 
 var listDeleteItemCmd = &cobra.Command{
 	Use:   "delete-item",
 	Short: "Delete an item from a list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
 		if dryRun {
 			printDryRun("delete item %s from list %s", listItemID, listID)
-			return
+			return nil
 		}
 
-		client := getClient()
-
-		err := client.DeleteListItem(frameID, listID, listItemID)
+		client, err := getClient()
 		if err != nil {
-			fatal("deleting list item", err)
+			return err
+		}
+
+		if err := client.DeleteListItem(frameID, listID, listItemID); err != nil {
+			return fmt.Errorf("deleting list item: %w", err)
 		}
 
 		printSuccess("List item deleted successfully")
+		return nil
 	},
 }
 
 var listUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update a list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.ListData{}
 		if cmd.Flags().Changed("title") {
@@ -176,20 +214,26 @@ var listUpdateCmd = &cobra.Command{
 
 		list, err := client.UpdateList(frameID, listID, data)
 		if err != nil {
-			fatal("updating list", err)
+			return fmt.Errorf("updating list: %w", err)
 		}
 
 		printJSON(list)
+		return nil
 	},
 }
 
 var listUpdateItemCmd = &cobra.Command{
 	Use:   "update-item",
 	Short: "Update a list item",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		data := lib.ListItemData{}
 		if cmd.Flags().Changed("title") {
@@ -198,58 +242,69 @@ var listUpdateItemCmd = &cobra.Command{
 		if cmd.Flags().Changed("completed") {
 			data.Completed = listItemCompleted
 		}
-		// #274: only send position when flag is explicitly set
+		// only send position when flag is explicitly set — zero value is ambiguous
 		if cmd.Flags().Changed("position") {
 			data.Position = listItemPosition
 		}
 
 		item, err := client.UpdateListItem(frameID, listID, listItemID, data)
 		if err != nil {
-			fatal("updating list item", err)
+			return fmt.Errorf("updating list item: %w", err)
 		}
 
 		printJSON(item)
+		return nil
 	},
 }
 
 var taskBoxItemCreateCmd = &cobra.Command{
 	Use:   "task-box-item",
 	Short: "Create a task box item",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		item, err := client.CreateTaskBoxItem(frameID, lib.TaskBoxItemData{
 			Title: listItemTitle,
 		})
 		if err != nil {
-			fatal("creating task box item", err)
+			return fmt.Errorf("creating task box item: %w", err)
 		}
 
 		printJSON(item)
+		return nil
 	},
 }
 
 var listClearCompletedCmd = &cobra.Command{
 	Use:   "clear-completed",
 	Short: "Delete all completed items from a list",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		deleted, err := client.ClearCompletedListItems(frameID, listID)
 		if err != nil {
 			if deleted > 0 {
-				fmt.Fprintf(os.Stderr, "Deleted %d item(s) before error: %v\n", deleted, err)
-			} else {
-				fmt.Fprintf(os.Stderr, "Error clearing completed items: %v\n", err)
+				return fmt.Errorf("deleted %d item(s) before error: %w", deleted, err)
 			}
-			os.Exit(1)
+			return fmt.Errorf("clearing completed items: %w", err)
 		}
 
 		printSuccessf("Deleted %d completed item(s)\n", deleted)
+		return nil
 	},
 }
 

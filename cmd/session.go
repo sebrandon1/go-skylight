@@ -3,7 +3,6 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -17,10 +16,9 @@ var loginCmd = &cobra.Command{
 	Long: `Performs a headless OAuth2 login using email and password, then saves
 the refresh token and device fingerprint to the config file. Use --save to
 persist the credentials so subsequent commands authenticate automatically.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if email == "" || password == "" {
-			fmt.Fprintln(os.Stderr, "Error: --email and --password are required for login")
-			os.Exit(1)
+			return fmt.Errorf("--email and --password are required for login")
 		}
 
 		// Generate a stable device fingerprint if not provided.
@@ -32,7 +30,7 @@ persist the credentials so subsequent commands authenticate automatically.`,
 		fmt.Printf("Logging in as %s...\n", email)
 		tok, err := lib.LoginHeadless(email, password, fingerprint)
 		if err != nil {
-			fatal("logging in", err)
+			return fmt.Errorf("logging in: %w", err)
 		}
 
 		printSuccess("Login successful!")
@@ -59,6 +57,7 @@ persist the credentials so subsequent commands authenticate automatically.`,
 				fmt.Printf("Credentials saved to %s\n", path)
 			}
 		}
+		return nil
 	},
 }
 

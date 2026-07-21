@@ -13,7 +13,11 @@ func TestFrameListCmd(t *testing.T) {
 		fmt.Fprint(w, `{"data":[{"id":"f1","attributes":{"name":"Kitchen"}}]}`)
 	})
 
-	out := captureStdout(func() { frameListCmd.Run(frameListCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameListCmd.RunE(frameListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Kitchen") {
 		t.Errorf("expected frame name in output, got: %s", out)
 	}
@@ -25,7 +29,11 @@ func TestFrameInfoCmd(t *testing.T) {
 		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen"}}}`)
 	})
 
-	out := captureStdout(func() { frameInfoCmd.Run(frameInfoCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameInfoCmd.RunE(frameInfoCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Kitchen") {
 		t.Errorf("expected frame name in output, got: %s", out)
 	}
@@ -37,7 +45,11 @@ func TestFrameDevicesCmd(t *testing.T) {
 		fmt.Fprint(w, `{"data":[{"id":"d1","attributes":{"name":"Living Room","activated":true}}]}`)
 	})
 
-	out := captureStdout(func() { frameDevicesCmd.Run(frameDevicesCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameDevicesCmd.RunE(frameDevicesCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Living Room") {
 		t.Errorf("expected device name in output, got: %s", out)
 	}
@@ -49,7 +61,11 @@ func TestFrameAvatarsCmd(t *testing.T) {
 		fmt.Fprint(w, `{"data":[{"id":"a1","attributes":{"name":"Robot","image_url":"http://example.com/a.png"}}]}`)
 	})
 
-	out := captureStdout(func() { frameAvatarsCmd.Run(frameAvatarsCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameAvatarsCmd.RunE(frameAvatarsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Robot") {
 		t.Errorf("expected avatar name in output, got: %s", out)
 	}
@@ -61,7 +77,11 @@ func TestFrameColorsCmd(t *testing.T) {
 		fmt.Fprint(w, `{"data":[{"id":"c1","name":"Blue","hex":"#0000FF"}]}`)
 	})
 
-	out := captureStdout(func() { frameColorsCmd.Run(frameColorsCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameColorsCmd.RunE(frameColorsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Blue") {
 		t.Errorf("expected color name in output, got: %s", out)
 	}
@@ -76,7 +96,11 @@ func TestFrameSetAlbumCmd(t *testing.T) {
 	currentAlbumID = 42
 	t.Cleanup(func() { currentAlbumID = origAlbumID })
 
-	out := captureStdout(func() { frameSetAlbumCmd.Run(frameSetAlbumCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameSetAlbumCmd.RunE(frameSetAlbumCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Current album set to 42") {
 		t.Errorf("expected confirmation message, got: %s", out)
 	}
@@ -97,7 +121,11 @@ func TestFrameSetAlbumCmdQuiet(t *testing.T) {
 		quiet = origQuiet
 	})
 
-	out := captureStdout(func() { frameSetAlbumCmd.Run(frameSetAlbumCmd, nil) })
+	out := captureStdout(func() {
+		if err := frameSetAlbumCmd.RunE(frameSetAlbumCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if out != "" {
 		t.Errorf("expected no output with --quiet, got: %q", out)
 	}

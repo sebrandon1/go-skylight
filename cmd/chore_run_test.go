@@ -30,7 +30,11 @@ func choreMockHandler() http.HandlerFunc {
 func TestChoreListCmd(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
 
-	out := captureStdout(func() { choreListCmd.Run(choreListCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreListCmd.RunE(choreListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") {
 		t.Errorf("expected chore in output, got: %s", out)
 	}
@@ -45,7 +49,11 @@ func TestChoreListCmd_WeekView(t *testing.T) {
 		t.Fatalf("setting week flag: %v", err)
 	}
 
-	out := captureStdout(func() { choreListCmd.Run(choreListCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreListCmd.RunE(choreListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if out == "" {
 		t.Error("expected non-empty weekly view output")
 	}
@@ -57,7 +65,11 @@ func TestChoreCreateCmd(t *testing.T) {
 	choreTitle, choreUpForGrabs = "Dishes", false
 	t.Cleanup(func() { choreTitle, choreUpForGrabs = origTitle, origUpForGrabs })
 
-	out := captureStdout(func() { choreCreateCmd.Run(choreCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreCreateCmd.RunE(choreCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") {
 		t.Errorf("expected created chore in output, got: %s", out)
 	}
@@ -69,7 +81,11 @@ func TestChoreCreateCmd_UpForGrabs(t *testing.T) {
 	choreTitle, choreUpForGrabs = "Dishes", true
 	t.Cleanup(func() { choreTitle, choreUpForGrabs = origTitle, origUpForGrabs })
 
-	out := captureStdout(func() { choreCreateCmd.Run(choreCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreCreateCmd.RunE(choreCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") {
 		t.Errorf("expected created up-for-grabs chore in output, got: %s", out)
 	}
@@ -81,7 +97,11 @@ func TestChoreDeleteCmd(t *testing.T) {
 	choreID = "c1"
 	t.Cleanup(func() { choreID = origID })
 
-	out := captureStdout(func() { choreDeleteCmd.Run(choreDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -97,7 +117,11 @@ func TestChoreDeleteCmd_Quiet(t *testing.T) {
 	quiet = true
 	t.Cleanup(func() { quiet = origQuiet })
 
-	out := captureStdout(func() { choreDeleteCmd.Run(choreDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if out != "" {
 		t.Errorf("expected no output with --quiet, got: %s", out)
 	}
@@ -112,7 +136,11 @@ func TestChoreDeleteCmd_DryRun(t *testing.T) {
 	frameID = "test-frame"
 	t.Cleanup(func() { frameID = origFrameID })
 
-	out := captureStdout(func() { choreDeleteCmd.Run(choreDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry run output, got: %s", out)
 	}
@@ -124,7 +152,11 @@ func TestChoreCompleteCmd(t *testing.T) {
 	choreID = "c1"
 	t.Cleanup(func() { choreID = origID })
 
-	out := captureStdout(func() { choreCompleteCmd.Run(choreCompleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreCompleteCmd.RunE(choreCompleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "completed successfully") {
 		t.Errorf("expected completion confirmation, got: %s", out)
 	}
@@ -142,7 +174,11 @@ func TestChoreUpdateCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { choreUpdateCmd.Run(choreUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreUpdateCmd.RunE(choreUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated chore in output, got: %s", out)
 	}
@@ -154,7 +190,11 @@ func TestChoreSkipCmd(t *testing.T) {
 	choreID = "c1"
 	t.Cleanup(func() { choreID = origID })
 
-	out := captureStdout(func() { choreSkipCmd.Run(choreSkipCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreSkipCmd.RunE(choreSkipCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "skipped successfully") {
 		t.Errorf("expected skip confirmation, got: %s", out)
 	}
@@ -166,7 +206,11 @@ func TestChoreClaimCmd(t *testing.T) {
 	choreID, choreAssigneeID = "c1", "a1"
 	t.Cleanup(func() { choreID, choreAssigneeID = origID, origAssignee })
 
-	out := captureStdout(func() { choreClaimCmd.Run(choreClaimCmd, nil) })
+	out := captureStdout(func() {
+		if err := choreClaimCmd.RunE(choreClaimCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, `"id": "c1"`) {
 		t.Errorf("expected claimed chore in output, got: %s", out)
 	}

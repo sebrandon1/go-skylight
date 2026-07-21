@@ -42,7 +42,11 @@ func mealMockHandler() http.HandlerFunc {
 func TestMealCategoriesCmd(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
 
-	out := captureStdout(func() { mealCategoriesCmd.Run(mealCategoriesCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealCategoriesCmd.RunE(mealCategoriesCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dinner") {
 		t.Errorf("expected category in output, got: %s", out)
 	}
@@ -51,7 +55,11 @@ func TestMealCategoriesCmd(t *testing.T) {
 func TestMealRecipesCmd(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
 
-	out := captureStdout(func() { mealRecipesCmd.Run(mealRecipesCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealRecipesCmd.RunE(mealRecipesCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Tacos") {
 		t.Errorf("expected recipe in output, got: %s", out)
 	}
@@ -63,7 +71,11 @@ func TestMealRecipeInfoCmd(t *testing.T) {
 	recipeID = "recipe1"
 	t.Cleanup(func() { recipeID = origID })
 
-	out := captureStdout(func() { mealRecipeInfoCmd.Run(mealRecipeInfoCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealRecipeInfoCmd.RunE(mealRecipeInfoCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Tacos") {
 		t.Errorf("expected recipe in output, got: %s", out)
 	}
@@ -75,7 +87,11 @@ func TestMealCreateRecipeCmd(t *testing.T) {
 	recipeTitle = "Tacos"
 	t.Cleanup(func() { recipeTitle = origTitle })
 
-	out := captureStdout(func() { mealCreateRecipeCmd.Run(mealCreateRecipeCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealCreateRecipeCmd.RunE(mealCreateRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Tacos") {
 		t.Errorf("expected created recipe in output, got: %s", out)
 	}
@@ -87,7 +103,11 @@ func TestMealDeleteRecipeCmd(t *testing.T) {
 	recipeID = "recipe1"
 	t.Cleanup(func() { recipeID = origID })
 
-	out := captureStdout(func() { mealDeleteRecipeCmd.Run(mealDeleteRecipeCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealDeleteRecipeCmd.RunE(mealDeleteRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -96,7 +116,11 @@ func TestMealDeleteRecipeCmd(t *testing.T) {
 func TestMealSittingsCmd(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
 
-	out := captureStdout(func() { mealSittingsCmd.Run(mealSittingsCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealSittingsCmd.RunE(mealSittingsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "sitting1") {
 		t.Errorf("expected sitting in output, got: %s", out)
 	}
@@ -108,7 +132,11 @@ func TestMealCreateSittingCmd(t *testing.T) {
 	recipeID, sittingDate, mealCategoryID = "recipe1", "2026-01-01", "mc1"
 	t.Cleanup(func() { recipeID, sittingDate, mealCategoryID = origRecipe, origDate, origCat })
 
-	out := captureStdout(func() { mealCreateSittingCmd.Run(mealCreateSittingCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealCreateSittingCmd.RunE(mealCreateSittingCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "sitting1") {
 		t.Errorf("expected created sitting in output, got: %s", out)
 	}
@@ -120,7 +148,11 @@ func TestMealDeleteSittingCmd(t *testing.T) {
 	sittingID, sittingDate = "sitting1", "2026-01-01"
 	t.Cleanup(func() { sittingID, sittingDate = origID, origDate })
 
-	out := captureStdout(func() { mealDeleteSittingCmd.Run(mealDeleteSittingCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealDeleteSittingCmd.RunE(mealDeleteSittingCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -132,7 +164,11 @@ func TestMealAddToGroceryCmd(t *testing.T) {
 	recipeID = "recipe1"
 	t.Cleanup(func() { recipeID = origID })
 
-	out := captureStdout(func() { mealAddToGroceryCmd.Run(mealAddToGroceryCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealAddToGroceryCmd.RunE(mealAddToGroceryCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "added to grocery list successfully") {
 		t.Errorf("expected confirmation, got: %s", out)
 	}
@@ -144,7 +180,11 @@ func TestMealGetSittingCmd(t *testing.T) {
 	sittingID = "sitting1"
 	t.Cleanup(func() { sittingID = origID })
 
-	out := captureStdout(func() { mealGetSittingCmd.Run(mealGetSittingCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealGetSittingCmd.RunE(mealGetSittingCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "sitting1") {
 		t.Errorf("expected sitting ID in output, got: %s", out)
 	}
@@ -159,7 +199,11 @@ func TestMealSittingRecipeCmd_WithRecipe(t *testing.T) {
 	sittingID = "sitting1"
 	t.Cleanup(func() { sittingID = origID })
 
-	out := captureStdout(func() { mealSittingRecipeCmd.Run(mealSittingRecipeCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealSittingRecipeCmd.RunE(mealSittingRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Tacos") {
 		t.Errorf("expected linked recipe in output, got: %s", out)
 	}
@@ -174,7 +218,11 @@ func TestMealSittingRecipeCmd_NoRecipe(t *testing.T) {
 	sittingID = "sitting2"
 	t.Cleanup(func() { sittingID = origID })
 
-	out := captureStdout(func() { mealSittingRecipeCmd.Run(mealSittingRecipeCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealSittingRecipeCmd.RunE(mealSittingRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "No recipe linked") {
 		t.Errorf("expected no-recipe message, got: %s", out)
 	}
@@ -188,7 +236,11 @@ func TestMealPlanCmd(t *testing.T) {
 		mealPlanRecipeIDs, mealPlanCategoryIDs, mealPlanStartDate = origRecipes, origCats, origStart
 	})
 
-	out := captureStdout(func() { mealPlanCmd.Run(mealPlanCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealPlanCmd.RunE(mealPlanCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "sitting1") {
 		t.Errorf("expected planned sitting in output, got: %s", out)
 	}
@@ -206,7 +258,11 @@ func TestMealUpdateRecipeCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { mealUpdateRecipeCmd.Run(mealUpdateRecipeCmd, nil) })
+	out := captureStdout(func() {
+		if err := mealUpdateRecipeCmd.RunE(mealUpdateRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated recipe in output, got: %s", out)
 	}

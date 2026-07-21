@@ -10,29 +10,6 @@ import (
 	"github.com/sebrandon1/go-skylight/lib"
 )
 
-func TestContainsResource(t *testing.T) {
-	resources := []string{watchResourceRewards, watchResourceChores}
-	if !containsResource(resources, watchResourceRewards) {
-		t.Error("expected rewards to be found")
-	}
-	if containsResource(resources, watchResourceCalendar) {
-		t.Error("expected calendar not to be found")
-	}
-}
-
-func TestFilterOutResource(t *testing.T) {
-	resources := []string{watchResourceRewards, watchResourceChores, watchResourceCalendar}
-	got := filterOutResource(resources, watchResourceChores)
-	want := []string{watchResourceRewards, watchResourceCalendar}
-	if len(got) != len(want) {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("got %v, want %v", got, want)
-		}
-	}
-}
 
 func TestPrintRedemptionEvent(t *testing.T) {
 	e := lib.RedemptionEvent{

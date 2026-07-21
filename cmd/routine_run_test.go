@@ -28,7 +28,11 @@ func routineMockHandler() http.HandlerFunc {
 func TestRoutineListCmd(t *testing.T) {
 	newCmdTestClient(t, routineMockHandler())
 
-	out := captureStdout(func() { routineListCmd.Run(routineListCmd, nil) })
+	out := captureStdout(func() {
+		if err := routineListCmd.RunE(routineListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Morning") {
 		t.Errorf("expected routine in output, got: %s", out)
 	}
@@ -40,7 +44,11 @@ func TestRoutineCreateCmd(t *testing.T) {
 	routineTitle, routineSteps = "Morning", []string{"Brush teeth", ""}
 	t.Cleanup(func() { routineTitle, routineSteps = origTitle, origSteps })
 
-	out := captureStdout(func() { routineCreateCmd.Run(routineCreateCmd, nil) })
+	out := captureStdout(func() {
+		if err := routineCreateCmd.RunE(routineCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Morning") {
 		t.Errorf("expected created routine in output, got: %s", out)
 	}
@@ -58,7 +66,11 @@ func TestRoutineUpdateCmd(t *testing.T) {
 		t.Fatalf("setting title flag: %v", err)
 	}
 
-	out := captureStdout(func() { routineUpdateCmd.Run(routineUpdateCmd, nil) })
+	out := captureStdout(func() {
+		if err := routineUpdateCmd.RunE(routineUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated routine in output, got: %s", out)
 	}
@@ -70,7 +82,11 @@ func TestRoutineDeleteCmd(t *testing.T) {
 	routineID = "routine1"
 	t.Cleanup(func() { routineID = origID })
 
-	out := captureStdout(func() { routineDeleteCmd.Run(routineDeleteCmd, nil) })
+	out := captureStdout(func() {
+		if err := routineDeleteCmd.RunE(routineDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
@@ -82,7 +98,11 @@ func TestRoutineReorderCmd(t *testing.T) {
 	routineIDs = []string{"routine1", "routine2"}
 	t.Cleanup(func() { routineIDs = origIDs })
 
-	out := captureStdout(func() { routineReorderCmd.Run(routineReorderCmd, nil) })
+	out := captureStdout(func() {
+		if err := routineReorderCmd.RunE(routineReorderCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "reordered successfully") {
 		t.Errorf("expected reorder confirmation, got: %s", out)
 	}
@@ -102,7 +122,11 @@ func TestRoutineListCmd_TableMode(t *testing.T) {
 	outputFormat = outputTable
 	t.Cleanup(func() { outputFormat = origFmt })
 
-	out := captureStdout(func() { routineListCmd.Run(routineListCmd, nil) })
+	out := captureStdout(func() {
+		if err := routineListCmd.RunE(routineListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Morning") {
 		t.Errorf("expected routine title in table output, got: %s", out)
 	}

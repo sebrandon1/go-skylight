@@ -734,27 +734,26 @@ func TestGetFrameOrFail_Success(t *testing.T) {
 		fmt.Fprint(w, `{"data":{"id":"f1","attributes":{"name":"Kitchen"}}}`)
 	})
 
-	frame := getFrameOrFail(client, "f1")
+	frame, err := getFrameOrFail(client, "f1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if frame.ID != "f1" || frame.Name != "Kitchen" {
 		t.Errorf("unexpected frame: %+v", frame)
 	}
 }
 
-// TestGetFrameOrFail_Error_Crasher is invoked as a subprocess by
-// TestGetFrameOrFail_Error to exercise the fatal() path without terminating
-// the real test binary.
-func TestGetFrameOrFail_Error_Crasher(t *testing.T) {
-	if os.Getenv("WANT_GET_FRAME_ERROR_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestGetFrameOrFail_Error")
-	}
+func TestGetFrameOrFail_Error(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	getFrameOrFail(client, "f1")
-}
-
-func TestGetFrameOrFail_Error(t *testing.T) {
-	runCrasherTest(t, "TestGetFrameOrFail_Error_Crasher", "WANT_GET_FRAME_ERROR_CRASH", "getting frame info")
+	_, err := getFrameOrFail(client, "f1")
+	if err == nil {
+		t.Fatal("expected error from getFrameOrFail on server error")
+	}
+	if !strings.Contains(err.Error(), "getting frame info") {
+		t.Errorf("expected error to mention 'getting frame info', got: %v", err)
+	}
 }
 
 func TestPrintSuccess(t *testing.T) {
@@ -804,17 +803,4 @@ func TestPrintDryRun(t *testing.T) {
 	if !strings.Contains(out, "Dry run: would delete chore c1") {
 		t.Errorf("expected dry run message even with --quiet, got: %q", out)
 	}
-}
-
-// TestFatal_Crasher is invoked as a subprocess by TestFatal to exercise the
-// os.Exit(1) path without terminating the real test binary.
-func TestFatal_Crasher(t *testing.T) {
-	if os.Getenv("WANT_FATAL_CRASH") != "1" {
-		t.Skip("only runs as a subprocess of TestFatal")
-	}
-	fatal("doing the thing", fmt.Errorf("boom"))
-}
-
-func TestFatal(t *testing.T) {
-	runCrasherTest(t, "TestFatal_Crasher", "WANT_FATAL_CRASH", "Error: doing the thing: boom")
 }

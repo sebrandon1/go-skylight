@@ -34,7 +34,11 @@ func TestHomeCmd_Text(t *testing.T) {
 	homeNoTasks, homeNoLists, homeNoMeals = false, false, false
 	t.Cleanup(func() { homeNoTasks, homeNoLists, homeNoMeals = origNoTasks, origNoLists, origNoMeals })
 
-	out := captureStdout(func() { homeCmd.Run(homeCmd, nil) })
+	out := captureStdout(func() {
+		if err := homeCmd.RunE(homeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, "Dishes") || !strings.Contains(out, "Groceries") {
 		t.Errorf("expected chore and list in output, got: %s", out)
 	}
@@ -52,7 +56,11 @@ func TestHomeCmd_JSON(t *testing.T) {
 	homeNoTasks, homeNoLists, homeNoMeals = false, false, false
 	t.Cleanup(func() { homeNoTasks, homeNoLists, homeNoMeals = origNoTasks, origNoLists, origNoMeals })
 
-	out := captureStdout(func() { homeCmd.Run(homeCmd, nil) })
+	out := captureStdout(func() {
+		if err := homeCmd.RunE(homeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if !strings.Contains(out, `"week_start"`) {
 		t.Errorf("expected week_start in JSON output, got: %s", out)
 	}
@@ -70,7 +78,11 @@ func TestHomeCmd_NoTasksNoLists(t *testing.T) {
 	homeNoTasks, homeNoLists = true, true
 	t.Cleanup(func() { homeNoTasks, homeNoLists = origNoTasks, origNoLists })
 
-	out := captureStdout(func() { homeCmd.Run(homeCmd, nil) })
+	out := captureStdout(func() {
+		if err := homeCmd.RunE(homeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if strings.Contains(out, "PENDING TASKS") || strings.Contains(out, "=== LISTS ===") {
 		t.Errorf("expected tasks/lists sections to be skipped, got: %s", out)
 	}
@@ -85,7 +97,11 @@ func TestHomeCmd_NoMeals(t *testing.T) {
 	homeNoMeals = true
 	t.Cleanup(func() { homeNoMeals = origNoMeals })
 
-	out := captureStdout(func() { homeCmd.Run(homeCmd, nil) })
+	out := captureStdout(func() {
+		if err := homeCmd.RunE(homeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
 	if strings.Contains(out, "=== MEALS THIS WEEK ===") {
 		t.Errorf("expected meals section to be skipped, got: %s", out)
 	}

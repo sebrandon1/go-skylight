@@ -15,14 +15,19 @@ var addonCmd = &cobra.Command{
 var addonListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available add-ons and their enabled state",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {
-			fatal("listing addons", err)
+			return fmt.Errorf("listing addons: %w", err)
 		}
 
 		if !frame.Plus {
@@ -30,10 +35,11 @@ var addonListCmd = &cobra.Command{
 		}
 		if len(frame.FeatureBundle) == 0 {
 			fmt.Println("No add-ons found.")
-			return
+			return nil
 		}
 
 		printOutput(frame.FeatureBundle)
+		return nil
 	},
 }
 

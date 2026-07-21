@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -23,96 +25,126 @@ categories), and switching the active photo slideshow album.
 var frameListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all frames",
-	Run: func(cmd *cobra.Command, args []string) {
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		frames, err := client.ListFrames()
 		if err != nil {
-			fatal("listing frames", err)
+			return fmt.Errorf("listing frames: %w", err)
 		}
 
 		printOutput(frames)
+		return nil
 	},
 }
 
 var frameInfoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get frame information",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		frame, err := client.GetFrame(frameID)
 		if err != nil {
-			fatal("getting frame", err)
+			return fmt.Errorf("getting frame: %w", err)
 		}
 
 		printJSON(frame)
+		return nil
 	},
 }
 
 var frameDevicesCmd = &cobra.Command{
 	Use:   "devices",
 	Short: "List devices",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		devices, err := client.ListDevices(frameID)
 		if err != nil {
-			fatal("listing devices", err)
+			return fmt.Errorf("listing devices: %w", err)
 		}
 
 		printOutput(devices)
+		return nil
 	},
 }
 
 var frameAvatarsCmd = &cobra.Command{
 	Use:   "avatars",
 	Short: "List available avatars",
-	Run: func(cmd *cobra.Command, args []string) {
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		avatars, err := client.GetAvatars()
 		if err != nil {
-			fatal("getting avatars", err)
+			return fmt.Errorf("getting avatars: %w", err)
 		}
 
 		printOutput(avatars)
+		return nil
 	},
 }
 
 var frameColorsCmd = &cobra.Command{
 	Use:   "colors",
 	Short: "List available colors",
-	Run: func(cmd *cobra.Command, args []string) {
-		client := getClient()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		colors, err := client.GetColors()
 		if err != nil {
-			fatal("getting colors", err)
+			return fmt.Errorf("getting colors: %w", err)
 		}
 
 		printOutput(colors)
+		return nil
 	},
 }
 
 var frameSetAlbumCmd = &cobra.Command{
 	Use:   "set-album",
 	Short: "Set the active slideshow album by album ID (-1 for all photos)",
-	Run: func(cmd *cobra.Command, args []string) {
-		requireFrameID()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
 
-		client := getClient()
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
 
 		if err := client.SetCurrentAlbum(frameID, currentAlbumID); err != nil {
-			fatal("setting current album", err)
+			return fmt.Errorf("setting current album: %w", err)
 		}
 
 		// #265: honor global --quiet like other mutation confirmations
 		printSuccessf("Current album set to %d\n", currentAlbumID)
+		return nil
 	},
 }
 

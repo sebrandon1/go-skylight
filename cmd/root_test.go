@@ -99,8 +99,8 @@ func TestLoginCommandExists(t *testing.T) {
 	if loginCmd.Use != "login" {
 		t.Errorf("Expected Use 'login', got '%s'", loginCmd.Use)
 	}
-	if loginCmd.Run == nil {
-		t.Error("loginCmd should have a Run function")
+	if loginCmd.RunE == nil {
+		t.Error("loginCmd should have a RunE function")
 	}
 }
 
