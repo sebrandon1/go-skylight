@@ -109,27 +109,29 @@ func runImportDryRun(data ExportData, want map[string]bool) {
 }
 
 func runImport(client *lib.Client, data ExportData, want map[string]bool) error {
-	var total, failed int
-	add := func(t, f int) { total += t; failed += f }
+	type importFn = func() (int, int)
+	var tasks []importFn
 
 	if want[exportResourceRewards] {
-		add(importRewards(client, data.Rewards))
+		tasks = append(tasks, func() (int, int) { return importRewards(client, data.Rewards) })
 	}
 	if want[exportResourceChores] {
-		add(importChores(client, data.Chores))
+		tasks = append(tasks, func() (int, int) { return importChores(client, data.Chores) })
 	}
 	if want[exportResourceLists] {
-		add(importLists(client, data.Lists))
+		tasks = append(tasks, func() (int, int) { return importLists(client, data.Lists) })
 	}
 	if want[exportResourceRecipes] {
-		add(importRecipes(client, data.Recipes))
+		tasks = append(tasks, func() (int, int) { return importRecipes(client, data.Recipes) })
 	}
 	if want[exportResourceSittings] {
-		add(importSittings(client, data.MealSittings))
+		tasks = append(tasks, func() (int, int) { return importSittings(client, data.MealSittings) })
 	}
 	if want[exportResourceCalendar] {
-		add(importCalendarEvents(client, data.CalendarEvents))
+		tasks = append(tasks, func() (int, int) { return importCalendarEvents(client, data.CalendarEvents) })
 	}
+
+	total, failed := parallelImport(tasks, func(fn importFn) (int, int) { return fn() })
 
 	printSuccessf("Imported %d/%d items successfully.\n", total-failed, total)
 	if failed > 0 {
