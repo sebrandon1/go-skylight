@@ -10,7 +10,6 @@ import (
 	"github.com/sebrandon1/go-skylight/lib"
 )
 
-
 func TestPrintRedemptionEvent(t *testing.T) {
 	e := lib.RedemptionEvent{
 		RewardID: "r1", RewardName: "Ice cream", Points: 10,
