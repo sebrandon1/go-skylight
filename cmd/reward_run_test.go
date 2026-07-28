@@ -357,6 +357,115 @@ func TestRewardUpdateCmd_WithOptionalFields(t *testing.T) {
 	}
 }
 
+func rewardStatusMockHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[`+
+			`{"id":"r1","attributes":{"name":"Available Reward","point_value":10}},`+
+			`{"id":"r2","attributes":{"name":"Redeemed Reward","point_value":20,"redeemed_at":"2026-01-01T00:00:00Z"}}`+
+			`]}`)
+	}
+}
+
+func TestRewardListCmd_FilterByStatusAvailable(t *testing.T) {
+	newCmdTestClient(t, rewardStatusMockHandler())
+	origStatus := rewardListStatus
+	rewardListStatus = "available"
+	t.Cleanup(func() { rewardListStatus = origStatus })
+
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Available Reward") {
+		t.Errorf("expected available reward in output, got: %s", out)
+	}
+	if strings.Contains(out, "Redeemed Reward") {
+		t.Errorf("expected redeemed reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterByStatusRedeemed(t *testing.T) {
+	newCmdTestClient(t, rewardStatusMockHandler())
+	origStatus := rewardListStatus
+	rewardListStatus = "redeemed"
+	t.Cleanup(func() { rewardListStatus = origStatus })
+
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Redeemed Reward") {
+		t.Errorf("expected redeemed reward in output, got: %s", out)
+	}
+	if strings.Contains(out, "Available Reward") {
+		t.Errorf("expected available reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterByStatusInvalid(t *testing.T) {
+	origStatus := rewardListStatus
+	rewardListStatus = "unknown"
+	t.Cleanup(func() { rewardListStatus = origStatus })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	var runErr error
+	captureStdout(func() {
+		runErr = rewardListCmd.RunE(rewardListCmd, nil)
+	})
+	if runErr == nil {
+		t.Error("expected error for invalid status, got nil")
+	}
+}
+
+func TestRewardListCmd_FilterByStatusCombinedWithPoints(t *testing.T) {
+	newCmdTestClient(t, rewardStatusMockHandler())
+	origStatus, origMin := rewardListStatus, rewardListPointsMin
+	rewardListStatus = "redeemed"
+	rewardListPointsMin = 15
+	t.Cleanup(func() {
+		rewardListStatus = origStatus
+		rewardListPointsMin = origMin
+	})
+
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Redeemed Reward") {
+		t.Errorf("expected redeemed reward with sufficient points in output, got: %s", out)
+	}
+	if strings.Contains(out, "Available Reward") {
+		t.Errorf("expected available reward to be filtered out, got: %s", out)
+	}
+}
+
+func TestRewardListCmd_FilterByStatusAndPointsNoMatch(t *testing.T) {
+	newCmdTestClient(t, rewardStatusMockHandler())
+	origStatus, origMin := rewardListStatus, rewardListPointsMin
+	rewardListStatus = "available"
+	rewardListPointsMin = 15
+	t.Cleanup(func() {
+		rewardListStatus = origStatus
+		rewardListPointsMin = origMin
+	})
+
+	out := captureStdout(func() {
+		if err := rewardListCmd.RunE(rewardListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "[]") {
+		t.Errorf("expected empty result when no available rewards meet points threshold, got: %s", out)
+	}
+}
+
 func TestRewardCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "reward")
 }
