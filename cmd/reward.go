@@ -17,7 +17,15 @@ var (
 	rewardListAssigneeID string
 	rewardListPointsMin  int
 	rewardListPointsMax  int
+	rewardListStatus     string
 )
+
+const (
+	statusRedeemed  = "redeemed"
+	statusAvailable = "available"
+)
+
+var rewardStatuses = []string{statusRedeemed, statusAvailable}
 
 var rewardCmd = &cobra.Command{
 	Use:   "reward",
@@ -41,6 +49,12 @@ var rewardListCmd = &cobra.Command{
 			return err
 		}
 
+		if rewardListStatus != "" {
+			if err := validateEnum(rewardListStatus, rewardStatuses); err != nil {
+				return err
+			}
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -51,6 +65,7 @@ var rewardListCmd = &cobra.Command{
 			return fmt.Errorf("listing rewards: %w", err)
 		}
 
+		wantRedeemed := rewardListStatus == statusRedeemed
 		filtered := rewards[:0:0]
 		for _, r := range rewards {
 			if rewardListAssigneeID != "" && r.CategoryID != rewardListAssigneeID {
@@ -60,6 +75,9 @@ var rewardListCmd = &cobra.Command{
 				continue
 			}
 			if rewardListPointsMax > 0 && r.Points > rewardListPointsMax {
+				continue
+			}
+			if rewardListStatus != "" && r.Redeemed != wantRedeemed {
 				continue
 			}
 			filtered = append(filtered, r)
@@ -273,6 +291,8 @@ func init() {
 	rewardListCmd.Flags().StringVar(&rewardListAssigneeID, "assignee-id", "", "Filter by assignee/category ID")
 	rewardListCmd.Flags().IntVar(&rewardListPointsMin, "points-min", 0, "Filter rewards with points >= this value")
 	rewardListCmd.Flags().IntVar(&rewardListPointsMax, "points-max", 0, "Filter rewards with points <= this value")
+	rewardListCmd.Flags().StringVar(&rewardListStatus, "status", "", "Filter by status: redeemed or available")
+	registerEnumFlagCompletion(rewardListCmd, "status", rewardStatuses...)
 
 	rewardCreateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
 	rewardCreateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
