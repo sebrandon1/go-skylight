@@ -217,8 +217,12 @@ func TestRunImport_AllSuccess(t *testing.T) {
 		exportResourceCalendar: true,
 	}
 
-	out := captureStdout(func() { runImport(client, data, want) })
+	var err error
+	out := captureStdout(func() { err = runImport(client, data, want) })
 
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
 	if !strings.Contains(out, "Imported 6/6 items successfully.") {
 		t.Errorf("expected success summary in output, got: %s", out)
 	}
@@ -232,10 +236,51 @@ func TestRunImport_OnlyRequestedResourcesAreImported(t *testing.T) {
 	}
 	want := map[string]bool{exportResourceRewards: true}
 
-	out := captureStdout(func() { runImport(client, data, want) })
+	var err error
+	out := captureStdout(func() { err = runImport(client, data, want) })
 
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
 	if !strings.Contains(out, "Imported 1/1 items successfully.") {
 		t.Errorf("expected only the reward to be imported, got: %s", out)
+	}
+}
+
+func TestRunImport_ReturnsErrorOnPartialFailure(t *testing.T) {
+	client := newImportTestClient(t, map[string]bool{"/rewards": true})
+	data := ExportData{
+		Rewards: []lib.Reward{{Title: "Reward"}},
+		Chores:  []lib.Chore{{Title: "Chore"}},
+	}
+	want := map[string]bool{
+		exportResourceRewards: true,
+		exportResourceChores:  true,
+	}
+
+	var err error
+	_ = captureStdout(func() { err = runImport(client, data, want) })
+
+	if err == nil {
+		t.Fatal("expected error when some items fail, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to import") {
+		t.Errorf("expected 'failed to import' in error, got: %v", err)
+	}
+}
+
+func TestRunImport_EmptyWant(t *testing.T) {
+	client := newImportTestClient(t, nil)
+	data := ExportData{Rewards: []lib.Reward{{Title: "Reward"}}}
+
+	var err error
+	out := captureStdout(func() { err = runImport(client, data, map[string]bool{}) })
+
+	if err != nil {
+		t.Fatalf("expected no error for empty want, got: %v", err)
+	}
+	if !strings.Contains(out, "Imported 0/0 items") {
+		t.Errorf("expected '0/0 items' in output, got: %s", out)
 	}
 }
 
