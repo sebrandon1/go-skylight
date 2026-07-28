@@ -79,4 +79,3 @@ func assertCommandRegistered(t *testing.T, parent *cobra.Command, use string) {
 	}
 	t.Errorf("%q command not registered on %q", use, parent.Use)
 }
-

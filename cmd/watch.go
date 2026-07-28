@@ -148,7 +148,6 @@ type watchState struct {
 	timezone       string
 }
 
-
 func printRedemptionEvent(e lib.RedemptionEvent) {
 	ts := e.ObservedAt.Format("15:04:05")
 	if outputFormat == outputJSON {
