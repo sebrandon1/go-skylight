@@ -3,6 +3,7 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -61,7 +62,7 @@ func integrationClient(t *testing.T) (*Client, string) {
 func TestIntegration_GetFrame(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	frame, err := client.GetFrame(frameID)
+	frame, err := client.GetFrame(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("GetFrame: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestIntegration_GetFrame(t *testing.T) {
 func TestIntegration_ListDevices(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	devices, err := client.ListDevices(frameID)
+	devices, err := client.ListDevices(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListDevices: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestIntegration_ListDevices(t *testing.T) {
 func TestIntegration_ListCategories(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	categories, err := client.ListCategories(frameID)
+	categories, err := client.ListCategories(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListCategories: %v", err)
 	}
@@ -121,7 +122,7 @@ func TestIntegration_ListCategories(t *testing.T) {
 func TestIntegration_ListRewards(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	rewards, err := client.ListRewards(frameID)
+	rewards, err := client.ListRewards(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListRewards: %v", err)
 	}
@@ -147,7 +148,7 @@ func TestIntegration_ListChores(t *testing.T) {
 		Before: now.AddDate(0, 0, 30).Format(DateFormat),
 	}
 
-	chores, err := client.ListChores(frameID, opts)
+	chores, err := client.ListChores(context.Background(), frameID, opts)
 	if err != nil {
 		t.Fatalf("ListChores: %v", err)
 	}
@@ -171,7 +172,7 @@ func TestIntegration_ListCalendarEvents(t *testing.T) {
 	start := now.Format(DateFormat)
 	end := now.AddDate(0, 0, 7).Format(DateFormat)
 
-	events, err := client.ListCalendarEvents(frameID, start, end, "")
+	events, err := client.ListCalendarEvents(context.Background(), frameID, start, end, "")
 	if err != nil {
 		if strings.Contains(err.Error(), "500") || strings.Contains(err.Error(), "Internal Server Error") {
 			t.Skipf("ListCalendarEvents: skipping due to API instability: %v", err)
@@ -194,7 +195,7 @@ func TestIntegration_ListCalendarEvents(t *testing.T) {
 func TestIntegration_ListLists(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	lists, err := client.ListLists(frameID)
+	lists, err := client.ListLists(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListLists: %v", err)
 	}
@@ -214,7 +215,7 @@ func TestIntegration_ListLists(t *testing.T) {
 func TestIntegration_ListRecipes(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	recipes, err := client.ListRecipes(frameID)
+	recipes, err := client.ListRecipes(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListRecipes: %v", err)
 	}
@@ -234,7 +235,7 @@ func TestIntegration_ListRecipes(t *testing.T) {
 func TestIntegration_ListMealCategories(t *testing.T) {
 	client, frameID := integrationClient(t)
 
-	categories, err := client.ListMealCategories(frameID)
+	categories, err := client.ListMealCategories(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListMealCategories: %v", err)
 	}

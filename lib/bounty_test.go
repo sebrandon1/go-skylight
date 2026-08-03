@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -160,7 +161,7 @@ func TestCreateBounty(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			bounty, err := client.CreateBounty("frame1", tc.input)
+			bounty, err := client.CreateBounty(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -216,7 +217,7 @@ func TestCreateBountyCleanupOnRewardFailure(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.CreateBounty("frame1", BountyData{Title: "Test", Points: 5, RewardTitle: "Prize"})
+	_, err := client.CreateBounty(context.Background(), "frame1", BountyData{Title: "Test", Points: 5, RewardTitle: "Prize"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -239,7 +240,7 @@ func TestCreateBountyChoreFailure(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.CreateBounty("frame1", BountyData{Title: "Test", Points: 5, RewardTitle: "Prize"})
+	_, err := client.CreateBounty(context.Background(), "frame1", BountyData{Title: "Test", Points: 5, RewardTitle: "Prize"})
 	if err == nil {
 		t.Fatal("expected error when CreateChore fails")
 	}
@@ -271,7 +272,7 @@ func TestCreateBountyInvalidAssigneeID(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.CreateBounty("frame1", BountyData{
+	_, err := client.CreateBounty(context.Background(), "frame1", BountyData{
 		Title:       "Test",
 		Points:      5,
 		RewardTitle: "Prize",
@@ -307,7 +308,7 @@ func TestListBountiesChoreError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.ListBounties("frame1")
+	_, err := client.ListBounties(context.Background(), "frame1")
 	if err == nil {
 		t.Fatal("expected error when ListChores fails")
 	}
@@ -335,7 +336,7 @@ func TestListBountiesRewardError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.ListBounties("frame1")
+	_, err := client.ListBounties(context.Background(), "frame1")
 	if err == nil {
 		t.Fatal("expected error when ListRewards fails")
 	}
@@ -395,7 +396,7 @@ func TestListBounties(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			bounties, err := client.ListBounties("frame1")
+			bounties, err := client.ListBounties(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -444,7 +445,7 @@ func TestListBountiesDateRange(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	if _, err := client.ListBounties("frame1"); err != nil {
+	if _, err := client.ListBounties(context.Background(), "frame1"); err != nil {
 		t.Fatalf("ListBounties: %v", err)
 	}
 
@@ -481,7 +482,7 @@ func TestDeleteBounty(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeleteBounty("frame1", "c1", "r1")
+	err := client.DeleteBounty(context.Background(), "frame1", "c1", "r1")
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -505,7 +506,7 @@ func TestDeleteBounty_ChoreError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeleteBounty("frame1", "c1", "r1")
+	err := client.DeleteBounty(context.Background(), "frame1", "c1", "r1")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -528,7 +529,7 @@ func TestDeleteBounty_BothError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeleteBounty("frame1", "c1", "r1")
+	err := client.DeleteBounty(context.Background(), "frame1", "c1", "r1")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -570,7 +571,7 @@ func TestUpdateBounty(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UpdateBounty("frame1", "c1", "r1", BountyData{Title: "t", RewardTitle: "r"})
+	_, err := client.UpdateBounty(context.Background(), "frame1", "c1", "r1", BountyData{Title: "t", RewardTitle: "r"})
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -590,7 +591,7 @@ func TestUpdateBounty_ChoreError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UpdateBounty("frame1", "c1", "r1", BountyData{Title: "t"})
+	_, err := client.UpdateBounty(context.Background(), "frame1", "c1", "r1", BountyData{Title: "t"})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

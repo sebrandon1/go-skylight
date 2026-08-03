@@ -47,7 +47,7 @@ var bountyCreateCmd = &cobra.Command{
 			return err
 		}
 
-		bounty, err := client.CreateBounty(frameID, lib.BountyData{
+		bounty, err := client.CreateBounty(cmd.Context(), frameID, lib.BountyData{
 			Title:       bountyTitle,
 			Points:      bountyPoints,
 			DueDate:     bountyDueDate,
@@ -78,7 +78,7 @@ var bountyListCmd = &cobra.Command{
 			return err
 		}
 
-		bounties, err := client.ListBounties(frameID)
+		bounties, err := client.ListBounties(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing bounties: %w", err)
 		}
@@ -101,7 +101,7 @@ var bountyDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteBounty(frameID, bountyChoreID, bountyRewardID); err != nil {
+		if err := client.DeleteBounty(cmd.Context(), frameID, bountyChoreID, bountyRewardID); err != nil {
 			return fmt.Errorf("deleting bounty: %w", err)
 		}
 
@@ -146,7 +146,7 @@ var bountyUpdateCmd = &cobra.Command{
 			data.EmojiIcon = bountyEmojiIcon
 		}
 
-		bounty, err := client.UpdateBounty(frameID, bountyChoreID, bountyRewardID, data)
+		bounty, err := client.UpdateBounty(cmd.Context(), frameID, bountyChoreID, bountyRewardID, data)
 		if err != nil {
 			return fmt.Errorf("updating bounty: %w", err)
 		}

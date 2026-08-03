@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -662,7 +663,7 @@ func TestLoadCatNames_Success(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"data":[{"id":"1","attributes":{"label":"Alice","color":"#FF0000"}}]}`)
 	})
-	loadCatNames(client)
+	loadCatNames(context.Background(), client)
 	if activeCatNames["1"] != "Alice" {
 		t.Errorf("expected activeCatNames[\"1\"] == \"Alice\", got %q", activeCatNames["1"])
 	}
@@ -685,7 +686,7 @@ func TestMaybeLoadCatNames_TableMode(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"data":[{"id":"z1","attributes":{"label":"Zara","color":"#000"}}]}`)
 	})
-	maybeLoadCatNames(client)
+	maybeLoadCatNames(context.Background(), client)
 	if activeCatNames["z1"] != "Zara" {
 		t.Errorf("expected activeCatNames to be populated in table mode, got %v", activeCatNames)
 	}
@@ -703,7 +704,7 @@ func TestMaybeLoadCatNames_JSONMode(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("maybeLoadCatNames should not make HTTP calls in JSON mode")
 	})
-	maybeLoadCatNames(client)
+	maybeLoadCatNames(context.Background(), client)
 	if activeCatNames != nil {
 		t.Errorf("expected activeCatNames to stay nil in JSON mode, got %v", activeCatNames)
 	}
@@ -722,7 +723,7 @@ func TestLoadCatNames_ErrorSilenced(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	loadCatNames(client)
+	loadCatNames(context.Background(), client)
 	if activeCatNames != nil {
 		t.Errorf("expected activeCatNames to remain nil on error, got %v", activeCatNames)
 	}
@@ -734,7 +735,7 @@ func TestGetFrameOrFail_Success(t *testing.T) {
 		fmt.Fprint(w, `{"data":{"id":"f1","attributes":{"name":"Kitchen"}}}`)
 	})
 
-	frame, err := getFrameOrFail(client, "f1")
+	frame, err := getFrameOrFail(context.Background(), client, "f1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -747,7 +748,7 @@ func TestGetFrameOrFail_Error(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
-	_, err := getFrameOrFail(client, "f1")
+	_, err := getFrameOrFail(context.Background(), client, "f1")
 	if err == nil {
 		t.Fatal("expected error from getFrameOrFail on server error")
 	}

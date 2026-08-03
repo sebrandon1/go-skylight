@@ -1,6 +1,9 @@
 package lib
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // Routine represents a Skylight routine (ordered recurring task list).
 type Routine struct {
@@ -60,8 +63,8 @@ func (e *routineAPIEntry) toRoutine() Routine {
 	}
 }
 
-func (c *Client) ListRoutines(frameID string) ([]Routine, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/routines", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/routines", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list routines request: %w", err)
 	}
@@ -78,8 +81,8 @@ func (c *Client) ListRoutines(frameID string) ([]Routine, error) {
 	return routines, nil
 }
 
-func (c *Client) CreateRoutine(frameID string, data RoutineData) (*Routine, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/routines", c.effectiveURL(), pathSeg(frameID)), data)
+func (c *Client) CreateRoutine(ctx context.Context, frameID string, data RoutineData) (*Routine, error) {
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/routines", c.effectiveURL(), pathSeg(frameID)), data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routine request: %w", err)
 	}
@@ -93,8 +96,8 @@ func (c *Client) CreateRoutine(frameID string, data RoutineData) (*Routine, erro
 	return &result, nil
 }
 
-func (c *Client) UpdateRoutine(frameID, routineID string, data RoutineData) (*Routine, error) {
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/routines/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)), data)
+func (c *Client) UpdateRoutine(ctx context.Context, frameID, routineID string, data RoutineData) (*Routine, error) {
+	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/routines/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)), data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update routine request: %w", err)
 	}
@@ -108,8 +111,8 @@ func (c *Client) UpdateRoutine(frameID, routineID string, data RoutineData) (*Ro
 	return &result, nil
 }
 
-func (c *Client) DeleteRoutine(frameID, routineID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/routines/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)))
+func (c *Client) DeleteRoutine(ctx context.Context, frameID, routineID string) error {
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/routines/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete routine request: %w", err)
 	}
@@ -121,10 +124,10 @@ func (c *Client) DeleteRoutine(frameID, routineID string) error {
 	return nil
 }
 
-func (c *Client) ReorderRoutines(frameID string, routineIDs []string) error {
+func (c *Client) ReorderRoutines(ctx context.Context, frameID string, routineIDs []string) error {
 	body := reorderRoutinesRequest{IDs: routineIDs}
 
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/routines/reorder", c.effectiveURL(), pathSeg(frameID)), body)
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/routines/reorder", c.effectiveURL(), pathSeg(frameID)), body)
 	if err != nil {
 		return fmt.Errorf("failed to create reorder routines request: %w", err)
 	}

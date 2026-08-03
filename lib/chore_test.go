@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -116,7 +117,7 @@ func TestListChores(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			chores, err := client.ListChores("frame1", tc.opts)
+			chores, err := client.ListChores(context.Background(), "frame1", tc.opts)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -208,7 +209,7 @@ func TestCreateChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			chore, err := client.CreateChore("frame1", tc.input)
+			chore, err := client.CreateChore(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -267,7 +268,7 @@ func TestUpdateChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			chore, err := client.UpdateChore("frame1", tc.choreID, tc.input)
+			chore, err := client.UpdateChore(context.Background(), "frame1", tc.choreID, tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -339,7 +340,7 @@ func TestSkipChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.SkipChore("frame1", tc.choreID)
+			err := client.SkipChore(context.Background(), "frame1", tc.choreID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -399,7 +400,7 @@ func TestClaimChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			chore, err := client.ClaimChore("frame1", "chore1", tc.assigneeID)
+			chore, err := client.ClaimChore(context.Background(), "frame1", "chore1", tc.assigneeID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -432,7 +433,7 @@ func TestListChoresUpForGrabs(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	chores, err := client.ListChores("frame1", ChoreListOptions{UpForGrabs: true})
+	chores, err := client.ListChores(context.Background(), "frame1", ChoreListOptions{UpForGrabs: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -506,7 +507,7 @@ func TestCreateUpForGrabsChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			chore, err := client.CreateUpForGrabsChore("frame1", tc.input)
+			chore, err := client.CreateUpForGrabsChore(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -600,7 +601,7 @@ func TestCompleteChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.CompleteChore("frame1", tc.choreID)
+			err := client.CompleteChore(context.Background(), "frame1", tc.choreID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -633,7 +634,7 @@ func TestDeleteChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteChore("frame1", "chore1")
+			err := client.DeleteChore(context.Background(), "frame1", "chore1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

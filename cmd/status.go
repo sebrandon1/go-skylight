@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -23,14 +24,15 @@ var statusCmd = &cobra.Command{
 			return err
 		}
 
+		ctx := cmd.Context()
 		today := time.Now().Format(lib.DateFormat)
 
-		frame, err := client.GetFrame(frameID)
+		frame, err := client.GetFrame(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("getting frame: %w", err)
 		}
 
-		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
+		chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{
 			After:  today,
 			Before: today,
 			Status: lib.ChoreStatusPending,
@@ -39,22 +41,22 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("listing chores: %w", err)
 		}
 
-		events, err := client.ListCalendarEvents(frameID, today, today, frame.TimeZone)
+		events, err := client.ListCalendarEvents(ctx, frameID, today, today, frame.TimeZone)
 		if err != nil {
 			return fmt.Errorf("listing calendar events: %w", err)
 		}
 
-		categories, err := client.ListCategories(frameID)
+		categories, err := client.ListCategories(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("listing categories: %w", err)
 		}
 
-		points, err := client.GetRewardPoints(frameID)
+		points, err := client.GetRewardPoints(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("getting reward points: %w", err)
 		}
 
-		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
+		sittings, err := client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{
 			DateMin: today,
 			DateMax: today,
 		})
@@ -62,11 +64,11 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("listing meal sittings: %w", err)
 		}
 
-		lists, err := client.ListLists(frameID)
+		lists, err := client.ListLists(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("listing lists: %w", err)
 		}
-		incompleteItems, listErrors := countIncompleteListItems(client, frameID, lists)
+		incompleteItems, listErrors := countIncompleteListItems(ctx, client, frameID, lists)
 
 		pointEntries := resolveRewardPointNames(points, categories)
 
@@ -118,7 +120,7 @@ const statusListWorkerCount = 5
 // detail on top of the primary status fields), but the number of failures is
 // returned so callers can surface it instead of silently under-reporting.
 // Concurrency is capped (#271).
-func countIncompleteListItems(client *lib.Client, frameID string, lists []lib.List) (incomplete, errors int) {
+func countIncompleteListItems(ctx context.Context, client *lib.Client, frameID string, lists []lib.List) (incomplete, errors int) {
 	var (
 		mu  sync.Mutex
 		wg  sync.WaitGroup
@@ -131,7 +133,7 @@ func countIncompleteListItems(client *lib.Client, frameID string, lists []lib.Li
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			full, err := client.GetList(frameID, l.ID)
+			full, err := client.GetList(ctx, frameID, l.ID)
 
 			mu.Lock()
 			defer mu.Unlock()

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -285,7 +286,7 @@ func (c *Client) Login(email, password string) (*Session, error) {
 		Password: password,
 	}
 
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/sessions", c.effectiveURL()), reqBody)
+	req, err := newRequestWithBody(context.Background(), "POST", fmt.Sprintf("%s/sessions", c.effectiveURL()), reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create login request: %w", err)
 	}

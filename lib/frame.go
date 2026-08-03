@@ -1,12 +1,13 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 )
 
 // ListFrames retrieves all frames accessible to the authenticated user.
-func (c *Client) ListFrames() ([]Frame, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames", c.effectiveURL()))
+func (c *Client) ListFrames(ctx context.Context) ([]Frame, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames", c.effectiveURL()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list frames request: %w", err)
 	}
@@ -24,8 +25,8 @@ func (c *Client) ListFrames() ([]Frame, error) {
 }
 
 // GetFrame retrieves frame information.
-func (c *Client) GetFrame(frameID string) (*Frame, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) GetFrame(ctx context.Context, frameID string) (*Frame, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get frame request: %w", err)
 	}
@@ -40,8 +41,8 @@ func (c *Client) GetFrame(frameID string) (*Frame, error) {
 }
 
 // ListDevices retrieves devices for a frame.
-func (c *Client) ListDevices(frameID string) ([]Device, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/devices", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) ListDevices(ctx context.Context, frameID string) ([]Device, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/devices", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list devices request: %w", err)
 	}
@@ -59,8 +60,8 @@ func (c *Client) ListDevices(frameID string) ([]Device, error) {
 }
 
 // GetAvatars retrieves available avatars.
-func (c *Client) GetAvatars() ([]Avatar, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/avatars", c.effectiveURL()))
+func (c *Client) GetAvatars(ctx context.Context) ([]Avatar, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/avatars", c.effectiveURL()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get avatars request: %w", err)
 	}
@@ -79,7 +80,7 @@ func (c *Client) GetAvatars() ([]Avatar, error) {
 
 // SetCurrentAlbum sets the active slideshow album for a frame by album ID.
 // Use -1 to revert to the default (all photos) album.
-func (c *Client) SetCurrentAlbum(frameID string, albumID int) error {
+func (c *Client) SetCurrentAlbum(ctx context.Context, frameID string, albumID int) error {
 	body := struct {
 		Frame struct {
 			CurrentAlbumID int `json:"current_album_id"`
@@ -87,7 +88,7 @@ func (c *Client) SetCurrentAlbum(frameID string, albumID int) error {
 	}{}
 	body.Frame.CurrentAlbumID = albumID
 
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)), body)
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)), body)
 	if err != nil {
 		return fmt.Errorf("failed to create set album request: %w", err)
 	}
@@ -99,8 +100,8 @@ func (c *Client) SetCurrentAlbum(frameID string, albumID int) error {
 }
 
 // GetColors retrieves available colors.
-func (c *Client) GetColors() ([]Color, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/colors", c.effectiveURL()))
+func (c *Client) GetColors(ctx context.Context) ([]Color, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/colors", c.effectiveURL()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get colors request: %w", err)
 	}

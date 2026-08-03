@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -73,7 +74,7 @@ func TestParallelImport_MixedPanicAndSuccess(t *testing.T) {
 func TestImportRewards(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importRewards(client, []lib.Reward{{Title: "A"}, {Title: "B"}})
+		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A"}, {Title: "B"}})
 		if total != 2 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=0", total, failed)
 		}
@@ -81,7 +82,7 @@ func TestImportRewards(t *testing.T) {
 
 	t.Run("partial failure", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/rewards": true})
-		total, failed := importRewards(client, []lib.Reward{{Title: "A"}})
+		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A"}})
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -91,7 +92,7 @@ func TestImportRewards(t *testing.T) {
 func TestImportChores(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importChores(client, []lib.Chore{{Title: "Walk dog"}, {Title: "Dishes"}})
+		total, failed := importChores(context.Background(), client, []lib.Chore{{Title: "Walk dog"}, {Title: "Dishes"}})
 		if total != 2 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=0", total, failed)
 		}
@@ -99,7 +100,7 @@ func TestImportChores(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/chores": true})
-		total, failed := importChores(client, []lib.Chore{{Title: "Walk dog"}})
+		total, failed := importChores(context.Background(), client, []lib.Chore{{Title: "Walk dog"}})
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -113,7 +114,7 @@ func TestImportLists(t *testing.T) {
 			Title: "Groceries",
 			Items: []lib.ListItem{{Title: "Eggs"}, {Title: "Milk"}},
 		}}
-		total, failed := importLists(client, lists)
+		total, failed := importLists(context.Background(), client, lists)
 		if total != 3 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=3 (1 list + 2 items) failed=0", total, failed)
 		}
@@ -125,7 +126,7 @@ func TestImportLists(t *testing.T) {
 			Title: "Groceries",
 			Items: []lib.ListItem{{Title: "Eggs"}},
 		}}
-		total, failed := importLists(client, lists)
+		total, failed := importLists(context.Background(), client, lists)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1 (item creation skipped)", total, failed)
 		}
@@ -137,7 +138,7 @@ func TestImportLists(t *testing.T) {
 			Title: "Groceries",
 			Items: []lib.ListItem{{Title: "Eggs"}},
 		}}
-		total, failed := importLists(client, lists)
+		total, failed := importLists(context.Background(), client, lists)
 		if total != 2 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=1", total, failed)
 		}
@@ -147,7 +148,7 @@ func TestImportLists(t *testing.T) {
 func TestImportRecipes(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importRecipes(client, []lib.Recipe{{Title: "Tacos"}})
+		total, failed := importRecipes(context.Background(), client, []lib.Recipe{{Title: "Tacos"}})
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -155,7 +156,7 @@ func TestImportRecipes(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/meals/recipes": true})
-		total, failed := importRecipes(client, []lib.Recipe{{Title: "Tacos"}})
+		total, failed := importRecipes(context.Background(), client, []lib.Recipe{{Title: "Tacos"}})
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -165,7 +166,7 @@ func TestImportRecipes(t *testing.T) {
 func TestImportSittings(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importSittings(client, []lib.MealSitting{{Summary: "dinner"}})
+		total, failed := importSittings(context.Background(), client, []lib.MealSitting{{Summary: "dinner"}})
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -173,7 +174,7 @@ func TestImportSittings(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/meals/sittings": true})
-		total, failed := importSittings(client, []lib.MealSitting{{Summary: "dinner"}})
+		total, failed := importSittings(context.Background(), client, []lib.MealSitting{{Summary: "dinner"}})
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -183,7 +184,7 @@ func TestImportSittings(t *testing.T) {
 func TestImportCalendarEvents(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importCalendarEvents(client, []lib.CalendarEvent{{Title: "Birthday"}})
+		total, failed := importCalendarEvents(context.Background(), client, []lib.CalendarEvent{{Title: "Birthday"}})
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -191,7 +192,7 @@ func TestImportCalendarEvents(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/calendar_events": true})
-		total, failed := importCalendarEvents(client, []lib.CalendarEvent{{Title: "Birthday"}})
+		total, failed := importCalendarEvents(context.Background(), client, []lib.CalendarEvent{{Title: "Birthday"}})
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -218,7 +219,7 @@ func TestRunImport_AllSuccess(t *testing.T) {
 	}
 
 	var err error
-	out := captureStdout(func() { err = runImport(client, data, want) })
+	out := captureStdout(func() { err = runImport(context.Background(), client, data, want) })
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -237,7 +238,7 @@ func TestRunImport_OnlyRequestedResourcesAreImported(t *testing.T) {
 	want := map[string]bool{exportResourceRewards: true}
 
 	var err error
-	out := captureStdout(func() { err = runImport(client, data, want) })
+	out := captureStdout(func() { err = runImport(context.Background(), client, data, want) })
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -259,7 +260,7 @@ func TestRunImport_ReturnsErrorOnPartialFailure(t *testing.T) {
 	}
 
 	var err error
-	_ = captureStdout(func() { err = runImport(client, data, want) })
+	_ = captureStdout(func() { err = runImport(context.Background(), client, data, want) })
 
 	if err == nil {
 		t.Fatal("expected error when some items fail, got nil")
@@ -274,7 +275,7 @@ func TestRunImport_EmptyWant(t *testing.T) {
 	data := ExportData{Rewards: []lib.Reward{{Title: "Reward"}}}
 
 	var err error
-	out := captureStdout(func() { err = runImport(client, data, map[string]bool{}) })
+	out := captureStdout(func() { err = runImport(context.Background(), client, data, map[string]bool{}) })
 
 	if err != nil {
 		t.Fatalf("expected no error for empty want, got: %v", err)

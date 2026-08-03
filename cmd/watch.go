@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -74,13 +73,12 @@ Press Ctrl+C to stop.`,
 			return err
 		}
 
-		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
+		ctx := cmd.Context()
 
 		ticker := time.NewTicker(time.Duration(watchInterval) * time.Second)
 		defer ticker.Stop()
 
-		frame, err := getFrameOrFail(client, frameID)
+		frame, err := getFrameOrFail(ctx, client, frameID)
 		if err != nil {
 			return err
 		}
@@ -110,7 +108,7 @@ Press Ctrl+C to stop.`,
 
 		// Seed in-memory state silently so existing items aren't reported as new.
 		state.seeding = true
-		poll(client, state, pollResources)
+		poll(ctx, client, state, pollResources)
 		state.seeding = false
 
 		// nil channel is never selected in a select statement — used when poller is inactive.
@@ -130,7 +128,7 @@ Press Ctrl+C to stop.`,
 				fmt.Println("\nStopped.")
 				return nil
 			case <-ticker.C:
-				poll(client, state, pollResources)
+				poll(ctx, client, state, pollResources)
 			case e := <-pollerEvents:
 				printRedemptionEvent(e)
 			}
@@ -186,7 +184,7 @@ func parseWatchResources(s string) ([]string, error) {
 	return out, nil
 }
 
-func poll(client *lib.Client, state *watchState, resources []string) {
+func poll(ctx context.Context, client *lib.Client, state *watchState, resources []string) {
 	now := time.Now()
 	ts := now.Format("15:04:05")
 
@@ -197,39 +195,39 @@ func poll(client *lib.Client, state *watchState, resources []string) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				pollRewards(client, state, ts)
+				pollRewards(ctx, client, state, ts)
 			}()
 		case watchResourceChores:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				pollChores(client, state, now, ts)
+				pollChores(ctx, client, state, now, ts)
 			}()
 		case watchResourceCalendar:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				pollCalendar(client, state, now, ts)
+				pollCalendar(ctx, client, state, now, ts)
 			}()
 		case watchResourceLists:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				pollLists(client, state, ts)
+				pollLists(ctx, client, state, ts)
 			}()
 		case watchResourceRoutines:
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				pollRoutines(client, state, ts)
+				pollRoutines(ctx, client, state, ts)
 			}()
 		}
 	}
 	wg.Wait()
 }
 
-func pollRewards(client *lib.Client, state *watchState, ts string) {
-	rewards, err := client.ListRewards(frameID)
+func pollRewards(ctx context.Context, client *lib.Client, state *watchState, ts string) {
+	rewards, err := client.ListRewards(ctx, frameID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing rewards: %v\n", ts, err)
 		return
@@ -260,8 +258,8 @@ func pollRewards(client *lib.Client, state *watchState, ts string) {
 	state.seenRewardIDs = current
 }
 
-func pollLists(client *lib.Client, state *watchState, ts string) {
-	lists, err := client.ListLists(frameID)
+func pollLists(ctx context.Context, client *lib.Client, state *watchState, ts string) {
+	lists, err := client.ListLists(ctx, frameID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing lists: %v\n", ts, err)
 		return
@@ -286,8 +284,8 @@ func pollLists(client *lib.Client, state *watchState, ts string) {
 	state.seenListIDs = current
 }
 
-func pollRoutines(client *lib.Client, state *watchState, ts string) {
-	routines, err := client.ListRoutines(frameID)
+func pollRoutines(ctx context.Context, client *lib.Client, state *watchState, ts string) {
+	routines, err := client.ListRoutines(ctx, frameID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing routines: %v\n", ts, err)
 		return
@@ -312,9 +310,9 @@ func pollRoutines(client *lib.Client, state *watchState, ts string) {
 	state.seenRoutineIDs = current
 }
 
-func pollChores(client *lib.Client, state *watchState, now time.Time, ts string) {
+func pollChores(ctx context.Context, client *lib.Client, state *watchState, now time.Time, ts string) {
 	today := now.Format(lib.DateFormat)
-	chores, err := client.ListChores(frameID, lib.ChoreListOptions{After: today, Before: today, Status: lib.ChoreStatusComplete})
+	chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{After: today, Before: today, Status: lib.ChoreStatusComplete})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing chores: %v\n", ts, err)
 		return
@@ -341,9 +339,9 @@ func pollChores(client *lib.Client, state *watchState, now time.Time, ts string)
 	state.seenChoreIDs = current
 }
 
-func pollCalendar(client *lib.Client, state *watchState, now time.Time, ts string) {
+func pollCalendar(ctx context.Context, client *lib.Client, state *watchState, now time.Time, ts string) {
 	today := now.Format(lib.DateFormat)
-	events, err := client.ListCalendarEvents(frameID, today, today, state.timezone)
+	events, err := client.ListCalendarEvents(ctx, frameID, today, today, state.timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[%s] Error listing calendar events: %v\n", ts, err)
 		return

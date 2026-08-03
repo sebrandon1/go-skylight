@@ -69,13 +69,15 @@ var choreListCmd = &cobra.Command{
 			}
 		}
 
+		ctx := cmd.Context()
+
 		if cmd.Flags().Changed("week") {
 			monday, err := weekStart(choreWeek)
 			if err != nil {
 				return fmt.Errorf("computing week start: %w", err)
 			}
 			sunday := monday.AddDate(0, 0, 6)
-			chores, err := client.ListChores(frameID, lib.ChoreListOptions{
+			chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{
 				After:       monday.Format(lib.DateFormat),
 				Before:      sunday.Format(lib.DateFormat),
 				IncludeLate: true,
@@ -88,7 +90,7 @@ var choreListCmd = &cobra.Command{
 			return nil
 		}
 
-		chores, err := client.ListChores(frameID, lib.ChoreListOptions{
+		chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{
 			Date:        choreDate,
 			Status:      choreStatus,
 			AssigneeID:  choreAssigneeID,
@@ -101,7 +103,7 @@ var choreListCmd = &cobra.Command{
 			return fmt.Errorf("listing chores: %w", err)
 		}
 
-		maybeLoadCatNames(client)
+		maybeLoadCatNames(ctx, client)
 		printOutput(chores)
 		return nil
 	},
@@ -131,12 +133,13 @@ var choreCreateCmd = &cobra.Command{
 			Points:      chorePoints,
 		}
 		var chore *lib.Chore
+		ctx := cmd.Context()
 		if choreUpForGrabs {
-			chore, err = client.CreateUpForGrabsChore(frameID, data)
+			chore, err = client.CreateUpForGrabsChore(ctx, frameID, data)
 		} else {
 			data.AssigneeID = choreAssigneeID
 			data.Recurring = choreRecurring
-			chore, err = client.CreateChore(frameID, data)
+			chore, err = client.CreateChore(ctx, frameID, data)
 		}
 		if err != nil {
 			return fmt.Errorf("creating chore: %w", err)
@@ -165,7 +168,7 @@ var choreDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteChore(frameID, choreID); err != nil {
+		if err := client.DeleteChore(cmd.Context(), frameID, choreID); err != nil {
 			return fmt.Errorf("deleting chore: %w", err)
 		}
 
@@ -187,7 +190,7 @@ var choreCompleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.CompleteChore(frameID, choreID); err != nil {
+		if err := client.CompleteChore(cmd.Context(), frameID, choreID); err != nil {
 			return fmt.Errorf("completing chore: %w", err)
 		}
 
@@ -241,7 +244,7 @@ var choreUpdateCmd = &cobra.Command{
 			data.Description = choreDescription
 		}
 
-		chore, err := client.UpdateChore(frameID, choreID, data)
+		chore, err := client.UpdateChore(cmd.Context(), frameID, choreID, data)
 		if err != nil {
 			return fmt.Errorf("updating chore: %w", err)
 		}
@@ -275,7 +278,7 @@ The date suffix in the chore ID identifies the specific instance.`,
 			return err
 		}
 
-		if err := client.SkipChore(frameID, choreID); err != nil {
+		if err := client.SkipChore(cmd.Context(), frameID, choreID); err != nil {
 			return fmt.Errorf("skipping chore: %w", err)
 		}
 
@@ -297,7 +300,7 @@ var choreClaimCmd = &cobra.Command{
 			return err
 		}
 
-		chore, err := client.ClaimChore(frameID, choreID, choreAssigneeID)
+		chore, err := client.ClaimChore(cmd.Context(), frameID, choreID, choreAssigneeID)
 		if err != nil {
 			return fmt.Errorf("claiming chore: %w", err)
 		}

@@ -184,7 +184,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	if c.limiter != nil {
 		lim = c.limiter
 	}
-	resp, err := doWithRetry(context.Background(), c.HTTPClient, lim, c.retry, req)
+	resp, err := doWithRetry(req.Context(), c.HTTPClient, lim, c.retry, req)
 	if err != nil {
 		return nil, err
 	}
@@ -310,11 +310,11 @@ func addQueryParams(req *http.Request, params map[string]string) {
 	req.URL.RawQuery = q.Encode()
 }
 
-func newRequest(method, url string) (*http.Request, error) {
-	return http.NewRequest(method, url, nil)
+func newRequest(ctx context.Context, method, url string) (*http.Request, error) {
+	return http.NewRequestWithContext(ctx, method, url, nil)
 }
 
-func newRequestWithBody(method, url string, body any) (*http.Request, error) {
+func newRequestWithBody(ctx context.Context, method, url string, body any) (*http.Request, error) {
 	var bodyReader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -323,5 +323,5 @@ func newRequestWithBody(method, url string, body any) (*http.Request, error) {
 		}
 		bodyReader = bytes.NewReader(data)
 	}
-	return http.NewRequest(method, url, bodyReader)
+	return http.NewRequestWithContext(ctx, method, url, bodyReader)
 }

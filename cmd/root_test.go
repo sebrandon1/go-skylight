@@ -106,7 +106,7 @@ func TestLoginCommandExists(t *testing.T) {
 
 func TestExecuteReturnsNoError(t *testing.T) {
 	rootCmd.SetArgs([]string{"--help"})
-	err := rootCmd.Execute()
+	err := Execute()
 	if err != nil {
 		t.Errorf("Execute with --help failed: %v", err)
 	}

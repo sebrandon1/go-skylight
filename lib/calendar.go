@@ -1,10 +1,13 @@
 package lib
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // ListCalendarEvents retrieves calendar events for a frame within a date range.
-func (c *Client) ListCalendarEvents(frameID, dateMin, dateMax, timezone string) ([]CalendarEvent, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) ListCalendarEvents(ctx context.Context, frameID, dateMin, dateMax, timezone string) ([]CalendarEvent, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list calendar events request: %w", err)
 	}
@@ -36,8 +39,8 @@ func (c *Client) ListCalendarEvents(frameID, dateMin, dateMax, timezone string) 
 }
 
 // CreateCalendarEvent creates a new calendar event on a frame.
-func (c *Client) CreateCalendarEvent(frameID string, event CalendarEventData) (*CalendarEvent, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), pathSeg(frameID)), event)
+func (c *Client) CreateCalendarEvent(ctx context.Context, frameID string, event CalendarEventData) (*CalendarEvent, error) {
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), pathSeg(frameID)), event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create calendar event request: %w", err)
 	}
@@ -52,8 +55,8 @@ func (c *Client) CreateCalendarEvent(frameID string, event CalendarEventData) (*
 }
 
 // UpdateCalendarEvent updates an existing calendar event.
-func (c *Client) UpdateCalendarEvent(frameID, eventID string, event CalendarEventData) (*CalendarEvent, error) {
-	req, err := newRequestWithBody("PUT", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(eventID)), event)
+func (c *Client) UpdateCalendarEvent(ctx context.Context, frameID, eventID string, event CalendarEventData) (*CalendarEvent, error) {
+	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(eventID)), event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update calendar event request: %w", err)
 	}
@@ -68,8 +71,8 @@ func (c *Client) UpdateCalendarEvent(frameID, eventID string, event CalendarEven
 }
 
 // DeleteCalendarEvent deletes a calendar event.
-func (c *Client) DeleteCalendarEvent(frameID, eventID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(eventID)))
+func (c *Client) DeleteCalendarEvent(ctx context.Context, frameID, eventID string) error {
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(eventID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete calendar event request: %w", err)
 	}
@@ -82,8 +85,8 @@ func (c *Client) DeleteCalendarEvent(frameID, eventID string) error {
 }
 
 // ListSourceCalendars retrieves source calendars for a frame.
-func (c *Client) ListSourceCalendars(frameID string) ([]SourceCalendar, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/source_calendars", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) ListSourceCalendars(ctx context.Context, frameID string) ([]SourceCalendar, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/source_calendars", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list source calendars request: %w", err)
 	}

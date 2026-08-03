@@ -31,7 +31,7 @@ var categoryListCmd = &cobra.Command{
 			return err
 		}
 
-		categories, err := client.ListCategories(frameID)
+		categories, err := client.ListCategories(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing categories: %w", err)
 		}
@@ -61,7 +61,7 @@ var categoryCreateCmd = &cobra.Command{
 			data.Color = categoryColor
 		}
 
-		category, err := client.CreateCategory(frameID, data)
+		category, err := client.CreateCategory(cmd.Context(), frameID, data)
 		if err != nil {
 			return fmt.Errorf("creating category: %w", err)
 		}
@@ -84,7 +84,7 @@ var categoryDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteCategory(frameID, categoryID); err != nil {
+		if err := client.DeleteCategory(cmd.Context(), frameID, categoryID); err != nil {
 			return fmt.Errorf("deleting category: %w", err)
 		}
 
@@ -114,7 +114,7 @@ var categoryUpdateCmd = &cobra.Command{
 			data.Color = categoryColor
 		}
 
-		category, err := client.UpdateCategory(frameID, categoryID, data)
+		category, err := client.UpdateCategory(cmd.Context(), frameID, categoryID, data)
 		if err != nil {
 			return fmt.Errorf("updating category: %w", err)
 		}

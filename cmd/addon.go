@@ -25,7 +25,7 @@ var addonListCmd = &cobra.Command{
 			return err
 		}
 
-		frame, err := client.GetFrame(frameID)
+		frame, err := client.GetFrame(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing addons: %w", err)
 		}

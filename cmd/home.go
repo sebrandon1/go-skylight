@@ -32,7 +32,8 @@ var homeCmd = &cobra.Command{
 			return err
 		}
 
-		frame, err := getFrameOrFail(client, frameID)
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
 		if err != nil {
 			return err
 		}
@@ -52,14 +53,14 @@ var homeCmd = &cobra.Command{
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			events, evtErr = client.ListCalendarEvents(frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
+			events, evtErr = client.ListCalendarEvents(ctx, frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
 		}()
 
 		if !homeNoTasks {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				chores, choreErr = client.ListChores(frameID, lib.ChoreListOptions{
+				chores, choreErr = client.ListChores(ctx, frameID, lib.ChoreListOptions{
 					After:  today,
 					Before: today,
 					Status: lib.ChoreStatusPending,
@@ -71,7 +72,7 @@ var homeCmd = &cobra.Command{
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				lists, listErr = client.ListLists(frameID)
+				lists, listErr = client.ListLists(ctx, frameID)
 			}()
 		}
 
@@ -79,7 +80,7 @@ var homeCmd = &cobra.Command{
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				meals, mealErr = client.ListMealSittings(frameID, lib.MealSittingListOptions{
+				meals, mealErr = client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{
 					DateMin: monday.Format(lib.DateFormat),
 					DateMax: sunday.Format(lib.DateFormat),
 				})

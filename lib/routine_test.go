@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -60,7 +61,7 @@ func TestListRoutines(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			routines, err := client.ListRoutines("frame1")
+			routines, err := client.ListRoutines(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -133,7 +134,7 @@ func TestCreateRoutine(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			routine, err := client.CreateRoutine("frame1", tc.input)
+			routine, err := client.CreateRoutine(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -207,7 +208,7 @@ func TestUpdateRoutine(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			routine, err := client.UpdateRoutine("frame1", tc.routineID, tc.input)
+			routine, err := client.UpdateRoutine(context.Background(), "frame1", tc.routineID, tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -253,7 +254,7 @@ func TestDeleteRoutine(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteRoutine("frame1", "r1")
+			err := client.DeleteRoutine(context.Background(), "frame1", "r1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -321,7 +322,7 @@ func TestReorderRoutines(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.ReorderRoutines("frame1", tc.routineIDs)
+			err := client.ReorderRoutines(context.Background(), "frame1", tc.routineIDs)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

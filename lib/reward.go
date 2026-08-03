@@ -1,10 +1,13 @@
 package lib
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // ListRewards retrieves rewards for a frame.
-func (c *Client) ListRewards(frameID string) ([]Reward, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/rewards", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) ListRewards(ctx context.Context, frameID string) ([]Reward, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/rewards", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list rewards request: %w", err)
 	}
@@ -23,8 +26,8 @@ func (c *Client) ListRewards(frameID string) ([]Reward, error) {
 }
 
 // CreateReward creates a new reward on a frame.
-func (c *Client) CreateReward(frameID string, reward RewardData) (*Reward, error) {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/rewards", c.effectiveURL(), pathSeg(frameID)), reward)
+func (c *Client) CreateReward(ctx context.Context, frameID string, reward RewardData) (*Reward, error) {
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/rewards", c.effectiveURL(), pathSeg(frameID)), reward)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reward request: %w", err)
 	}
@@ -43,8 +46,8 @@ func (c *Client) CreateReward(frameID string, reward RewardData) (*Reward, error
 }
 
 // UpdateReward updates an existing reward.
-func (c *Client) UpdateReward(frameID, rewardID string, reward RewardData) (*Reward, error) {
-	req, err := newRequestWithBody("PATCH", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)), reward)
+func (c *Client) UpdateReward(ctx context.Context, frameID, rewardID string, reward RewardData) (*Reward, error) {
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)), reward)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update reward request: %w", err)
 	}
@@ -59,8 +62,8 @@ func (c *Client) UpdateReward(frameID, rewardID string, reward RewardData) (*Rew
 }
 
 // DeleteReward deletes a reward.
-func (c *Client) DeleteReward(frameID, rewardID string) error {
-	req, err := newRequest("DELETE", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
+func (c *Client) DeleteReward(ctx context.Context, frameID, rewardID string) error {
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete reward request: %w", err)
 	}
@@ -73,8 +76,8 @@ func (c *Client) DeleteReward(frameID, rewardID string) error {
 }
 
 // RedeemReward redeems a reward.
-func (c *Client) RedeemReward(frameID, rewardID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/rewards/%s/redeem", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
+func (c *Client) RedeemReward(ctx context.Context, frameID, rewardID string) error {
+	req, err := newRequest(ctx, "POST", fmt.Sprintf("%s/frames/%s/rewards/%s/redeem", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
 	if err != nil {
 		return fmt.Errorf("failed to create redeem reward request: %w", err)
 	}
@@ -87,8 +90,8 @@ func (c *Client) RedeemReward(frameID, rewardID string) error {
 }
 
 // UnredeemReward unredeems a reward.
-func (c *Client) UnredeemReward(frameID, rewardID string) error {
-	req, err := newRequest("POST", fmt.Sprintf("%s/frames/%s/rewards/%s/unredeem", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
+func (c *Client) UnredeemReward(ctx context.Context, frameID, rewardID string) error {
+	req, err := newRequest(ctx, "POST", fmt.Sprintf("%s/frames/%s/rewards/%s/unredeem", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
 	if err != nil {
 		return fmt.Errorf("failed to create unredeem reward request: %w", err)
 	}
@@ -103,8 +106,8 @@ func (c *Client) UnredeemReward(frameID, rewardID string) error {
 // RemoveStars removes stars from a category/profile balance.
 // It calls POST /api/frames/{id}/reward_points with negative points,
 // which is the same endpoint used by the Skylight web app's "Remove Stars" feature.
-func (c *Client) RemoveStars(frameID string, categoryID, points int) error {
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), pathSeg(frameID)), removeStarsRequest{
+func (c *Client) RemoveStars(ctx context.Context, frameID string, categoryID, points int) error {
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), pathSeg(frameID)), removeStarsRequest{
 		CategoryIDs: []int{categoryID},
 		Points:      -points, // negative to deduct
 	})
@@ -120,8 +123,8 @@ func (c *Client) RemoveStars(frameID string, categoryID, points int) error {
 }
 
 // GetRewardPoints retrieves reward points for a frame.
-func (c *Client) GetRewardPoints(frameID string) ([]RewardPointEntry, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) GetRewardPoints(ctx context.Context, frameID string) ([]RewardPointEntry, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/reward_points", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get reward points request: %w", err)
 	}

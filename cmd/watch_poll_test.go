@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -74,7 +75,7 @@ func TestPollRewards(t *testing.T) {
 		seenEventIDs:  make(map[string]struct{}),
 	}
 
-	out := captureStdout(func() { pollRewards(client, state, "12:00:00") })
+	out := captureStdout(func() { pollRewards(context.Background(), client, state, "12:00:00") })
 
 	if !strings.Contains(out, "Ice cream") {
 		t.Errorf("expected redeemed reward in output, got: %s", out)
@@ -90,7 +91,7 @@ func TestPollRewards(t *testing.T) {
 	}
 
 	// Polling again should not re-print the already-seen redemption.
-	out = captureStdout(func() { pollRewards(client, state, "12:00:01") })
+	out = captureStdout(func() { pollRewards(context.Background(), client, state, "12:00:01") })
 	if strings.Contains(out, "Ice cream") {
 		t.Errorf("already-seen redemption should not be re-printed, got: %s", out)
 	}
@@ -109,7 +110,7 @@ func TestPollRewards_Seeding(t *testing.T) {
 		seeding:       true,
 	}
 
-	out := captureStdout(func() { pollRewards(client, state, "12:00:00") })
+	out := captureStdout(func() { pollRewards(context.Background(), client, state, "12:00:00") })
 	if out != "" {
 		t.Errorf("expected no output while seeding, got: %s", out)
 	}
@@ -125,7 +126,7 @@ func TestPollRewards_ListError(t *testing.T) {
 
 	state := &watchState{seenRewardIDs: make(map[string]struct{})}
 	// Errors go to stderr, not stdout; just confirm it doesn't panic.
-	pollRewards(client, state, "12:00:00")
+	pollRewards(context.Background(), client, state, "12:00:00")
 }
 
 func TestPollChores(t *testing.T) {
@@ -140,7 +141,7 @@ func TestPollChores(t *testing.T) {
 		seenEventIDs:  make(map[string]struct{}),
 	}
 
-	out := captureStdout(func() { pollChores(client, state, time.Now(), "12:00:00") })
+	out := captureStdout(func() { pollChores(context.Background(), client, state, time.Now(), "12:00:00") })
 
 	if !strings.Contains(out, "Clean room") {
 		t.Errorf("expected completed chore in output, got: %s", out)
@@ -150,7 +151,7 @@ func TestPollChores(t *testing.T) {
 	}
 
 	// Already-seen chores should not be re-printed.
-	out = captureStdout(func() { pollChores(client, state, time.Now(), "12:00:01") })
+	out = captureStdout(func() { pollChores(context.Background(), client, state, time.Now(), "12:00:01") })
 	if strings.Contains(out, "Clean room") {
 		t.Errorf("already-seen chore should not be re-printed, got: %s", out)
 	}
@@ -166,7 +167,7 @@ func TestPollChores_JSONOutput(t *testing.T) {
 	})
 
 	state := &watchState{seenChoreIDs: make(map[string]struct{})}
-	out := captureStdout(func() { pollChores(client, state, time.Now(), "12:00:00") })
+	out := captureStdout(func() { pollChores(context.Background(), client, state, time.Now(), "12:00:00") })
 	if !strings.Contains(out, `"id": "c1"`) {
 		t.Errorf("expected chore id in JSON output, got: %s", out)
 	}
@@ -178,7 +179,7 @@ func TestPollChores_ListError(t *testing.T) {
 	})
 
 	state := &watchState{seenChoreIDs: make(map[string]struct{})}
-	pollChores(client, state, time.Now(), "12:00:00")
+	pollChores(context.Background(), client, state, time.Now(), "12:00:00")
 }
 
 func TestPollCalendar(t *testing.T) {
@@ -200,7 +201,7 @@ func TestPollCalendar(t *testing.T) {
 		seenEventIDs:  make(map[string]struct{}),
 	}
 
-	out := captureStdout(func() { pollCalendar(client, state, time.Now(), "12:00:00") })
+	out := captureStdout(func() { pollCalendar(context.Background(), client, state, time.Now(), "12:00:00") })
 
 	if !strings.Contains(out, "Soon") {
 		t.Errorf("expected event starting within the hour in output, got: %s", out)
@@ -219,7 +220,7 @@ func TestPollCalendar(t *testing.T) {
 	}
 
 	// Already-seen events should not be re-printed.
-	out = captureStdout(func() { pollCalendar(client, state, time.Now(), "12:00:01") })
+	out = captureStdout(func() { pollCalendar(context.Background(), client, state, time.Now(), "12:00:01") })
 	if strings.Contains(out, "Soon") {
 		t.Errorf("already-seen event should not be re-printed, got: %s", out)
 	}
@@ -236,7 +237,7 @@ func TestPollCalendar_JSONOutput(t *testing.T) {
 	})
 
 	state := &watchState{seenEventIDs: make(map[string]struct{})}
-	out := captureStdout(func() { pollCalendar(client, state, time.Now(), "12:00:00") })
+	out := captureStdout(func() { pollCalendar(context.Background(), client, state, time.Now(), "12:00:00") })
 	if !strings.Contains(out, `"id": "e1"`) {
 		t.Errorf("expected event id in JSON output, got: %s", out)
 	}
@@ -249,7 +250,7 @@ func TestPollCalendar_SkipsUnparsableStartTime(t *testing.T) {
 	})
 
 	state := &watchState{seenEventIDs: make(map[string]struct{})}
-	out := captureStdout(func() { pollCalendar(client, state, time.Now(), "12:00:00") })
+	out := captureStdout(func() { pollCalendar(context.Background(), client, state, time.Now(), "12:00:00") })
 	if out != "" {
 		t.Errorf("expected no output for unparsable start time, got: %s", out)
 	}
@@ -264,7 +265,7 @@ func TestPollCalendar_ListError(t *testing.T) {
 	})
 
 	state := &watchState{seenEventIDs: make(map[string]struct{})}
-	pollCalendar(client, state, time.Now(), "12:00:00")
+	pollCalendar(context.Background(), client, state, time.Now(), "12:00:00")
 }
 
 func TestPollLists(t *testing.T) {
@@ -275,7 +276,7 @@ func TestPollLists(t *testing.T) {
 
 	state := &watchState{seenListIDs: make(map[string]struct{})}
 
-	out := captureStdout(func() { pollLists(client, state, "12:00:00") })
+	out := captureStdout(func() { pollLists(context.Background(), client, state, "12:00:00") })
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected new list in output, got: %s", out)
 	}
@@ -284,7 +285,7 @@ func TestPollLists(t *testing.T) {
 	}
 
 	// Already-seen lists should not be re-printed.
-	out = captureStdout(func() { pollLists(client, state, "12:00:01") })
+	out = captureStdout(func() { pollLists(context.Background(), client, state, "12:00:01") })
 	if strings.Contains(out, "Groceries") {
 		t.Errorf("already-seen list should not be re-printed, got: %s", out)
 	}
@@ -300,7 +301,7 @@ func TestPollLists_JSONOutput(t *testing.T) {
 	})
 
 	state := &watchState{seenListIDs: make(map[string]struct{})}
-	out := captureStdout(func() { pollLists(client, state, "12:00:00") })
+	out := captureStdout(func() { pollLists(context.Background(), client, state, "12:00:00") })
 	if !strings.Contains(out, `"id": "l1"`) {
 		t.Errorf("expected list id in JSON output, got: %s", out)
 	}
@@ -312,7 +313,7 @@ func TestPollLists_ListError(t *testing.T) {
 	})
 
 	state := &watchState{seenListIDs: make(map[string]struct{})}
-	pollLists(client, state, "12:00:00")
+	pollLists(context.Background(), client, state, "12:00:00")
 }
 
 func TestPollRoutines(t *testing.T) {
@@ -323,7 +324,7 @@ func TestPollRoutines(t *testing.T) {
 
 	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
 
-	out := captureStdout(func() { pollRoutines(client, state, "12:00:00") })
+	out := captureStdout(func() { pollRoutines(context.Background(), client, state, "12:00:00") })
 	if !strings.Contains(out, "Morning Routine") {
 		t.Errorf("expected new routine in output, got: %s", out)
 	}
@@ -332,7 +333,7 @@ func TestPollRoutines(t *testing.T) {
 	}
 
 	// Already-seen routines should not be re-printed.
-	out = captureStdout(func() { pollRoutines(client, state, "12:00:01") })
+	out = captureStdout(func() { pollRoutines(context.Background(), client, state, "12:00:01") })
 	if strings.Contains(out, "Morning Routine") {
 		t.Errorf("already-seen routine should not be re-printed, got: %s", out)
 	}
@@ -348,7 +349,7 @@ func TestPollRoutines_JSONOutput(t *testing.T) {
 	})
 
 	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
-	out := captureStdout(func() { pollRoutines(client, state, "12:00:00") })
+	out := captureStdout(func() { pollRoutines(context.Background(), client, state, "12:00:00") })
 	if !strings.Contains(out, `"id": "r1"`) {
 		t.Errorf("expected routine id in JSON output, got: %s", out)
 	}
@@ -360,7 +361,7 @@ func TestPollRoutines_ListError(t *testing.T) {
 	})
 
 	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
-	pollRoutines(client, state, "12:00:00")
+	pollRoutines(context.Background(), client, state, "12:00:00")
 }
 
 func TestPoll_AllResources(t *testing.T) {
@@ -392,5 +393,5 @@ func TestPoll_AllResources(t *testing.T) {
 
 	// poll() fans the resources out over goroutines; a clean run with no
 	// panics and no unexpected requests is the behavior under test.
-	poll(client, state, allWatchResources)
+	poll(context.Background(), client, state, allWatchResources)
 }

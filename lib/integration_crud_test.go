@@ -3,6 +3,7 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -21,7 +22,7 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 	prefix := testPrefix()
 	title := prefix + "-chore"
 
-	categories, err := client.ListCategories(frameID)
+	categories, err := client.ListCategories(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListCategories: %v", err)
 	}
@@ -31,7 +32,7 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 	categoryID := categories[0].ID
 
 	// Create
-	chore, err := client.CreateChore(frameID, ChoreData{
+	chore, err := client.CreateChore(context.Background(), frameID, ChoreData{
 		Title:      title,
 		DueDate:    time.Now().Format(DateFormat),
 		AssigneeID: categoryID,
@@ -45,7 +46,7 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 	t.Logf("created chore %s (%s)", chore.Title, chore.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteChore(frameID, chore.ID); err != nil &&
+		if err := client.DeleteChore(context.Background(), frameID, chore.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteChore: %v", err)
 		}
@@ -61,7 +62,7 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 		if attempt > 0 {
 			time.Sleep(2 * time.Second)
 		}
-		chores, err := client.ListChores(frameID, opts)
+		chores, err := client.ListChores(context.Background(), frameID, opts)
 		if err != nil {
 			t.Fatalf("ListChores: %v", err)
 		}
@@ -81,7 +82,7 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 	}
 
 	// Update
-	updated, err := client.UpdateChore(frameID, chore.ID, ChoreData{
+	updated, err := client.UpdateChore(context.Background(), frameID, chore.ID, ChoreData{
 		Title: prefix + "-chore-updated",
 	})
 	if err != nil {
@@ -93,7 +94,7 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 	t.Logf("updated chore title to %q", updated.Title)
 
 	// Complete
-	if err := client.CompleteChore(frameID, chore.ID); err != nil {
+	if err := client.CompleteChore(context.Background(), frameID, chore.ID); err != nil {
 		t.Fatalf("CompleteChore: %v", err)
 	}
 	t.Log("completed chore")
@@ -105,7 +106,7 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	prefix := testPrefix()
 	title := prefix + "-reward"
 
-	categories, err := client.ListCategories(frameID)
+	categories, err := client.ListCategories(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListCategories: %v", err)
 	}
@@ -118,7 +119,7 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	}
 
 	// Create
-	reward, err := client.CreateReward(frameID, RewardData{
+	reward, err := client.CreateReward(context.Background(), frameID, RewardData{
 		Title:       title,
 		Points:      10,
 		CategoryIDs: []int{catIDInt},
@@ -132,14 +133,14 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	t.Logf("created reward %s (%s)", reward.Title, reward.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteReward(frameID, reward.ID); err != nil &&
+		if err := client.DeleteReward(context.Background(), frameID, reward.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteReward: %v", err)
 		}
 	})
 
 	// Verify in list
-	rewards, err := client.ListRewards(frameID)
+	rewards, err := client.ListRewards(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListRewards: %v", err)
 	}
@@ -155,7 +156,7 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	}
 
 	// Update
-	updated, err := client.UpdateReward(frameID, reward.ID, RewardData{
+	updated, err := client.UpdateReward(context.Background(), frameID, reward.ID, RewardData{
 		Title:  prefix + "-reward-updated",
 		Points: 20,
 	})
@@ -168,7 +169,7 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	t.Logf("updated reward to %q (%d pts)", updated.Title, updated.Points)
 
 	// Redeem and unredeem (skip if account lacks points)
-	if err := client.RedeemReward(frameID, reward.ID); err != nil {
+	if err := client.RedeemReward(context.Background(), frameID, reward.ID); err != nil {
 		if strings.Contains(err.Error(), "Not enough points") {
 			t.Skipf("RedeemReward: skipping — account has insufficient points: %v", err)
 		}
@@ -176,7 +177,7 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	}
 	t.Log("redeemed reward")
 
-	if err := client.UnredeemReward(frameID, reward.ID); err != nil {
+	if err := client.UnredeemReward(context.Background(), frameID, reward.ID); err != nil {
 		t.Fatalf("UnredeemReward: %v", err)
 	}
 	t.Log("unredeemed reward")
@@ -191,7 +192,7 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 	endAt := now.AddDate(0, 0, 1).Add(time.Hour).Format(time.RFC3339)
 
 	// Create
-	event, err := client.CreateCalendarEvent(frameID, CalendarEventData{
+	event, err := client.CreateCalendarEvent(context.Background(), frameID, CalendarEventData{
 		Title:   prefix + "-event",
 		StartAt: startAt,
 		EndAt:   endAt,
@@ -208,7 +209,7 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 	t.Logf("created event %s (%s)", event.Title, event.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteCalendarEvent(frameID, event.ID); err != nil &&
+		if err := client.DeleteCalendarEvent(context.Background(), frameID, event.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteCalendarEvent: %v", err)
 		}
@@ -217,7 +218,7 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 	// Verify in list
 	start := now.Format(DateFormat)
 	end := now.AddDate(0, 0, 7).Format(DateFormat)
-	events, err := client.ListCalendarEvents(frameID, start, end, "")
+	events, err := client.ListCalendarEvents(context.Background(), frameID, start, end, "")
 	if err != nil {
 		if strings.Contains(err.Error(), "500") || strings.Contains(err.Error(), "Internal Server Error") {
 			t.Skipf("ListCalendarEvents: skipping due to API instability: %v", err)
@@ -237,7 +238,7 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 
 	// Update
 	newEnd := now.AddDate(0, 0, 1).Add(2 * time.Hour).Format(time.RFC3339)
-	updated, err := client.UpdateCalendarEvent(frameID, event.ID, CalendarEventData{
+	updated, err := client.UpdateCalendarEvent(context.Background(), frameID, event.ID, CalendarEventData{
 		EndAt: newEnd,
 	})
 	if err != nil {
@@ -255,7 +256,7 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	prefix := testPrefix()
 
 	// Create list
-	list, err := client.CreateList(frameID, ListData{
+	list, err := client.CreateList(context.Background(), frameID, ListData{
 		Title: prefix + "-list",
 	})
 	if err != nil {
@@ -267,14 +268,14 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	t.Logf("created list %s (%s)", list.Title, list.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteList(frameID, list.ID); err != nil &&
+		if err := client.DeleteList(context.Background(), frameID, list.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteList: %v", err)
 		}
 	})
 
 	// Verify in list-of-lists
-	lists, err := client.ListLists(frameID)
+	lists, err := client.ListLists(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListLists: %v", err)
 	}
@@ -290,7 +291,7 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	}
 
 	// Add item
-	item, err := client.AddListItem(frameID, list.ID, ListItemData{
+	item, err := client.AddListItem(context.Background(), frameID, list.ID, ListItemData{
 		Title: prefix + "-item",
 	})
 	if err != nil {
@@ -302,14 +303,14 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	t.Logf("added item %s (%s)", item.Title, item.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteListItem(frameID, list.ID, item.ID); err != nil &&
+		if err := client.DeleteListItem(context.Background(), frameID, list.ID, item.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteListItem: %v", err)
 		}
 	})
 
 	// Update item (mark completed)
-	updatedItem, err := client.UpdateListItem(frameID, list.ID, item.ID, ListItemData{
+	updatedItem, err := client.UpdateListItem(context.Background(), frameID, list.ID, item.ID, ListItemData{
 		Completed: true,
 	})
 	if err != nil {
@@ -318,14 +319,14 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	t.Logf("updated item status: %s", updatedItem.Status)
 
 	// Delete item explicitly before list deletion
-	if err := client.DeleteListItem(frameID, list.ID, item.ID); err != nil &&
+	if err := client.DeleteListItem(context.Background(), frameID, list.ID, item.ID); err != nil &&
 		!strings.Contains(err.Error(), "404") {
 		t.Fatalf("DeleteListItem: %v", err)
 	}
 	t.Log("deleted list item")
 
 	// Update list title
-	updated, err := client.UpdateList(frameID, list.ID, ListData{
+	updated, err := client.UpdateList(context.Background(), frameID, list.ID, ListData{
 		Title: prefix + "-list-updated",
 	})
 	if err != nil {
@@ -342,7 +343,7 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 
 	prefix := testPrefix()
 
-	mealCategories, err := client.ListMealCategories(frameID)
+	mealCategories, err := client.ListMealCategories(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListMealCategories: %v", err)
 	}
@@ -352,7 +353,7 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 	mealCategoryID := mealCategories[0].ID
 
 	// Create
-	recipe, err := client.CreateRecipe(frameID, RecipeData{
+	recipe, err := client.CreateRecipe(context.Background(), frameID, RecipeData{
 		Title:          prefix + "-recipe",
 		Description:    "integration test recipe",
 		Ingredients:    []string{"flour", "eggs", "milk"},
@@ -367,14 +368,14 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 	t.Logf("created recipe %s (%s)", recipe.Title, recipe.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteRecipe(frameID, recipe.ID); err != nil &&
+		if err := client.DeleteRecipe(context.Background(), frameID, recipe.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteRecipe: %v", err)
 		}
 	})
 
 	// Verify in list
-	recipes, err := client.ListRecipes(frameID)
+	recipes, err := client.ListRecipes(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListRecipes: %v", err)
 	}
@@ -390,7 +391,7 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 	}
 
 	// Update description
-	updated, err := client.UpdateRecipe(frameID, recipe.ID, RecipeData{
+	updated, err := client.UpdateRecipe(context.Background(), frameID, recipe.ID, RecipeData{
 		Description: "updated description",
 	})
 	if err != nil {
@@ -406,7 +407,7 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	date := time.Now().AddDate(0, 0, 2).Format(DateFormat)
 
 	// Need a recipe and a meal category to create a sitting
-	mealCategories, err := client.ListMealCategories(frameID)
+	mealCategories, err := client.ListMealCategories(context.Background(), frameID)
 	if err != nil {
 		t.Fatalf("ListMealCategories: %v", err)
 	}
@@ -415,7 +416,7 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	}
 	categoryID := mealCategories[0].ID
 
-	recipe, err := client.CreateRecipe(frameID, RecipeData{
+	recipe, err := client.CreateRecipe(context.Background(), frameID, RecipeData{
 		Title:          prefix + "-recipe-for-sitting",
 		MealCategoryID: categoryID,
 	})
@@ -423,14 +424,14 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 		t.Fatalf("CreateRecipe (for sitting): %v", err)
 	}
 	t.Cleanup(func() {
-		if err := client.DeleteRecipe(frameID, recipe.ID); err != nil &&
+		if err := client.DeleteRecipe(context.Background(), frameID, recipe.ID); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteRecipe (for sitting): %v", err)
 		}
 	})
 
 	// Create sitting
-	sitting, err := client.CreateMealSitting(frameID, MealSittingData{
+	sitting, err := client.CreateMealSitting(context.Background(), frameID, MealSittingData{
 		RecipeID:       recipe.ID,
 		MealCategoryID: categoryID,
 		Date:           date,
@@ -444,14 +445,14 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	t.Logf("created meal sitting %s (%s)", sitting.Summary, sitting.ID)
 
 	t.Cleanup(func() {
-		if err := client.DeleteMealSitting(frameID, sitting.ID, date); err != nil &&
+		if err := client.DeleteMealSitting(context.Background(), frameID, sitting.ID, date); err != nil &&
 			!strings.Contains(err.Error(), "404") {
 			t.Logf("cleanup DeleteMealSitting: %v", err)
 		}
 	})
 
 	// Verify in list
-	sittings, err := client.ListMealSittings(frameID, MealSittingListOptions{
+	sittings, err := client.ListMealSittings(context.Background(), frameID, MealSittingListOptions{
 		DateMin: time.Now().Format(DateFormat),
 		DateMax: time.Now().AddDate(0, 0, 7).Format(DateFormat),
 	})
@@ -470,7 +471,7 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	}
 
 	// Delete sitting explicitly
-	if err := client.DeleteMealSitting(frameID, sitting.ID, date); err != nil &&
+	if err := client.DeleteMealSitting(context.Background(), frameID, sitting.ID, date); err != nil &&
 		!strings.Contains(err.Error(), "404") {
 		t.Fatalf("DeleteMealSitting: %v", err)
 	}

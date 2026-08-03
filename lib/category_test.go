@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -66,7 +67,7 @@ func TestListCategories(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			categories, err := client.ListCategories("frame1")
+			categories, err := client.ListCategories(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -113,7 +114,7 @@ func TestListCategoriesRequestBody(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	categories, err := client.ListCategories("frame1")
+	categories, err := client.ListCategories(context.Background(), "frame1")
 	if err != nil {
 		t.Fatalf("ListCategories failed: %v", err)
 	}
@@ -192,7 +193,7 @@ func TestCreateCategory(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			category, err := client.CreateCategory("frame1", tc.input)
+			category, err := client.CreateCategory(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -236,7 +237,7 @@ func TestDeleteCategory(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteCategory("frame1", "cat1")
+			err := client.DeleteCategory(context.Background(), "frame1", "cat1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -316,7 +317,7 @@ func TestUpdateCategory(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			category, err := client.UpdateCategory("frame1", tc.catID, tc.input)
+			category, err := client.UpdateCategory(context.Background(), "frame1", tc.catID, tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

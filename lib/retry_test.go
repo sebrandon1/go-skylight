@@ -265,7 +265,7 @@ func TestDoWithRetry_BodyReplayOnRetry(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	req, _ := newRequestWithBody("POST", srv.URL, testPayload{Value: "hello"})
+	req, _ := newRequestWithBody(context.Background(), "POST", srv.URL, testPayload{Value: "hello"})
 	cfg := retryConfig{maxAttempts: 2, baseDelay: 5 * time.Millisecond, maxDelay: 20 * time.Millisecond}
 
 	resp, err := doWithRetry(context.Background(), http.DefaultClient, nil, cfg, req)
@@ -328,6 +328,32 @@ func TestDoWithRetryContextCancelled(t *testing.T) {
 		var ne *NetworkError
 		if !errors.As(err, &ne) {
 			t.Errorf("expected DeadlineExceeded or *NetworkError, got %T: %v", err, err)
+		}
+	}
+}
+
+func TestDoWithRetry_ContextCancelledMidFlight(t *testing.T) {
+	ready := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(ready)
+		time.Sleep(500 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { <-ready; cancel() }()
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+	cfg := retryConfig{maxAttempts: 3, baseDelay: 10 * time.Millisecond, maxDelay: 100 * time.Millisecond}
+	_, err := doWithRetry(ctx, http.DefaultClient, nil, cfg, req)
+	if err == nil {
+		t.Fatal("expected error from canceled context mid-flight")
+	}
+	if !errors.Is(err, context.Canceled) {
+		var ne *NetworkError
+		if !errors.As(err, &ne) {
+			t.Errorf("expected context.Canceled or *NetworkError, got %T: %v", err, err)
 		}
 	}
 }

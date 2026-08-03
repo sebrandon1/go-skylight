@@ -32,11 +32,12 @@ var rewardRemoveStarsCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.RemoveStars(frameID, removeStarsAssigneeID, removeStarsPoints); err != nil {
+		ctx := cmd.Context()
+		if err := client.RemoveStars(ctx, frameID, removeStarsAssigneeID, removeStarsPoints); err != nil {
 			return fmt.Errorf("removing stars: %w", err)
 		}
 
-		points, err := client.GetRewardPoints(frameID)
+		points, err := client.GetRewardPoints(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("fetching updated reward points: %w", err)
 		}

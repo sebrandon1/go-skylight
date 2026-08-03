@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -27,7 +28,7 @@ func TestWithBaseURL(t *testing.T) {
 	if client.baseURL != srv.URL+"/api" {
 		t.Errorf("baseURL = %q, want %q", client.baseURL, srv.URL+"/api")
 	}
-	events, err := client.ListCalendarEvents("f1", "", "", "")
+	events, err := client.ListCalendarEvents(context.Background(), "f1", "", "", "")
 	if err != nil {
 		t.Fatalf("ListCalendarEvents: %v", err)
 	}
@@ -89,7 +90,7 @@ func TestWithLogger(t *testing.T) {
 	if client.logger != logger {
 		t.Error("logger not set on client")
 	}
-	if _, err = client.ListCalendarEvents("f1", "", "", ""); err != nil {
+	if _, err = client.ListCalendarEvents(context.Background(), "f1", "", "", ""); err != nil {
 		t.Fatalf("ListCalendarEvents: %v", err)
 	}
 }

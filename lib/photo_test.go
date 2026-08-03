@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -66,7 +67,7 @@ func TestListPhotos_Success(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	photos, nextToken, err := client.ListPhotos("frame1", PhotoListOptions{})
+	photos, nextToken, err := client.ListPhotos(context.Background(), "frame1", PhotoListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestListPhotos_WithPageToken(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, _, err := client.ListPhotos("frame1", PhotoListOptions{PageToken: "mytoken"})
+	_, _, err := client.ListPhotos(context.Background(), "frame1", PhotoListOptions{PageToken: "mytoken"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -122,7 +123,7 @@ func TestListPhotos_DefaultPageToken(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, _, err := client.ListPhotos("frame1", PhotoListOptions{})
+	_, _, err := client.ListPhotos(context.Background(), "frame1", PhotoListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -145,7 +146,7 @@ func TestListPhotos_NoNextToken(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, nextToken, err := client.ListPhotos("frame1", PhotoListOptions{})
+	_, nextToken, err := client.ListPhotos(context.Background(), "frame1", PhotoListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -174,7 +175,7 @@ func TestDeletePhotos_Success(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeletePhotos("frame1", []int{1, 2, 3})
+	err := client.DeletePhotos(context.Background(), "frame1", []int{1, 2, 3})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -194,7 +195,7 @@ func TestDeletePhotos_Error(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeletePhotos("frame1", []int{1})
+	err := client.DeletePhotos(context.Background(), "frame1", []int{1})
 	if err == nil {
 		t.Error("expected error for 403 response, got nil")
 	}
@@ -211,7 +212,7 @@ func TestDownloadPhoto_Success(t *testing.T) {
 	defer srv.Close()
 
 	client, _ := NewClientWithToken("u", "t")
-	data, err := client.DownloadPhoto(srv.URL + "/photo.jpg")
+	data, err := client.DownloadPhoto(context.Background(), srv.URL+"/photo.jpg")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -227,7 +228,7 @@ func TestDownloadPhoto_ErrorStatus(t *testing.T) {
 	defer srv.Close()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.DownloadPhoto(srv.URL + "/photo.jpg")
+	_, err := client.DownloadPhoto(context.Background(), srv.URL+"/photo.jpg")
 	if err == nil {
 		t.Error("expected error for 404, got nil")
 	}
@@ -235,7 +236,7 @@ func TestDownloadPhoto_ErrorStatus(t *testing.T) {
 
 func TestDownloadPhoto_BadURL(t *testing.T) {
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.DownloadPhoto("://bad-url")
+	_, err := client.DownloadPhoto(context.Background(), "://bad-url")
 	if err == nil {
 		t.Error("expected error for bad URL, got nil")
 	}
@@ -247,7 +248,7 @@ func TestListPhotos_BadURL(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, _, err := client.ListPhotos("frame1", PhotoListOptions{})
+	_, _, err := client.ListPhotos(context.Background(), "frame1", PhotoListOptions{})
 	if err == nil {
 		t.Error("expected error for bad URL, got nil")
 	}
@@ -259,7 +260,7 @@ func TestDeletePhotos_BadURL(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeletePhotos("frame1", []int{1})
+	err := client.DeletePhotos(context.Background(), "frame1", []int{1})
 	if err == nil {
 		t.Error("expected error for bad URL, got nil")
 	}
@@ -292,7 +293,7 @@ func TestUploadPhoto(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	result, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	result, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -318,7 +319,7 @@ func TestUploadPhoto_PresignError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	_, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err == nil {
 		t.Fatal("expected error for presign failure, got nil")
 	}
@@ -339,7 +340,7 @@ func TestUploadPhoto_EmptyUploadURL(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	_, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err == nil {
 		t.Fatal("expected error for empty upload URL, got nil")
 	}
@@ -354,7 +355,7 @@ func TestUploadPhoto_BadURL(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	_, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err == nil {
 		t.Error("expected error for bad URL, got nil")
 	}
@@ -380,7 +381,7 @@ func TestUploadPhoto_S3NetworkError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	_, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err == nil {
 		t.Fatal("expected error for S3 network error, got nil")
 	}
@@ -395,7 +396,7 @@ func TestDownloadPhoto_NetworkError(t *testing.T) {
 	srv.Close()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.DownloadPhoto(rawURL)
+	_, err := client.DownloadPhoto(context.Background(), rawURL)
 	if err == nil {
 		t.Error("expected error for connection refused, got nil")
 	}
@@ -422,7 +423,7 @@ func TestUploadPhoto_S3Error(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UploadPhoto("frame1", "jpg", []byte("test data"), "")
+	_, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err == nil {
 		t.Fatal("expected error for S3 failure, got nil")
 	}

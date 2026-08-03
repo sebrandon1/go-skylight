@@ -31,7 +31,7 @@ var frameListCmd = &cobra.Command{
 			return err
 		}
 
-		frames, err := client.ListFrames()
+		frames, err := client.ListFrames(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("listing frames: %w", err)
 		}
@@ -54,7 +54,7 @@ var frameInfoCmd = &cobra.Command{
 			return err
 		}
 
-		frame, err := client.GetFrame(frameID)
+		frame, err := client.GetFrame(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("getting frame: %w", err)
 		}
@@ -77,7 +77,7 @@ var frameDevicesCmd = &cobra.Command{
 			return err
 		}
 
-		devices, err := client.ListDevices(frameID)
+		devices, err := client.ListDevices(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing devices: %w", err)
 		}
@@ -96,7 +96,7 @@ var frameAvatarsCmd = &cobra.Command{
 			return err
 		}
 
-		avatars, err := client.GetAvatars()
+		avatars, err := client.GetAvatars(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("getting avatars: %w", err)
 		}
@@ -115,7 +115,7 @@ var frameColorsCmd = &cobra.Command{
 			return err
 		}
 
-		colors, err := client.GetColors()
+		colors, err := client.GetColors(cmd.Context())
 		if err != nil {
 			return fmt.Errorf("getting colors: %w", err)
 		}
@@ -138,7 +138,7 @@ var frameSetAlbumCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.SetCurrentAlbum(frameID, currentAlbumID); err != nil {
+		if err := client.SetCurrentAlbum(cmd.Context(), frameID, currentAlbumID); err != nil {
 			return fmt.Errorf("setting current album: %w", err)
 		}
 
