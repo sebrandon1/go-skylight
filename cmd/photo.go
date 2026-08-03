@@ -44,7 +44,7 @@ var photoListCmd = &cobra.Command{
 			return err
 		}
 
-		photos, nextToken, err := client.ListPhotos(frameID, lib.PhotoListOptions{
+		photos, nextToken, err := client.ListPhotos(cmd.Context(), frameID, lib.PhotoListOptions{
 			PageToken: photoPageToken,
 		})
 		if err != nil {
@@ -91,7 +91,7 @@ var photoUploadCmd = &cobra.Command{
 			return err
 		}
 
-		result, err := client.UploadPhoto(frameID, ext, data, photoCaption)
+		result, err := client.UploadPhoto(cmd.Context(), frameID, ext, data, photoCaption)
 		if err != nil {
 			return fmt.Errorf("uploading photo: %w", err)
 		}
@@ -123,7 +123,7 @@ var photoDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeletePhotos(frameID, ids); err != nil {
+		if err := client.DeletePhotos(cmd.Context(), frameID, ids); err != nil {
 			return fmt.Errorf("deleting photos: %w", err)
 		}
 
@@ -155,9 +155,10 @@ var photoDownloadCmd = &cobra.Command{
 		}
 
 		var toDownload []lib.Photo
+		ctx := cmd.Context()
 		pageToken := ""
 		for {
-			photos, nextToken, err := client.ListPhotos(frameID, lib.PhotoListOptions{PageToken: pageToken})
+			photos, nextToken, err := client.ListPhotos(ctx, frameID, lib.PhotoListOptions{PageToken: pageToken})
 			if err != nil {
 				return fmt.Errorf("listing photos: %w", err)
 			}
@@ -182,7 +183,7 @@ var photoDownloadCmd = &cobra.Command{
 		}
 
 		for _, p := range toDownload {
-			data, err := client.DownloadPhoto(p.AssetURL)
+			data, err := client.DownloadPhoto(ctx, p.AssetURL)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "warning: downloading %s: %v\n", p.ID, err)
 				continue

@@ -33,7 +33,7 @@ var groceryListCmd = &cobra.Command{
 			return err
 		}
 
-		all, err := client.ListLists(frameID)
+		all, err := client.ListLists(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing lists: %w", err)
 		}
@@ -63,7 +63,7 @@ var groceryCreateCmd = &cobra.Command{
 			return err
 		}
 
-		list, err := client.CreateList(frameID, lib.ListData{
+		list, err := client.CreateList(cmd.Context(), frameID, lib.ListData{
 			Title: groceryTitle,
 			Kind:  lib.ListKindGrocery,
 		})
@@ -89,7 +89,7 @@ var groceryOrganizeCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.OrganizeGroceryList(frameID, groceryListID); err != nil {
+		if err := client.OrganizeGroceryList(cmd.Context(), frameID, groceryListID); err != nil {
 			return fmt.Errorf("organizing grocery list: %w", err)
 		}
 
@@ -111,7 +111,7 @@ var groceryOrderCmd = &cobra.Command{
 			return err
 		}
 
-		url, err := client.OrderGroceryList(frameID, groceryListID, groceryRetailer)
+		url, err := client.OrderGroceryList(cmd.Context(), frameID, groceryListID, groceryRetailer)
 		if err != nil {
 			return fmt.Errorf("ordering grocery list: %w", err)
 		}
@@ -138,7 +138,7 @@ var groceryShowCmd = &cobra.Command{
 			return err
 		}
 
-		list, err := client.GetList(frameID, groceryListID)
+		list, err := client.GetList(cmd.Context(), frameID, groceryListID)
 		if err != nil {
 			return fmt.Errorf("getting grocery list: %w", err)
 		}
@@ -162,8 +162,9 @@ var groceryAddCmd = &cobra.Command{
 		}
 
 		added := 0
+		ctx := cmd.Context()
 		for _, item := range groceryItems {
-			if _, err := client.AddListItem(frameID, groceryListID, lib.ListItemData{Title: item}); err != nil {
+			if _, err := client.AddListItem(ctx, frameID, groceryListID, lib.ListItemData{Title: item}); err != nil {
 				if added > 0 {
 					return fmt.Errorf("added %d item(s) before error on %q: %w", added, item, err)
 				}
@@ -190,7 +191,7 @@ var groceryAddRecipeCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.AddRecipeToGroceryList(frameID, groceryRecipeID); err != nil {
+		if err := client.AddRecipeToGroceryList(cmd.Context(), frameID, groceryRecipeID); err != nil {
 			return fmt.Errorf("adding recipe to grocery list: %w", err)
 		}
 
@@ -212,7 +213,7 @@ var groceryClearCmd = &cobra.Command{
 			return err
 		}
 
-		n, err := client.ClearCompletedListItems(frameID, groceryListID)
+		n, err := client.ClearCompletedListItems(cmd.Context(), frameID, groceryListID)
 		if err != nil {
 			if n > 0 {
 				return fmt.Errorf("deleted %d item(s) before error: %w", n, err)

@@ -34,7 +34,7 @@ var rotationCreateCmd = &cobra.Command{
 			return err
 		}
 
-		result, err := client.CreateChoreRotation(frameID, lib.RotationData{
+		result, err := client.CreateChoreRotation(cmd.Context(), frameID, lib.RotationData{
 			Chores:      rotationChores,
 			AssigneeIDs: rotationAssigneeIDs,
 			StartDate:   rotationStartDate,

@@ -55,7 +55,7 @@ var mealCategoriesCmd = &cobra.Command{
 			return err
 		}
 
-		categories, err := client.ListMealCategories(frameID)
+		categories, err := client.ListMealCategories(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing meal categories: %w", err)
 		}
@@ -78,7 +78,7 @@ var mealRecipesCmd = &cobra.Command{
 			return err
 		}
 
-		recipes, err := client.ListRecipes(frameID)
+		recipes, err := client.ListRecipes(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing recipes: %w", err)
 		}
@@ -101,7 +101,7 @@ var mealRecipeInfoCmd = &cobra.Command{
 			return err
 		}
 
-		recipe, err := client.GetRecipe(frameID, recipeID)
+		recipe, err := client.GetRecipe(cmd.Context(), frameID, recipeID)
 		if err != nil {
 			return fmt.Errorf("getting recipe: %w", err)
 		}
@@ -124,7 +124,7 @@ var mealCreateRecipeCmd = &cobra.Command{
 			return err
 		}
 
-		recipe, err := client.CreateRecipe(frameID, lib.RecipeData{
+		recipe, err := client.CreateRecipe(cmd.Context(), frameID, lib.RecipeData{
 			Title:          recipeTitle,
 			Description:    recipeDescription,
 			Ingredients:    recipeIngredients,
@@ -153,7 +153,7 @@ var mealDeleteRecipeCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteRecipe(frameID, recipeID); err != nil {
+		if err := client.DeleteRecipe(cmd.Context(), frameID, recipeID); err != nil {
 			return fmt.Errorf("deleting recipe: %w", err)
 		}
 
@@ -186,7 +186,7 @@ var mealSittingsCmd = &cobra.Command{
 			return err
 		}
 
-		sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{
+		sittings, err := client.ListMealSittings(cmd.Context(), frameID, lib.MealSittingListOptions{
 			DateMin: sittingDateMin,
 			DateMax: sittingDateMax,
 		})
@@ -216,7 +216,7 @@ var mealCreateSittingCmd = &cobra.Command{
 			return err
 		}
 
-		sitting, err := client.CreateMealSitting(frameID, lib.MealSittingData{
+		sitting, err := client.CreateMealSitting(cmd.Context(), frameID, lib.MealSittingData{
 			Summary:        sittingSummary,
 			RecipeID:       recipeID,
 			Date:           sittingDate,
@@ -248,7 +248,7 @@ var mealDeleteSittingCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteMealSitting(frameID, sittingID, sittingDate); err != nil {
+		if err := client.DeleteMealSitting(cmd.Context(), frameID, sittingID, sittingDate); err != nil {
 			return fmt.Errorf("deleting meal sitting: %w", err)
 		}
 
@@ -270,7 +270,7 @@ var mealAddToGroceryCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.AddRecipeToGroceryList(frameID, recipeID); err != nil {
+		if err := client.AddRecipeToGroceryList(cmd.Context(), frameID, recipeID); err != nil {
 			return fmt.Errorf("adding to grocery list: %w", err)
 		}
 
@@ -292,7 +292,7 @@ var mealGetSittingCmd = &cobra.Command{
 			return err
 		}
 
-		sitting, err := client.GetMealSitting(frameID, sittingID)
+		sitting, err := client.GetMealSitting(cmd.Context(), frameID, sittingID)
 		if err != nil {
 			return fmt.Errorf("getting meal sitting: %w", err)
 		}
@@ -315,7 +315,7 @@ var mealSittingRecipeCmd = &cobra.Command{
 			return err
 		}
 
-		result, err := client.GetSittingRecipe(frameID, sittingID)
+		result, err := client.GetSittingRecipe(cmd.Context(), frameID, sittingID)
 		if err != nil {
 			return fmt.Errorf("getting sitting recipe: %w", err)
 		}
@@ -347,7 +347,7 @@ var mealPlanCmd = &cobra.Command{
 			return err
 		}
 
-		result, err := client.PlanMeals(frameID, lib.MealPlanData{
+		result, err := client.PlanMeals(cmd.Context(), frameID, lib.MealPlanData{
 			RecipeIDs:   mealPlanRecipeIDs,
 			CategoryIDs: mealPlanCategoryIDs,
 			StartDate:   mealPlanStartDate,
@@ -392,7 +392,7 @@ var mealUpdateRecipeCmd = &cobra.Command{
 			data.URL = recipeURL
 		}
 
-		recipe, err := client.UpdateRecipe(frameID, recipeID, data)
+		recipe, err := client.UpdateRecipe(cmd.Context(), frameID, recipeID, data)
 		if err != nil {
 			return fmt.Errorf("updating recipe: %w", err)
 		}

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -60,7 +61,7 @@ func TestListFrames(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			frames, err := client.ListFrames()
+			frames, err := client.ListFrames(context.Background())
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -130,7 +131,7 @@ func TestGetFrame(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			frame, err := client.GetFrame("frame1")
+			frame, err := client.GetFrame(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -202,7 +203,7 @@ func TestListDevices(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			devices, err := client.ListDevices("frame1")
+			devices, err := client.ListDevices(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -264,7 +265,7 @@ func TestGetAvatars(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			avatars, err := client.GetAvatars()
+			avatars, err := client.GetAvatars(context.Background())
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -319,7 +320,7 @@ func TestSetCurrentAlbum(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.SetCurrentAlbum("frame1", 42)
+			err := client.SetCurrentAlbum(context.Background(), "frame1", 42)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -371,7 +372,7 @@ func TestGetColors(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			colors, err := client.GetColors()
+			colors, err := client.GetColors(context.Background())
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

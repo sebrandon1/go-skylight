@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,8 +32,8 @@ var activeCatNames map[string]string
 
 // loadCatNames fetches category names for table rendering. Errors are silently
 // ignored so that a failed category lookup never blocks the primary output.
-func loadCatNames(client *lib.Client) {
-	cats, err := client.ListCategories(frameID)
+func loadCatNames(ctx context.Context, client *lib.Client) {
+	cats, err := client.ListCategories(ctx, frameID)
 	if err != nil {
 		return
 	}
@@ -41,9 +42,9 @@ func loadCatNames(client *lib.Client) {
 
 // maybeLoadCatNames populates activeCatNames only when table output is active,
 // so JSON-mode invocations incur no extra API call.
-func maybeLoadCatNames(client *lib.Client) {
+func maybeLoadCatNames(ctx context.Context, client *lib.Client) {
 	if outputFormat == outputTable {
-		loadCatNames(client)
+		loadCatNames(ctx, client)
 	}
 }
 
@@ -85,8 +86,8 @@ func markFlagRequired(cmd *cobra.Command, name string) {
 	}
 }
 
-func getFrameOrFail(client *lib.Client, id string) (*lib.Frame, error) {
-	frame, err := client.GetFrame(id)
+func getFrameOrFail(ctx context.Context, client *lib.Client, id string) (*lib.Frame, error) {
+	frame, err := client.GetFrame(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("getting frame info: %w", err)
 	}

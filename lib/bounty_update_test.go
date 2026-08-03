@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +40,7 @@ func TestUpdateBountySuccess(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	b, err := client.UpdateBounty("frame1", "ch1", "rw1", BountyData{
+	b, err := client.UpdateBounty(context.Background(), "frame1", "ch1", "rw1", BountyData{
 		Title: "Updated chore", Points: 7, RewardTitle: "Updated prize", EmojiIcon: "⭐",
 	})
 	if err != nil {
@@ -68,7 +69,7 @@ func TestUpdateBountyChoreError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UpdateBounty("frame1", "ch1", "rw1", BountyData{Title: "x", Points: 1, RewardTitle: "y"})
+	_, err := client.UpdateBounty(context.Background(), "frame1", "ch1", "rw1", BountyData{Title: "x", Points: 1, RewardTitle: "y"})
 	if err == nil {
 		t.Fatal("expected chore update error")
 	}
@@ -99,7 +100,7 @@ func TestUpdateBountyRewardError(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.UpdateBounty("frame1", "ch1", "rw1", BountyData{Title: "x", Points: 1, RewardTitle: "y"})
+	_, err := client.UpdateBounty(context.Background(), "frame1", "ch1", "rw1", BountyData{Title: "x", Points: 1, RewardTitle: "y"})
 	if err == nil {
 		t.Fatal("expected reward update error")
 	}

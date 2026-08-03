@@ -45,7 +45,7 @@ var listListCmd = &cobra.Command{
 			return err
 		}
 
-		lists, err := client.ListLists(frameID)
+		lists, err := client.ListLists(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing lists: %w", err)
 		}
@@ -68,7 +68,7 @@ var listGetCmd = &cobra.Command{
 			return err
 		}
 
-		list, err := client.GetList(frameID, listID)
+		list, err := client.GetList(cmd.Context(), frameID, listID)
 		if err != nil {
 			return fmt.Errorf("getting list: %w", err)
 		}
@@ -98,7 +98,7 @@ var listCreateCmd = &cobra.Command{
 		if cmd.Flags().Changed("hide-from-frame") {
 			data.HideFromFrame = &listHideFromFrame
 		}
-		list, err := client.CreateList(frameID, data)
+		list, err := client.CreateList(cmd.Context(), frameID, data)
 		if err != nil {
 			return fmt.Errorf("creating list: %w", err)
 		}
@@ -126,7 +126,7 @@ var listDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteList(frameID, listID); err != nil {
+		if err := client.DeleteList(cmd.Context(), frameID, listID); err != nil {
 			return fmt.Errorf("deleting list: %w", err)
 		}
 
@@ -148,7 +148,7 @@ var listAddItemCmd = &cobra.Command{
 			return err
 		}
 
-		item, err := client.AddListItem(frameID, listID, lib.ListItemData{
+		item, err := client.AddListItem(cmd.Context(), frameID, listID, lib.ListItemData{
 			Title:    listItemTitle,
 			Position: listItemPosition,
 		})
@@ -179,7 +179,7 @@ var listDeleteItemCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteListItem(frameID, listID, listItemID); err != nil {
+		if err := client.DeleteListItem(cmd.Context(), frameID, listID, listItemID); err != nil {
 			return fmt.Errorf("deleting list item: %w", err)
 		}
 
@@ -212,7 +212,7 @@ var listUpdateCmd = &cobra.Command{
 			data.HideFromFrame = &listHideFromFrame
 		}
 
-		list, err := client.UpdateList(frameID, listID, data)
+		list, err := client.UpdateList(cmd.Context(), frameID, listID, data)
 		if err != nil {
 			return fmt.Errorf("updating list: %w", err)
 		}
@@ -247,7 +247,7 @@ var listUpdateItemCmd = &cobra.Command{
 			data.Position = listItemPosition
 		}
 
-		item, err := client.UpdateListItem(frameID, listID, listItemID, data)
+		item, err := client.UpdateListItem(cmd.Context(), frameID, listID, listItemID, data)
 		if err != nil {
 			return fmt.Errorf("updating list item: %w", err)
 		}
@@ -270,7 +270,7 @@ var taskBoxItemCreateCmd = &cobra.Command{
 			return err
 		}
 
-		item, err := client.CreateTaskBoxItem(frameID, lib.TaskBoxItemData{
+		item, err := client.CreateTaskBoxItem(cmd.Context(), frameID, lib.TaskBoxItemData{
 			Title: listItemTitle,
 		})
 		if err != nil {
@@ -295,7 +295,7 @@ var listClearCompletedCmd = &cobra.Command{
 			return err
 		}
 
-		deleted, err := client.ClearCompletedListItems(frameID, listID)
+		deleted, err := client.ClearCompletedListItems(cmd.Context(), frameID, listID)
 		if err != nil {
 			if deleted > 0 {
 				return fmt.Errorf("deleted %d item(s) before error: %w", deleted, err)

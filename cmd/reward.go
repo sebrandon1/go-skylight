@@ -60,7 +60,8 @@ var rewardListCmd = &cobra.Command{
 			return err
 		}
 
-		rewards, err := client.ListRewards(frameID)
+		ctx := cmd.Context()
+		rewards, err := client.ListRewards(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("listing rewards: %w", err)
 		}
@@ -84,7 +85,7 @@ var rewardListCmd = &cobra.Command{
 		}
 		rewards = filtered
 
-		maybeLoadCatNames(client)
+		maybeLoadCatNames(ctx, client)
 		printOutput(rewards)
 		return nil
 	},
@@ -117,7 +118,7 @@ var rewardCreateCmd = &cobra.Command{
 		if len(rewardCategoryIDs) > 0 {
 			data.CategoryIDs = rewardCategoryIDs
 		}
-		reward, err := client.CreateReward(frameID, data)
+		reward, err := client.CreateReward(cmd.Context(), frameID, data)
 		if err != nil {
 			return fmt.Errorf("creating reward: %w", err)
 		}
@@ -145,7 +146,7 @@ var rewardDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteReward(frameID, rewardID); err != nil {
+		if err := client.DeleteReward(cmd.Context(), frameID, rewardID); err != nil {
 			return fmt.Errorf("deleting reward: %w", err)
 		}
 
@@ -172,7 +173,7 @@ var rewardRedeemCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.RedeemReward(frameID, rewardID); err != nil {
+		if err := client.RedeemReward(cmd.Context(), frameID, rewardID); err != nil {
 			return fmt.Errorf("redeeming reward: %w", err)
 		}
 
@@ -199,7 +200,7 @@ var rewardUnredeemCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.UnredeemReward(frameID, rewardID); err != nil {
+		if err := client.UnredeemReward(cmd.Context(), frameID, rewardID); err != nil {
 			return fmt.Errorf("unredeeming reward: %w", err)
 		}
 
@@ -221,12 +222,13 @@ var rewardPointsCmd = &cobra.Command{
 			return err
 		}
 
-		points, err := client.GetRewardPoints(frameID)
+		ctx := cmd.Context()
+		points, err := client.GetRewardPoints(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("getting reward points: %w", err)
 		}
 
-		categories, err := client.ListCategories(frameID)
+		categories, err := client.ListCategories(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("listing categories: %w", err)
 		}
@@ -268,7 +270,7 @@ var rewardUpdateCmd = &cobra.Command{
 			data.CategoryIDs = rewardCategoryIDs
 		}
 
-		reward, err := client.UpdateReward(frameID, rewardID, data)
+		reward, err := client.UpdateReward(cmd.Context(), frameID, rewardID, data)
 		if err != nil {
 			return fmt.Errorf("updating reward: %w", err)
 		}

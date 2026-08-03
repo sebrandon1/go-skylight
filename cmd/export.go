@@ -77,7 +77,8 @@ centered on today. Use --resources to limit which resource types are included.`,
 		start := now.AddDate(0, 0, -exportDays).Format(lib.DateFormat)
 		end := now.AddDate(0, 0, exportDays).Format(lib.DateFormat)
 
-		frame, err := getFrameOrFail(client, frameID)
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
 		if err != nil {
 			return err
 		}
@@ -118,7 +119,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 
 		if want[exportResourceChores] {
 			launch(exportResourceChores, func() error {
-				chores, err := client.ListChores(frameID, lib.ChoreListOptions{After: start, Before: end, IncludeLate: true})
+				chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{After: start, Before: end, IncludeLate: true})
 				if err == nil {
 					mu.Lock()
 					data.Chores = chores
@@ -129,7 +130,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 		}
 		if want[exportResourceRewards] {
 			launch(exportResourceRewards, func() error {
-				rewards, err := client.ListRewards(frameID)
+				rewards, err := client.ListRewards(ctx, frameID)
 				if err == nil {
 					mu.Lock()
 					data.Rewards = rewards
@@ -140,7 +141,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 		}
 		if want[exportResourceLists] {
 			launch(exportResourceLists, func() error {
-				lists, err := client.ListLists(frameID)
+				lists, err := client.ListLists(ctx, frameID)
 				if err == nil {
 					mu.Lock()
 					data.Lists = lists
@@ -151,7 +152,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 		}
 		if want[exportResourceRecipes] {
 			launch(exportResourceRecipes, func() error {
-				recipes, err := client.ListRecipes(frameID)
+				recipes, err := client.ListRecipes(ctx, frameID)
 				if err == nil {
 					mu.Lock()
 					data.Recipes = recipes
@@ -162,7 +163,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 		}
 		if want[exportResourceSittings] {
 			launch(exportResourceSittings, func() error {
-				sittings, err := client.ListMealSittings(frameID, lib.MealSittingListOptions{DateMin: start, DateMax: end})
+				sittings, err := client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{DateMin: start, DateMax: end})
 				if err == nil {
 					mu.Lock()
 					data.MealSittings = sittings
@@ -173,7 +174,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 		}
 		if want[exportResourceCalendar] {
 			launch(exportResourceCalendar, func() error {
-				events, err := client.ListCalendarEvents(frameID, start, end, frame.TimeZone)
+				events, err := client.ListCalendarEvents(ctx, frameID, start, end, frame.TimeZone)
 				if err == nil {
 					mu.Lock()
 					data.CalendarEvents = events

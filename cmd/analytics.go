@@ -32,7 +32,8 @@ var analyticsCmd = &cobra.Command{
 		startStr := start.Format(lib.DateFormat)
 		endStr := now.Format(lib.DateFormat)
 
-		frame, err := getFrameOrFail(client, frameID)
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
 		if err != nil {
 			return err
 		}
@@ -56,26 +57,26 @@ var analyticsCmd = &cobra.Command{
 		wg.Add(5)
 		go func() {
 			defer wg.Done()
-			categories, catErr = client.ListCategories(frameID)
+			categories, catErr = client.ListCategories(ctx, frameID)
 		}()
 		go func() {
 			defer wg.Done()
-			chores, choreErr = client.ListChores(frameID, lib.ChoreListOptions{
+			chores, choreErr = client.ListChores(ctx, frameID, lib.ChoreListOptions{
 				After:  startStr,
 				Before: endStr,
 			})
 		}()
 		go func() {
 			defer wg.Done()
-			rewards, rewardErr = client.ListRewards(frameID)
+			rewards, rewardErr = client.ListRewards(ctx, frameID)
 		}()
 		go func() {
 			defer wg.Done()
-			points, pointsErr = client.GetRewardPoints(frameID)
+			points, pointsErr = client.GetRewardPoints(ctx, frameID)
 		}()
 		go func() {
 			defer wg.Done()
-			events, eventErr = client.ListCalendarEvents(frameID, startStr, endStr, frame.TimeZone)
+			events, eventErr = client.ListCalendarEvents(ctx, frameID, startStr, endStr, frame.TimeZone)
 		}()
 		wg.Wait()
 

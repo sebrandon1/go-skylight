@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,8 +12,8 @@ import (
 // ListPhotos retrieves photos (and videos) for a frame with optional pagination.
 // Pass PageToken "__START__" (or empty string) to start from the beginning.
 // Returns the photos, the next page token (empty when no more pages), and any error.
-func (c *Client) ListPhotos(frameID string, opts PhotoListOptions) ([]Photo, string, error) {
-	req, err := newRequest("GET", fmt.Sprintf("%s/frames/%s/messages", c.effectiveURL(), pathSeg(frameID)))
+func (c *Client) ListPhotos(ctx context.Context, frameID string, opts PhotoListOptions) ([]Photo, string, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/messages", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create list photos request: %w", err)
 	}
@@ -44,14 +45,14 @@ func (c *Client) ListPhotos(frameID string, opts PhotoListOptions) ([]Photo, str
 // UploadPhoto uploads an image to a Skylight frame using a two-step S3 presign flow.
 // ext is the file extension without the dot (e.g. "jpg", "png").
 // imageData is the raw image bytes. caption is optional.
-func (c *Client) UploadPhoto(frameID string, ext string, imageData []byte, caption string) (*PhotoUploadResponse, error) {
+func (c *Client) UploadPhoto(ctx context.Context, frameID string, ext string, imageData []byte, caption string) (*PhotoUploadResponse, error) {
 	// Step 1: request a presigned S3 upload URL
 	uploadReq := photoUploadURLRequest{
 		Ext:      strings.ToLower(ext),
 		FrameIDs: []string{frameID},
 		Caption:  caption,
 	}
-	req, err := newRequestWithBody("POST", fmt.Sprintf("%s/upload_url", c.effectiveURL()), uploadReq)
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/upload_url", c.effectiveURL()), uploadReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create upload URL request: %w", err)
 	}
@@ -67,7 +68,7 @@ func (c *Client) UploadPhoto(frameID string, ext string, imageData []byte, capti
 	}
 
 	// Step 2: PUT the raw bytes directly to the presigned S3 URL
-	putReq, err := http.NewRequest("PUT", presignedURL, bytes.NewReader(imageData))
+	putReq, err := http.NewRequestWithContext(ctx, "PUT", presignedURL, bytes.NewReader(imageData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create S3 PUT request: %w", err)
 	}
@@ -91,8 +92,8 @@ func (c *Client) UploadPhoto(frameID string, ext string, imageData []byte, capti
 
 // DownloadPhoto fetches the raw bytes of a photo from its CDN asset URL.
 // The URL is a pre-signed CloudFront URL returned by ListPhotos — no auth header is needed.
-func (c *Client) DownloadPhoto(assetURL string) ([]byte, error) {
-	req, err := http.NewRequest("GET", assetURL, nil)
+func (c *Client) DownloadPhoto(ctx context.Context, assetURL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", assetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create download request: %w", err)
 	}
@@ -112,8 +113,9 @@ func (c *Client) DownloadPhoto(assetURL string) ([]byte, error) {
 }
 
 // DeletePhotos deletes one or more photos by their message IDs.
-func (c *Client) DeletePhotos(frameID string, messageIDs []int) error {
+func (c *Client) DeletePhotos(ctx context.Context, frameID string, messageIDs []int) error {
 	req, err := newRequestWithBody(
+		ctx,
 		"DELETE",
 		fmt.Sprintf("%s/frames/%s/messages/destroy_multiple", c.effectiveURL(), pathSeg(frameID)),
 		photoDeleteRequest{MessageIDs: messageIDs},

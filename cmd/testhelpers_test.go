@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,6 +45,16 @@ func newMockClient(t *testing.T, handler http.HandlerFunc) *lib.Client {
 	return clientAtURL(t, srv.URL)
 }
 
+// setTestContext sets context.Background() on every cobra command in the tree
+// so that cmd.Context() returns a valid (non-nil) context when RunE is called
+// directly in tests (bypassing cobra.ExecuteContext).
+func setTestContext(root *cobra.Command) {
+	root.SetContext(context.Background())
+	for _, c := range root.Commands() {
+		setTestContext(c)
+	}
+}
+
 // pointClientAt wires client up as the active client for a cobra command's
 // Run closure: getClient() returns it via autoClient, and requireFrameID()
 // passes via frameID. Restores prior state via t.Cleanup so package-level
@@ -53,6 +64,7 @@ func pointClientAt(t *testing.T, client *lib.Client) {
 	origAutoClient, origFrameID := autoClient, frameID
 	autoClient = client
 	frameID = "test-frame"
+	setTestContext(rootCmd)
 	t.Cleanup(func() {
 		autoClient = origAutoClient
 		frameID = origFrameID

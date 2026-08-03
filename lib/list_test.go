@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -63,7 +64,7 @@ func TestListLists(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			lists, err := client.ListLists("frame1")
+			lists, err := client.ListLists(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -128,7 +129,7 @@ func TestGetList(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			list, err := client.GetList("frame1", tc.listID)
+			list, err := client.GetList(context.Background(), "frame1", tc.listID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -203,7 +204,7 @@ func TestCreateList(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			list, err := client.CreateList("frame1", tc.input)
+			list, err := client.CreateList(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -267,7 +268,7 @@ func TestUpdateList(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			list, err := client.UpdateList("frame1", "1", ListData{Title: "Test"})
+			list, err := client.UpdateList(context.Background(), "frame1", "1", ListData{Title: "Test"})
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -303,7 +304,7 @@ func TestDeleteList(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteList("frame1", "1")
+			err := client.DeleteList(context.Background(), "frame1", "1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -372,7 +373,7 @@ func TestAddListItem(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			item, err := client.AddListItem("frame1", "1", tc.input)
+			item, err := client.AddListItem(context.Background(), "frame1", "1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -434,7 +435,7 @@ func TestUpdateListItem(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			item, err := client.UpdateListItem("frame1", "1", "item1", tc.input)
+			item, err := client.UpdateListItem(context.Background(), "frame1", "1", "item1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -470,7 +471,7 @@ func TestDeleteListItem(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteListItem("frame1", "1", "item1")
+			err := client.DeleteListItem(context.Background(), "frame1", "1", "item1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -502,7 +503,7 @@ func TestUpdateListFlatJSON(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	if _, err := client.UpdateList("frame1", "1", ListData{Title: "Renamed"}); err != nil {
+	if _, err := client.UpdateList(context.Background(), "frame1", "1", ListData{Title: "Renamed"}); err != nil {
 		t.Fatalf("UpdateList: %v", err)
 	}
 }
@@ -583,7 +584,7 @@ func TestClearCompletedListItems(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			count, err := client.ClearCompletedListItems("frame1", "l1")
+			count, err := client.ClearCompletedListItems(context.Background(), "frame1", "l1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -615,7 +616,7 @@ func TestAddListItem_Completed(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	item, err := client.AddListItem("frame1", "l1", ListItemData{Title: "Done", Completed: true})
+	item, err := client.AddListItem(context.Background(), "frame1", "l1", ListItemData{Title: "Done", Completed: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -648,7 +649,7 @@ func TestUpdateListItem_ExplicitPending(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	item, err := client.UpdateListItem("frame1", "l1", "i1", ListItemData{Completed: false, Title: "", Position: 0})
+	item, err := client.UpdateListItem(context.Background(), "frame1", "l1", "i1", ListItemData{Completed: false, Title: "", Position: 0})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -681,7 +682,7 @@ func TestOrganizeGroceryList(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.OrganizeGroceryList("frame1", "l1")
+	err := client.OrganizeGroceryList(context.Background(), "frame1", "l1")
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -698,7 +699,7 @@ func TestOrganizeGroceryList_Error(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.OrganizeGroceryList("frame1", "l1")
+	err := client.OrganizeGroceryList(context.Background(), "frame1", "l1")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -710,7 +711,7 @@ func TestOrganizeGroceryList_BadURL(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.OrganizeGroceryList("frame1", "l1")
+	err := client.OrganizeGroceryList(context.Background(), "frame1", "l1")
 	if err == nil {
 		t.Error("expected error for bad URL, got nil")
 	}
@@ -737,7 +738,7 @@ func TestOrderGroceryList(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	redirectURL, err := client.OrderGroceryList("frame1", "l1", "")
+	redirectURL, err := client.OrderGroceryList(context.Background(), "frame1", "l1", "")
 	if err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -767,7 +768,7 @@ func TestOrderGroceryList_WithRetailer(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.OrderGroceryList("frame1", "l1", "costco")
+	_, err := client.OrderGroceryList(context.Background(), "frame1", "l1", "costco")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -782,7 +783,7 @@ func TestOrderGroceryList_BadURL(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.OrderGroceryList("frame1", "l1", "")
+	_, err := client.OrderGroceryList(context.Background(), "frame1", "l1", "")
 	if err == nil {
 		t.Error("expected error for bad URL, got nil")
 	}
@@ -799,7 +800,7 @@ func TestOrderGroceryList_Error(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.OrderGroceryList("frame1", "l1", "")
+	_, err := client.OrderGroceryList(context.Background(), "frame1", "l1", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -853,7 +854,7 @@ func TestCreateTaskBoxItem(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			item, err := client.CreateTaskBoxItem("frame1", tc.input)
+			item, err := client.CreateTaskBoxItem(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

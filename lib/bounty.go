@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -10,8 +11,8 @@ import (
 
 // CreateBounty creates a chore and a paired reward as a single bounty.
 // If reward creation fails, a best-effort cleanup deletes the chore.
-func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) {
-	chore, err := c.CreateChore(frameID, ChoreData{
+func (c *Client) CreateBounty(ctx context.Context, frameID string, data BountyData) (*Bounty, error) {
+	chore, err := c.CreateChore(ctx, frameID, ChoreData{
 		Title:      data.Title,
 		Points:     data.Points,
 		DueDate:    data.DueDate,
@@ -26,21 +27,21 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 	if len(categoryIDs) == 0 && data.AssigneeID != "" {
 		id, err := strconv.Atoi(data.AssigneeID)
 		if err != nil {
-			if delErr := c.DeleteChore(frameID, chore.ID); delErr != nil && c.logger != nil {
+			if delErr := c.DeleteChore(ctx, frameID, chore.ID); delErr != nil && c.logger != nil {
 				c.logger.Warn("bounty cleanup: failed to delete chore after assignee parse error", "chore_id", chore.ID, "error", delErr)
 			}
 			return nil, fmt.Errorf("assignee_id %q is not a valid numeric category ID: %w", data.AssigneeID, err)
 		}
 		categoryIDs = []int{id}
 	}
-	reward, err := c.CreateReward(frameID, RewardData{
+	reward, err := c.CreateReward(ctx, frameID, RewardData{
 		Title:       data.RewardTitle,
 		Points:      data.Points,
 		EmojiIcon:   data.EmojiIcon,
 		CategoryIDs: categoryIDs,
 	})
 	if err != nil {
-		if delErr := c.DeleteChore(frameID, chore.ID); delErr != nil && c.logger != nil {
+		if delErr := c.DeleteChore(ctx, frameID, chore.ID); delErr != nil && c.logger != nil {
 			c.logger.Warn("bounty cleanup: failed to delete chore after reward creation error", "chore_id", chore.ID, "error", delErr)
 		}
 		return nil, fmt.Errorf("failed to create bounty reward: %w", err)
@@ -54,9 +55,9 @@ func (c *Client) CreateBounty(frameID string, data BountyData) (*Bounty, error) 
 
 // DeleteBounty deletes the chore and reward that make up a bounty.
 // Both deletions are always attempted; any errors are joined and returned together.
-func (c *Client) DeleteBounty(frameID, choreID, rewardID string) error {
-	choreErr := c.DeleteChore(frameID, choreID)
-	rewardErr := c.DeleteReward(frameID, rewardID)
+func (c *Client) DeleteBounty(ctx context.Context, frameID, choreID, rewardID string) error {
+	choreErr := c.DeleteChore(ctx, frameID, choreID)
+	rewardErr := c.DeleteReward(ctx, frameID, rewardID)
 	if choreErr != nil {
 		choreErr = fmt.Errorf("failed to delete bounty chore: %w", choreErr)
 	}
@@ -68,8 +69,8 @@ func (c *Client) DeleteBounty(frameID, choreID, rewardID string) error {
 
 // UpdateBounty updates the chore and reward that make up a bounty.
 // Only fields set in data are applied; zero-value fields are ignored by the underlying update calls.
-func (c *Client) UpdateBounty(frameID, choreID, rewardID string, data BountyData) (*Bounty, error) {
-	chore, err := c.UpdateChore(frameID, choreID, ChoreData{
+func (c *Client) UpdateBounty(ctx context.Context, frameID, choreID, rewardID string, data BountyData) (*Bounty, error) {
+	chore, err := c.UpdateChore(ctx, frameID, choreID, ChoreData{
 		Title:   data.Title,
 		Points:  data.Points,
 		DueDate: data.DueDate,
@@ -78,7 +79,7 @@ func (c *Client) UpdateBounty(frameID, choreID, rewardID string, data BountyData
 		return nil, fmt.Errorf("failed to update bounty chore: %w", err)
 	}
 
-	reward, err := c.UpdateReward(frameID, rewardID, RewardData{
+	reward, err := c.UpdateReward(ctx, frameID, rewardID, RewardData{
 		Title:     data.RewardTitle,
 		Points:    data.Points,
 		EmojiIcon: data.EmojiIcon,
@@ -92,7 +93,7 @@ func (c *Client) UpdateBounty(frameID, choreID, rewardID string, data BountyData
 
 // ListBounties lists pending chores with points and unredeemed rewards,
 // matching them by point value as a heuristic.
-func (c *Client) ListBounties(frameID string) ([]Bounty, error) {
+func (c *Client) ListBounties(ctx context.Context, frameID string) ([]Bounty, error) {
 	today := time.Now()
 
 	var (
@@ -106,7 +107,7 @@ func (c *Client) ListBounties(frameID string) ([]Bounty, error) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		chores, choreErr = c.ListChores(frameID, ChoreListOptions{
+		chores, choreErr = c.ListChores(ctx, frameID, ChoreListOptions{
 			Status: choreStatusPending,
 			After:  today.AddDate(0, 0, -1).Format(DateFormat),
 			Before: today.AddDate(0, 1, 0).Format(DateFormat),
@@ -114,7 +115,7 @@ func (c *Client) ListBounties(frameID string) ([]Bounty, error) {
 	}()
 	go func() {
 		defer wg.Done()
-		rewards, rewardErr = c.ListRewards(frameID)
+		rewards, rewardErr = c.ListRewards(ctx, frameID)
 	}()
 	wg.Wait()
 

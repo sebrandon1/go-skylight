@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -87,7 +88,7 @@ types. Use --dry-run to preview what would be created without making API calls.`
 		if err != nil {
 			return err
 		}
-		return runImport(client, data, want)
+		return runImport(cmd.Context(), client, data, want)
 	},
 }
 
@@ -108,27 +109,27 @@ func runImportDryRun(data ExportData, want map[string]bool) {
 	}
 }
 
-func runImport(client *lib.Client, data ExportData, want map[string]bool) error {
+func runImport(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool) error {
 	type importFn = func() (int, int)
 	var tasks []importFn
 
 	if want[exportResourceRewards] {
-		tasks = append(tasks, func() (int, int) { return importRewards(client, data.Rewards) })
+		tasks = append(tasks, func() (int, int) { return importRewards(ctx, client, data.Rewards) })
 	}
 	if want[exportResourceChores] {
-		tasks = append(tasks, func() (int, int) { return importChores(client, data.Chores) })
+		tasks = append(tasks, func() (int, int) { return importChores(ctx, client, data.Chores) })
 	}
 	if want[exportResourceLists] {
-		tasks = append(tasks, func() (int, int) { return importLists(client, data.Lists) })
+		tasks = append(tasks, func() (int, int) { return importLists(ctx, client, data.Lists) })
 	}
 	if want[exportResourceRecipes] {
-		tasks = append(tasks, func() (int, int) { return importRecipes(client, data.Recipes) })
+		tasks = append(tasks, func() (int, int) { return importRecipes(ctx, client, data.Recipes) })
 	}
 	if want[exportResourceSittings] {
-		tasks = append(tasks, func() (int, int) { return importSittings(client, data.MealSittings) })
+		tasks = append(tasks, func() (int, int) { return importSittings(ctx, client, data.MealSittings) })
 	}
 	if want[exportResourceCalendar] {
-		tasks = append(tasks, func() (int, int) { return importCalendarEvents(client, data.CalendarEvents) })
+		tasks = append(tasks, func() (int, int) { return importCalendarEvents(ctx, client, data.CalendarEvents) })
 	}
 
 	total, failed := parallelImport(tasks, func(fn importFn) (int, int) { return fn() })
@@ -140,9 +141,9 @@ func runImport(client *lib.Client, data ExportData, want map[string]bool) error 
 	return nil
 }
 
-func importRewards(client *lib.Client, rewards []lib.Reward) (total, failed int) {
+func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward) (total, failed int) {
 	return parallelImport(rewards, func(r lib.Reward) (int, int) {
-		if _, err := client.CreateReward(frameID, lib.RewardData{Title: r.Title, Points: r.Points, EmojiIcon: r.EmojiIcon}); err != nil {
+		if _, err := client.CreateReward(ctx, frameID, lib.RewardData{Title: r.Title, Points: r.Points, EmojiIcon: r.EmojiIcon}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating reward %q: %v\n", r.Title, err)
 			return 1, 1
 		}
@@ -150,9 +151,9 @@ func importRewards(client *lib.Client, rewards []lib.Reward) (total, failed int)
 	})
 }
 
-func importChores(client *lib.Client, chores []lib.Chore) (total, failed int) {
+func importChores(ctx context.Context, client *lib.Client, chores []lib.Chore) (total, failed int) {
 	return parallelImport(chores, func(c lib.Chore) (int, int) {
-		if _, err := client.CreateChore(frameID, lib.ChoreData{Title: c.Title, DueDate: c.DueDate, Points: c.Points, AssigneeID: c.AssigneeID}); err != nil {
+		if _, err := client.CreateChore(ctx, frameID, lib.ChoreData{Title: c.Title, DueDate: c.DueDate, Points: c.Points, AssigneeID: c.AssigneeID}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating chore %q: %v\n", c.Title, err)
 			return 1, 1
 		}
@@ -163,17 +164,17 @@ func importChores(client *lib.Client, chores []lib.Chore) (total, failed int) {
 // importLists parallelizes across lists, but each list's own items are
 // created sequentially after it (AddListItem depends on the parent list's
 // freshly assigned ID), so items are never parallelized against each other.
-func importLists(client *lib.Client, lists []lib.List) (total, failed int) {
+func importLists(ctx context.Context, client *lib.Client, lists []lib.List) (total, failed int) {
 	return parallelImport(lists, func(l lib.List) (int, int) {
 		t, f := 1, 0
-		created, err := client.CreateList(frameID, lib.ListData{Title: l.Title, Color: l.Color, Kind: l.Kind})
+		created, err := client.CreateList(ctx, frameID, lib.ListData{Title: l.Title, Color: l.Color, Kind: l.Kind})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating list %q: %v\n", l.Title, err)
 			return t, 1
 		}
 		for _, item := range l.Items {
 			t++
-			if _, err := client.AddListItem(frameID, created.ID, lib.ListItemData{Title: item.Title}); err != nil {
+			if _, err := client.AddListItem(ctx, frameID, created.ID, lib.ListItemData{Title: item.Title}); err != nil {
 				fmt.Fprintf(os.Stderr, "Error adding item %q to list %q: %v\n", item.Title, l.Title, err)
 				f++
 			}
@@ -182,9 +183,9 @@ func importLists(client *lib.Client, lists []lib.List) (total, failed int) {
 	})
 }
 
-func importRecipes(client *lib.Client, recipes []lib.Recipe) (total, failed int) {
+func importRecipes(ctx context.Context, client *lib.Client, recipes []lib.Recipe) (total, failed int) {
 	return parallelImport(recipes, func(r lib.Recipe) (int, int) {
-		if _, err := client.CreateRecipe(frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL}); err != nil {
+		if _, err := client.CreateRecipe(ctx, frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating recipe %q: %v\n", r.Title, err)
 			return 1, 1
 		}
@@ -192,9 +193,9 @@ func importRecipes(client *lib.Client, recipes []lib.Recipe) (total, failed int)
 	})
 }
 
-func importSittings(client *lib.Client, sittings []lib.MealSitting) (total, failed int) {
+func importSittings(ctx context.Context, client *lib.Client, sittings []lib.MealSitting) (total, failed int) {
 	return parallelImport(sittings, func(s lib.MealSitting) (int, int) {
-		if _, err := client.CreateMealSitting(frameID, lib.MealSittingData{Summary: s.Summary, Date: s.Date}); err != nil {
+		if _, err := client.CreateMealSitting(ctx, frameID, lib.MealSittingData{Summary: s.Summary, Date: s.Date}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating meal sitting %q: %v\n", s.Summary, err)
 			return 1, 1
 		}
@@ -202,10 +203,10 @@ func importSittings(client *lib.Client, sittings []lib.MealSitting) (total, fail
 	})
 }
 
-func importCalendarEvents(client *lib.Client, events []lib.CalendarEvent) (total, failed int) {
+func importCalendarEvents(ctx context.Context, client *lib.Client, events []lib.CalendarEvent) (total, failed int) {
 	return parallelImport(events, func(e lib.CalendarEvent) (int, int) {
 		allDay := e.AllDay
-		if _, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: &allDay}); err != nil {
+		if _, err := client.CreateCalendarEvent(ctx, frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: &allDay}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating calendar event %q: %v\n", e.Title, err)
 			return 1, 1
 		}

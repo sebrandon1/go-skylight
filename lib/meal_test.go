@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -61,7 +62,7 @@ func TestListRecipes(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			recipes, err := client.ListRecipes("frame1")
+			recipes, err := client.ListRecipes(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -116,7 +117,7 @@ func TestGetRecipe(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			recipe, err := client.GetRecipe("frame1", tc.recipeID)
+			recipe, err := client.GetRecipe(context.Background(), "frame1", tc.recipeID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -188,7 +189,7 @@ func TestCreateRecipe(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			recipe, err := client.CreateRecipe("frame1", tc.input)
+			recipe, err := client.CreateRecipe(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -241,7 +242,7 @@ func TestUpdateRecipe(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			recipe, err := client.UpdateRecipe("frame1", "1", RecipeData{Title: "Updated Pasta"})
+			recipe, err := client.UpdateRecipe(context.Background(), "frame1", "1", RecipeData{Title: "Updated Pasta"})
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -277,7 +278,7 @@ func TestDeleteRecipe(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteRecipe("frame1", "1")
+			err := client.DeleteRecipe(context.Background(), "frame1", "1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -327,7 +328,7 @@ func TestListMealCategories(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			categories, err := client.ListMealCategories("frame1")
+			categories, err := client.ListMealCategories(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -382,7 +383,7 @@ func TestListMealSittings(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			sittings, err := client.ListMealSittings("frame1", MealSittingListOptions{})
+			sittings, err := client.ListMealSittings(context.Background(), "frame1", MealSittingListOptions{})
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -481,7 +482,7 @@ func TestCreateMealSitting(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			sitting, err := client.CreateMealSitting("frame1", tc.input)
+			sitting, err := client.CreateMealSitting(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -533,7 +534,7 @@ func TestAddRecipeToGroceryList(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.AddRecipeToGroceryList("frame1", tc.recipeID)
+			err := client.AddRecipeToGroceryList(context.Background(), "frame1", tc.recipeID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -571,7 +572,7 @@ func TestCreateMealSittingFieldNames(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	if _, err := client.CreateMealSitting("frame1", MealSittingData{RecipeID: "recipe1", Date: "2024-01-15"}); err != nil {
+	if _, err := client.CreateMealSitting(context.Background(), "frame1", MealSittingData{RecipeID: "recipe1", Date: "2024-01-15"}); err != nil {
 		t.Fatalf("CreateMealSitting: %v", err)
 	}
 }
@@ -628,7 +629,7 @@ func TestCreateMealSittingSummary(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			if _, err := client.CreateMealSitting("frame1", tc.input); err != nil {
+			if _, err := client.CreateMealSitting(context.Background(), "frame1", tc.input); err != nil {
 				t.Fatalf("CreateMealSitting: %v", err)
 			}
 		})
@@ -689,7 +690,7 @@ func TestGetMealSitting(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			sitting, err := client.GetMealSitting("frame1", tc.sittingID)
+			sitting, err := client.GetMealSitting(context.Background(), "frame1", tc.sittingID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -773,7 +774,7 @@ func TestGetSittingRecipe(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			result, err := client.GetSittingRecipe("frame1", "s1")
+			result, err := client.GetSittingRecipe(context.Background(), "frame1", "s1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -812,7 +813,7 @@ func TestDeleteMealSitting(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteMealSitting("frame1", "sitting1", "2026-04-28")
+			err := client.DeleteMealSitting(context.Background(), "frame1", "sitting1", "2026-04-28")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -840,7 +841,7 @@ func TestListMealSittings_DateParams(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.ListMealSittings("frame1", MealSittingListOptions{DateMin: "2024-01-01", DateMax: "2024-01-31"})
+	_, err := client.ListMealSittings(context.Background(), "frame1", MealSittingListOptions{DateMin: "2024-01-01", DateMax: "2024-01-31"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -867,7 +868,7 @@ func TestCreateMealSitting_EmptyResponse(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.CreateMealSitting("frame1", MealSittingData{RecipeID: "r1", Date: "2024-01-15"})
+	_, err := client.CreateMealSitting(context.Background(), "frame1", MealSittingData{RecipeID: "r1", Date: "2024-01-15"})
 	if err == nil {
 		t.Fatal("expected error for empty response, got nil")
 	}
@@ -901,7 +902,7 @@ func TestPlanMeals(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	result, err := client.PlanMeals("frame1", MealPlanData{
+	result, err := client.PlanMeals(context.Background(), "frame1", MealPlanData{
 		RecipeIDs:   []string{"r1", "r2", "r3", "r4", "r5"},
 		CategoryIDs: []string{"cat-lunch", "cat-dinner"},
 		StartDate:   "2026-04-21",
@@ -929,7 +930,7 @@ func TestPlanMealsValidation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.PlanMeals("frame1", tc.data)
+			_, err := client.PlanMeals(context.Background(), "frame1", tc.data)
 			if err == nil {
 				t.Error("expected validation error, got nil")
 			}
@@ -970,7 +971,7 @@ func TestPlanMealsDayRotation(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	_, err := client.PlanMeals("frame1", MealPlanData{
+	_, err := client.PlanMeals(context.Background(), "frame1", MealPlanData{
 		RecipeIDs:   []string{"r1", "r2", "r3", "r4"},
 		CategoryIDs: []string{"lunch", "dinner"},
 		StartDate:   "2026-04-21",
@@ -1023,7 +1024,7 @@ func TestPlanMealsPartialFailure(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	result, err := client.PlanMeals("frame1", MealPlanData{
+	result, err := client.PlanMeals(context.Background(), "frame1", MealPlanData{
 		RecipeIDs:   []string{"r1", "r2", "r3"},
 		CategoryIDs: []string{"cat1"},
 		StartDate:   "2026-04-21",

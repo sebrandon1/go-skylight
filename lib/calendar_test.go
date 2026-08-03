@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -95,7 +96,7 @@ func TestListCalendarEvents(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			events, err := client.ListCalendarEvents("frame1", tc.dateMin, tc.dateMax, tc.timezone)
+			events, err := client.ListCalendarEvents(context.Background(), "frame1", tc.dateMin, tc.dateMax, tc.timezone)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -184,7 +185,7 @@ func TestCreateCalendarEvent(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			event, err := client.CreateCalendarEvent("frame1", tc.input)
+			event, err := client.CreateCalendarEvent(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -279,7 +280,7 @@ func TestUpdateCalendarEvent(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			event, err := client.UpdateCalendarEvent("frame1", tc.eventID, tc.input)
+			event, err := client.UpdateCalendarEvent(context.Background(), "frame1", tc.eventID, tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -339,7 +340,7 @@ func TestDeleteCalendarEvent(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteCalendarEvent("frame1", tc.eventID)
+			err := client.DeleteCalendarEvent(context.Background(), "frame1", tc.eventID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -406,7 +407,7 @@ func TestListSourceCalendars(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			calendars, err := client.ListSourceCalendars("frame1")
+			calendars, err := client.ListSourceCalendars(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

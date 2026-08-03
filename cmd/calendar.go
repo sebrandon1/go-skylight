@@ -57,12 +57,13 @@ var calendarListCmd = &cobra.Command{
 			return err
 		}
 
-		frame, err := getFrameOrFail(client, frameID)
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
 		if err != nil {
 			return err
 		}
 
-		events, err := client.ListCalendarEvents(frameID, calendarStartDate, calendarEndDate, frame.TimeZone)
+		events, err := client.ListCalendarEvents(ctx, frameID, calendarStartDate, calendarEndDate, frame.TimeZone)
 		if err != nil {
 			return fmt.Errorf("listing calendar events: %w", err)
 		}
@@ -86,7 +87,7 @@ var calendarCreateCmd = &cobra.Command{
 		}
 
 		allDay := calendarAllDay
-		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
+		event, err := client.CreateCalendarEvent(cmd.Context(), frameID, lib.CalendarEventData{
 			Title:   calendarTitle,
 			StartAt: calendarStartAt,
 			EndAt:   calendarEndAt,
@@ -114,7 +115,7 @@ var calendarDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteCalendarEvent(frameID, calendarEventID); err != nil {
+		if err := client.DeleteCalendarEvent(cmd.Context(), frameID, calendarEventID); err != nil {
 			return fmt.Errorf("deleting calendar event: %w", err)
 		}
 
@@ -136,7 +137,7 @@ var sourceCalendarsCmd = &cobra.Command{
 			return err
 		}
 
-		calendars, err := client.ListSourceCalendars(frameID)
+		calendars, err := client.ListSourceCalendars(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing source calendars: %w", err)
 		}
@@ -174,7 +175,7 @@ var calendarUpdateCmd = &cobra.Command{
 			data.AllDay = &allDay
 		}
 
-		event, err := client.UpdateCalendarEvent(frameID, calendarEventID, data)
+		event, err := client.UpdateCalendarEvent(cmd.Context(), frameID, calendarEventID, data)
 		if err != nil {
 			return fmt.Errorf("updating calendar event: %w", err)
 		}
@@ -202,7 +203,7 @@ var calendarCreateCountdownCmd = &cobra.Command{
 		}
 
 		allDayTrue := true
-		event, err := client.CreateCalendarEvent(frameID, lib.CalendarEventData{
+		event, err := client.CreateCalendarEvent(cmd.Context(), frameID, lib.CalendarEventData{
 			Title:     calendarTitle,
 			StartAt:   calendarCountdownDate,
 			AllDay:    &allDayTrue,
@@ -242,12 +243,14 @@ var calendarWeekCmd = &cobra.Command{
 			return err
 		}
 
-		frame, err := getFrameOrFail(client, frameID)
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
 		if err != nil {
 			return err
 		}
 
 		events, err := client.ListCalendarEvents(
+			ctx,
 			frameID,
 			monday.Format(lib.DateFormat),
 			sunday.Format(lib.DateFormat),

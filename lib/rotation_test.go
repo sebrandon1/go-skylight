@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -42,7 +43,7 @@ func TestCreateChoreRotation(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	result, err := client.CreateChoreRotation("frame1", RotationData{
+	result, err := client.CreateChoreRotation(context.Background(), "frame1", RotationData{
 		Chores:      []string{"Dishes", "Vacuum"},
 		AssigneeIDs: []string{"a1", "a2"},
 		StartDate:   "2024-01-01",
@@ -77,7 +78,7 @@ func TestCreateChoreRotationValidation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := client.CreateChoreRotation("frame1", tc.data)
+			_, err := client.CreateChoreRotation(context.Background(), "frame1", tc.data)
 			if err == nil {
 				t.Error("expected validation error, got nil")
 			}
@@ -115,7 +116,7 @@ func TestCreateChoreRotationPartialFailure(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	result, err := client.CreateChoreRotation("frame1", RotationData{
+	result, err := client.CreateChoreRotation(context.Background(), "frame1", RotationData{
 		Chores:      []string{"Dishes", "Vacuum"},
 		AssigneeIDs: []string{"a1", "a2"},
 		StartDate:   "2024-01-01",

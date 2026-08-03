@@ -145,14 +145,15 @@ for a given member are ignored and do not break streaks.`,
 			wg         sync.WaitGroup
 		)
 
+		ctx := cmd.Context()
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			categories, catErr = client.ListCategories(frameID)
+			categories, catErr = client.ListCategories(ctx, frameID)
 		}()
 		go func() {
 			defer wg.Done()
-			chores, choreErr = client.ListChores(frameID, lib.ChoreListOptions{
+			chores, choreErr = client.ListChores(ctx, frameID, lib.ChoreListOptions{
 				After:       start,
 				Before:      end,
 				IncludeLate: true,

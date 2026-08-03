@@ -143,11 +143,11 @@ func (p *RewardsPoller) poll(ctx context.Context) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		childNames = p.resolveChildNames()
+		childNames = p.resolveChildNames(ctx)
 	}()
 	go func() {
 		defer wg.Done()
-		rewards, rewardErr = p.client.ListRewards(p.frameID)
+		rewards, rewardErr = p.client.ListRewards(ctx, p.frameID)
 	}()
 	wg.Wait()
 
@@ -219,8 +219,8 @@ func sameStringSet(a, b map[string]struct{}) bool {
 	return true
 }
 
-func (p *RewardsPoller) resolveChildNames() map[string]string {
-	categories, err := p.client.ListCategories(p.frameID)
+func (p *RewardsPoller) resolveChildNames(ctx context.Context) map[string]string {
+	categories, err := p.client.ListCategories(ctx, p.frameID)
 	if err != nil {
 		return nil
 	}

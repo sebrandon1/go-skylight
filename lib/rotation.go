@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,7 +13,7 @@ const rotationWorkerCount = 5
 
 // CreateChoreRotation generates rotating chore assignments across family members over N weeks.
 // Creates are parallelized with a bounded worker pool (rotationWorkerCount).
-func (c *Client) CreateChoreRotation(frameID string, data RotationData) (*RotationResult, error) {
+func (c *Client) CreateChoreRotation(ctx context.Context, frameID string, data RotationData) (*RotationResult, error) {
 	if len(data.Chores) == 0 {
 		return nil, errors.New("at least one chore is required")
 	}
@@ -65,7 +66,7 @@ func (c *Client) CreateChoreRotation(frameID string, data RotationData) (*Rotati
 		go func(j job) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			chore, err := c.CreateChore(frameID, ChoreData{
+			chore, err := c.CreateChore(ctx, frameID, ChoreData{
 				Title:      j.title,
 				DueDate:    j.dueDate,
 				Points:     data.Points,

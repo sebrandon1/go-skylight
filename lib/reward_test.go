@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -70,7 +71,7 @@ func TestListRewards(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			rewards, err := client.ListRewards("frame1")
+			rewards, err := client.ListRewards(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -161,7 +162,7 @@ func TestCreateReward(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			reward, err := client.CreateReward("frame1", tc.input)
+			reward, err := client.CreateReward(context.Background(), "frame1", tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -241,7 +242,7 @@ func TestUpdateReward(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			reward, err := client.UpdateReward("frame1", tc.rewardID, tc.input)
+			reward, err := client.UpdateReward(context.Background(), "frame1", tc.rewardID, tc.input)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -280,7 +281,7 @@ func TestDeleteReward(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteReward("frame1", "reward1")
+			err := client.DeleteReward(context.Background(), "frame1", "reward1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -329,7 +330,7 @@ func TestRedeemReward(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.RedeemReward("frame1", tc.rewardID)
+			err := client.RedeemReward(context.Background(), "frame1", tc.rewardID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -360,7 +361,7 @@ func TestUnredeemReward(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.UnredeemReward("frame1", tc.rewardID)
+			err := client.UnredeemReward(context.Background(), "frame1", tc.rewardID)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -420,7 +421,7 @@ func TestRemoveStars(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.RemoveStars("frame1", tc.categoryID, tc.points)
+			err := client.RemoveStars(context.Background(), "frame1", tc.categoryID, tc.points)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -488,7 +489,7 @@ func TestGetRewardPoints(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			points, err := client.GetRewardPoints("frame1")
+			points, err := client.GetRewardPoints(context.Background(), "frame1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

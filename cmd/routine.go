@@ -33,12 +33,13 @@ var routineListCmd = &cobra.Command{
 			return err
 		}
 
-		routines, err := client.ListRoutines(frameID)
+		ctx := cmd.Context()
+		routines, err := client.ListRoutines(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("listing routines: %w", err)
 		}
 
-		maybeLoadCatNames(client)
+		maybeLoadCatNames(ctx, client)
 		printOutput(routines)
 		return nil
 	},
@@ -57,7 +58,7 @@ var routineCreateCmd = &cobra.Command{
 			return err
 		}
 
-		routine, err := client.CreateRoutine(frameID, lib.RoutineData{
+		routine, err := client.CreateRoutine(cmd.Context(), frameID, lib.RoutineData{
 			Title:      routineTitle,
 			AssigneeID: routineAssignee,
 			Steps:      filterEmptyStrings(routineSteps),
@@ -95,7 +96,7 @@ var routineUpdateCmd = &cobra.Command{
 			data.Steps = filterEmptyStrings(routineSteps)
 		}
 
-		routine, err := client.UpdateRoutine(frameID, routineID, data)
+		routine, err := client.UpdateRoutine(cmd.Context(), frameID, routineID, data)
 		if err != nil {
 			return fmt.Errorf("updating routine: %w", err)
 		}
@@ -118,7 +119,7 @@ var routineDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteRoutine(frameID, routineID); err != nil {
+		if err := client.DeleteRoutine(cmd.Context(), frameID, routineID); err != nil {
 			return fmt.Errorf("deleting routine: %w", err)
 		}
 
@@ -140,7 +141,7 @@ var routineReorderCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.ReorderRoutines(frameID, routineIDs); err != nil {
+		if err := client.ReorderRoutines(cmd.Context(), frameID, routineIDs); err != nil {
 			return fmt.Errorf("reordering routines: %w", err)
 		}
 

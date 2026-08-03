@@ -1,12 +1,15 @@
 package lib
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestNewClientWithToken(t *testing.T) {
@@ -176,7 +179,7 @@ func TestAuthorizationHeader(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("user1", "token1")
-	_, err := client.ListCategories("frame1")
+	_, err := client.ListCategories(context.Background(), "frame1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -190,14 +193,14 @@ func TestHTTPMethodErrorStatus(t *testing.T) {
 		{
 			name: "PUT 400 returns error",
 			fn: func(c *Client) error {
-				_, err := c.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
+				_, err := c.UpdateCalendarEvent(context.Background(), "frame1", "evt1", CalendarEventData{Title: "Test"})
 				return err
 			},
 		},
 		{
 			name: "PATCH 400 returns error",
 			fn: func(c *Client) error {
-				_, err := c.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
+				_, err := c.UpdateReward(context.Background(), "frame1", "r1", RewardData{Title: "Test"})
 				return err
 			},
 		},
@@ -237,7 +240,7 @@ func TestStatusCodeHandling(t *testing.T) {
 			name:   "PUT 204 no content succeeds",
 			status: http.StatusNoContent,
 			fn: func(c *Client) error {
-				_, err := c.UpdateList("frame1", "1", ListData{Title: "Test"})
+				_, err := c.UpdateList(context.Background(), "frame1", "1", ListData{Title: "Test"})
 				return err
 			},
 		},
@@ -246,7 +249,7 @@ func TestStatusCodeHandling(t *testing.T) {
 			status: http.StatusCreated,
 			body:   `{"data":{"id":"1","attributes":{"label":"New List","color":"","kind":""}}}`,
 			fn: func(c *Client) error {
-				list, err := c.UpdateList("frame1", "1", ListData{Title: "New List"})
+				list, err := c.UpdateList(context.Background(), "frame1", "1", ListData{Title: "New List"})
 				if err == nil && list.Title != "New List" {
 					t.Errorf("Title: want 'New List' got %q", list.Title)
 				}
@@ -257,7 +260,7 @@ func TestStatusCodeHandling(t *testing.T) {
 			name:   "PATCH 204 no content succeeds",
 			status: http.StatusNoContent,
 			fn: func(c *Client) error {
-				_, err := c.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
+				_, err := c.UpdateReward(context.Background(), "frame1", "r1", RewardData{Title: "Test"})
 				return err
 			},
 		},
@@ -265,14 +268,14 @@ func TestStatusCodeHandling(t *testing.T) {
 			name:   "DELETE 200 OK succeeds",
 			status: http.StatusOK,
 			fn: func(c *Client) error {
-				return c.DeleteCalendarEvent("frame1", "evt1")
+				return c.DeleteCalendarEvent(context.Background(), "frame1", "evt1")
 			},
 		},
 		{
 			name:   "POST with nil response target succeeds",
 			status: http.StatusOK,
 			fn: func(c *Client) error {
-				return c.RedeemReward("frame1", "r1")
+				return c.RedeemReward(context.Background(), "frame1", "r1")
 			},
 		},
 	}
@@ -311,35 +314,35 @@ func TestInvalidJSONResponse(t *testing.T) {
 		{
 			name: "GET invalid JSON",
 			fn: func(c *Client) error {
-				_, err := c.GetRewardPoints("frame1")
+				_, err := c.GetRewardPoints(context.Background(), "frame1")
 				return err
 			},
 		},
 		{
 			name: "POST invalid JSON",
 			fn: func(c *Client) error {
-				_, err := c.CreateList("frame1", ListData{Title: "Test"})
+				_, err := c.CreateList(context.Background(), "frame1", ListData{Title: "Test"})
 				return err
 			},
 		},
 		{
 			name: "PUT invalid JSON",
 			fn: func(c *Client) error {
-				_, err := c.UpdateCalendarEvent("frame1", "evt1", CalendarEventData{Title: "Test"})
+				_, err := c.UpdateCalendarEvent(context.Background(), "frame1", "evt1", CalendarEventData{Title: "Test"})
 				return err
 			},
 		},
 		{
 			name: "PATCH invalid JSON",
 			fn: func(c *Client) error {
-				_, err := c.UpdateReward("frame1", "r1", RewardData{Title: "Test"})
+				_, err := c.UpdateReward(context.Background(), "frame1", "r1", RewardData{Title: "Test"})
 				return err
 			},
 		},
 		{
 			name: "GET not-JSON string",
 			fn: func(c *Client) error {
-				_, err := c.ListCategories("frame1")
+				_, err := c.ListCategories(context.Background(), "frame1")
 				return err
 			},
 		},
@@ -373,14 +376,20 @@ func TestConnectionRefusedErrors(t *testing.T) {
 		name string
 		fn   func(*Client) error
 	}{
-		{"GET", func(c *Client) error { _, err := c.GetFrame("frame1"); return err }},
-		{"POST", func(c *Client) error { _, err := c.CreateReward("frame1", RewardData{Title: "T"}); return err }},
-		{"PUT", func(c *Client) error {
-			_, err := c.UpdateCalendarEvent("frame1", "e1", CalendarEventData{Title: "T"})
+		{"GET", func(c *Client) error { _, err := c.GetFrame(context.Background(), "frame1"); return err }},
+		{"POST", func(c *Client) error {
+			_, err := c.CreateReward(context.Background(), "frame1", RewardData{Title: "T"})
 			return err
 		}},
-		{"PATCH", func(c *Client) error { _, err := c.UpdateReward("frame1", "r1", RewardData{Title: "T"}); return err }},
-		{"DELETE", func(c *Client) error { return c.DeleteCalendarEvent("frame1", "evt1") }},
+		{"PUT", func(c *Client) error {
+			_, err := c.UpdateCalendarEvent(context.Background(), "frame1", "e1", CalendarEventData{Title: "T"})
+			return err
+		}},
+		{"PATCH", func(c *Client) error {
+			_, err := c.UpdateReward(context.Background(), "frame1", "r1", RewardData{Title: "T"})
+			return err
+		}},
+		{"DELETE", func(c *Client) error { return c.DeleteCalendarEvent(context.Background(), "frame1", "evt1") }},
 		{"Login", func(*Client) error { _, err := NewClient("test@example.com", "pw"); return err }},
 	}
 
@@ -404,54 +413,99 @@ func TestBadURLNewRequestErrors(t *testing.T) {
 		fn   func(*Client) error
 	}{
 		// GET-based
-		{"ListCalendarEvents", func(c *Client) error { _, err := c.ListCalendarEvents("f", "", "", ""); return err }},
-		{"ListSourceCalendars", func(c *Client) error { _, err := c.ListSourceCalendars("f"); return err }},
-		{"ListCategories", func(c *Client) error { _, err := c.ListCategories("f"); return err }},
-		{"ListChores", func(c *Client) error { _, err := c.ListChores("f", ChoreListOptions{}); return err }},
-		{"GetFrame", func(c *Client) error { _, err := c.GetFrame("f"); return err }},
-		{"ListDevices", func(c *Client) error { _, err := c.ListDevices("f"); return err }},
-		{"GetAvatars", func(c *Client) error { _, err := c.GetAvatars(); return err }},
-		{"GetColors", func(c *Client) error { _, err := c.GetColors(); return err }},
-		{"ListLists", func(c *Client) error { _, err := c.ListLists("f"); return err }},
-		{"GetList", func(c *Client) error { _, err := c.GetList("f", "1"); return err }},
-		{"ListRewards", func(c *Client) error { _, err := c.ListRewards("f"); return err }},
-		{"GetRewardPoints", func(c *Client) error { _, err := c.GetRewardPoints("f"); return err }},
-		{"ListRecipes", func(c *Client) error { _, err := c.ListRecipes("f"); return err }},
-		{"GetRecipe", func(c *Client) error { _, err := c.GetRecipe("f", "1"); return err }},
-		{"ListMealCategories", func(c *Client) error { _, err := c.ListMealCategories("f"); return err }},
-		{"ListMealSittings", func(c *Client) error { _, err := c.ListMealSittings("f", MealSittingListOptions{}); return err }},
+		{"ListCalendarEvents", func(c *Client) error {
+			_, err := c.ListCalendarEvents(context.Background(), "f", "", "", "")
+			return err
+		}},
+		{"ListSourceCalendars", func(c *Client) error { _, err := c.ListSourceCalendars(context.Background(), "f"); return err }},
+		{"ListCategories", func(c *Client) error { _, err := c.ListCategories(context.Background(), "f"); return err }},
+		{"ListChores", func(c *Client) error {
+			_, err := c.ListChores(context.Background(), "f", ChoreListOptions{})
+			return err
+		}},
+		{"GetFrame", func(c *Client) error { _, err := c.GetFrame(context.Background(), "f"); return err }},
+		{"ListDevices", func(c *Client) error { _, err := c.ListDevices(context.Background(), "f"); return err }},
+		{"GetAvatars", func(c *Client) error { _, err := c.GetAvatars(context.Background()); return err }},
+		{"GetColors", func(c *Client) error { _, err := c.GetColors(context.Background()); return err }},
+		{"ListLists", func(c *Client) error { _, err := c.ListLists(context.Background(), "f"); return err }},
+		{"GetList", func(c *Client) error { _, err := c.GetList(context.Background(), "f", "1"); return err }},
+		{"ListRewards", func(c *Client) error { _, err := c.ListRewards(context.Background(), "f"); return err }},
+		{"GetRewardPoints", func(c *Client) error { _, err := c.GetRewardPoints(context.Background(), "f"); return err }},
+		{"ListRecipes", func(c *Client) error { _, err := c.ListRecipes(context.Background(), "f"); return err }},
+		{"GetRecipe", func(c *Client) error { _, err := c.GetRecipe(context.Background(), "f", "1"); return err }},
+		{"ListMealCategories", func(c *Client) error { _, err := c.ListMealCategories(context.Background(), "f"); return err }},
+		{"ListMealSittings", func(c *Client) error {
+			_, err := c.ListMealSittings(context.Background(), "f", MealSittingListOptions{})
+			return err
+		}},
 		// DELETE-based
-		{"DeleteCalendarEvent", func(c *Client) error { return c.DeleteCalendarEvent("f", "e1") }},
-		{"DeleteChore", func(c *Client) error { return c.DeleteChore("f", "c1") }},
-		{"DeleteList", func(c *Client) error { return c.DeleteList("f", "1") }},
-		{"DeleteListItem", func(c *Client) error { return c.DeleteListItem("f", "1", "i1") }},
-		{"DeleteReward", func(c *Client) error { return c.DeleteReward("f", "r1") }},
-		{"DeleteRecipe", func(c *Client) error { return c.DeleteRecipe("f", "1") }},
+		{"DeleteCalendarEvent", func(c *Client) error { return c.DeleteCalendarEvent(context.Background(), "f", "e1") }},
+		{"DeleteChore", func(c *Client) error { return c.DeleteChore(context.Background(), "f", "c1") }},
+		{"DeleteList", func(c *Client) error { return c.DeleteList(context.Background(), "f", "1") }},
+		{"DeleteListItem", func(c *Client) error { return c.DeleteListItem(context.Background(), "f", "1", "i1") }},
+		{"DeleteReward", func(c *Client) error { return c.DeleteReward(context.Background(), "f", "r1") }},
+		{"DeleteRecipe", func(c *Client) error { return c.DeleteRecipe(context.Background(), "f", "1") }},
 		// POST-based (nil response)
-		{"RedeemReward", func(c *Client) error { return c.RedeemReward("f", "r1") }},
-		{"UnredeemReward", func(c *Client) error { return c.UnredeemReward("f", "r1") }},
-		{"AddRecipeToGroceryList", func(c *Client) error { return c.AddRecipeToGroceryList("f", "r1") }},
+		{"RedeemReward", func(c *Client) error { return c.RedeemReward(context.Background(), "f", "r1") }},
+		{"UnredeemReward", func(c *Client) error { return c.UnredeemReward(context.Background(), "f", "r1") }},
+		{"AddRecipeToGroceryList", func(c *Client) error { return c.AddRecipeToGroceryList(context.Background(), "f", "r1") }},
 		// POST/PUT/PATCH with body
-		{"CreateCalendarEvent", func(c *Client) error { _, err := c.CreateCalendarEvent("f", CalendarEventData{Title: "T"}); return err }},
+		{"CreateCalendarEvent", func(c *Client) error {
+			_, err := c.CreateCalendarEvent(context.Background(), "f", CalendarEventData{Title: "T"})
+			return err
+		}},
 		{"UpdateCalendarEvent", func(c *Client) error {
-			_, err := c.UpdateCalendarEvent("f", "e1", CalendarEventData{Title: "T"})
+			_, err := c.UpdateCalendarEvent(context.Background(), "f", "e1", CalendarEventData{Title: "T"})
 			return err
 		}},
-		{"CreateChore", func(c *Client) error { _, err := c.CreateChore("f", ChoreData{Title: "T"}); return err }},
-		{"UpdateChore", func(c *Client) error { _, err := c.UpdateChore("f", "c1", ChoreData{Title: "T"}); return err }},
-		{"CreateList", func(c *Client) error { _, err := c.CreateList("f", ListData{Title: "T"}); return err }},
-		{"UpdateList", func(c *Client) error { _, err := c.UpdateList("f", "1", ListData{Title: "T"}); return err }},
-		{"AddListItem", func(c *Client) error { _, err := c.AddListItem("f", "1", ListItemData{Title: "T"}); return err }},
+		{"CreateChore", func(c *Client) error {
+			_, err := c.CreateChore(context.Background(), "f", ChoreData{Title: "T"})
+			return err
+		}},
+		{"UpdateChore", func(c *Client) error {
+			_, err := c.UpdateChore(context.Background(), "f", "c1", ChoreData{Title: "T"})
+			return err
+		}},
+		{"CreateList", func(c *Client) error {
+			_, err := c.CreateList(context.Background(), "f", ListData{Title: "T"})
+			return err
+		}},
+		{"UpdateList", func(c *Client) error {
+			_, err := c.UpdateList(context.Background(), "f", "1", ListData{Title: "T"})
+			return err
+		}},
+		{"AddListItem", func(c *Client) error {
+			_, err := c.AddListItem(context.Background(), "f", "1", ListItemData{Title: "T"})
+			return err
+		}},
 		{"UpdateListItem", func(c *Client) error {
-			_, err := c.UpdateListItem("f", "1", "i1", ListItemData{Title: "T"})
+			_, err := c.UpdateListItem(context.Background(), "f", "1", "i1", ListItemData{Title: "T"})
 			return err
 		}},
-		{"CreateTaskBoxItem", func(c *Client) error { _, err := c.CreateTaskBoxItem("f", TaskBoxItemData{Title: "T"}); return err }},
-		{"CreateReward", func(c *Client) error { _, err := c.CreateReward("f", RewardData{Title: "T"}); return err }},
-		{"UpdateReward", func(c *Client) error { _, err := c.UpdateReward("f", "r1", RewardData{Title: "T"}); return err }},
-		{"CreateRecipe", func(c *Client) error { _, err := c.CreateRecipe("f", RecipeData{Title: "T"}); return err }},
-		{"UpdateRecipe", func(c *Client) error { _, err := c.UpdateRecipe("f", "1", RecipeData{Title: "T"}); return err }},
-		{"CreateMealSitting", func(c *Client) error { _, err := c.CreateMealSitting("f", MealSittingData{RecipeID: "r1"}); return err }},
+		{"CreateTaskBoxItem", func(c *Client) error {
+			_, err := c.CreateTaskBoxItem(context.Background(), "f", TaskBoxItemData{Title: "T"})
+			return err
+		}},
+		{"CreateReward", func(c *Client) error {
+			_, err := c.CreateReward(context.Background(), "f", RewardData{Title: "T"})
+			return err
+		}},
+		{"UpdateReward", func(c *Client) error {
+			_, err := c.UpdateReward(context.Background(), "f", "r1", RewardData{Title: "T"})
+			return err
+		}},
+		{"CreateRecipe", func(c *Client) error {
+			_, err := c.CreateRecipe(context.Background(), "f", RecipeData{Title: "T"})
+			return err
+		}},
+		{"UpdateRecipe", func(c *Client) error {
+			_, err := c.UpdateRecipe(context.Background(), "f", "1", RecipeData{Title: "T"})
+			return err
+		}},
+		{"CreateMealSitting", func(c *Client) error {
+			_, err := c.CreateMealSitting(context.Background(), "f", MealSittingData{RecipeID: "r1"})
+			return err
+		}},
 	}
 
 	for _, tc := range tests {
@@ -492,7 +546,7 @@ func TestDoWithLogger(t *testing.T) {
 	client, _ := NewClientWithToken("u", "t", WithBaseURL(srv.URL+"/api"), WithLogger(logger))
 
 	// Make a request that exercises both logger.Debug branches in do()
-	_, err := client.ListCategories("frame1")
+	_, err := client.ListCategories(context.Background(), "frame1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -512,7 +566,7 @@ func TestDoDeleteErrorResponse(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	err := client.DeleteChore("frame1", "ch1")
+	err := client.DeleteChore(context.Background(), "frame1", "ch1")
 	if err == nil {
 		t.Error("expected error for 403 response, got nil")
 	}
@@ -648,5 +702,55 @@ func TestLoginRequestBody(t *testing.T) {
 	}
 	if client.UserID != "u1" {
 		t.Errorf("UserID: want u1 got %q", client.UserID)
+	}
+}
+
+func TestNewRequestAttachesContext(t *testing.T) {
+	type ctxKey struct{}
+	ctx := context.WithValue(context.Background(), ctxKey{}, "sentinel")
+
+	req, err := newRequest(ctx, http.MethodGet, "http://example.com")
+	if err != nil {
+		t.Fatalf("newRequest: %v", err)
+	}
+	if req.Context().Value(ctxKey{}) != "sentinel" {
+		t.Error("newRequest: context not attached to request")
+	}
+
+	req2, err := newRequestWithBody(ctx, http.MethodPost, "http://example.com", map[string]string{"k": "v"})
+	if err != nil {
+		t.Fatalf("newRequestWithBody: %v", err)
+	}
+	if req2.Context().Value(ctxKey{}) != "sentinel" {
+		t.Error("newRequestWithBody: context not attached to request")
+	}
+}
+
+func TestClientDoCancelledContextPropagates(t *testing.T) {
+	ready := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(ready)
+		time.Sleep(500 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	client, _ := NewClientWithToken("u", "t")
+	go func() { <-ready; cancel() }()
+
+	_, err := client.GetFrame(ctx, "frame1")
+	if err == nil {
+		t.Fatal("expected error from canceled context")
+	}
+	if !errors.Is(err, context.Canceled) {
+		var ne *NetworkError
+		if !errors.As(err, &ne) {
+			t.Errorf("expected context.Canceled or *NetworkError wrapping it, got %T: %v", err, err)
+		}
 	}
 }
