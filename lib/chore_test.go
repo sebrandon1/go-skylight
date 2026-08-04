@@ -281,10 +281,11 @@ func TestUpdateChore(t *testing.T) {
 
 func TestSkipChore(t *testing.T) {
 	tests := []struct {
-		name    string
-		choreID string
-		status  int
-		wantErr bool
+		name       string
+		choreID    string
+		deferUntil string
+		status     int
+		wantErr    bool
 	}{
 		{
 			name:    "skips recurring chore via completions endpoint",
@@ -295,6 +296,12 @@ func TestSkipChore(t *testing.T) {
 			name:    "skips non-recurring chore (plain ID)",
 			choreID: "12345",
 			status:  http.StatusOK,
+		},
+		{
+			name:       "sends defer_until when provided",
+			choreID:    "18731133-2026-04-28",
+			deferUntil: "2026-05-05",
+			status:     http.StatusOK,
 		},
 		{
 			name:    "server error returns error",
@@ -325,6 +332,15 @@ func TestSkipChore(t *testing.T) {
 				if instanceDate != "" && raw["instance_date"] != instanceDate {
 					t.Errorf("instance_date: want %q got %v", instanceDate, raw["instance_date"])
 				}
+				if tc.deferUntil != "" {
+					if raw["defer_until"] != tc.deferUntil {
+						t.Errorf("defer_until: want %q got %v", tc.deferUntil, raw["defer_until"])
+					}
+				} else {
+					if _, ok := raw["defer_until"]; ok {
+						t.Errorf("defer_until should be omitted when empty, got %v", raw["defer_until"])
+					}
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
 				if tc.status == http.StatusOK {
@@ -340,7 +356,7 @@ func TestSkipChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.SkipChore(context.Background(), "frame1", tc.choreID)
+			err := client.SkipChore(context.Background(), "frame1", tc.choreID, tc.deferUntil)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

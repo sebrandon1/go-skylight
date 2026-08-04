@@ -200,6 +200,23 @@ func TestChoreSkipCmd(t *testing.T) {
 	}
 }
 
+func TestChoreSkipCmd_DeferUntil(t *testing.T) {
+	newCmdTestClient(t, choreMockHandler())
+	origID, origDefer := choreID, choreSkipDeferUntil
+	choreID = "c1"
+	choreSkipDeferUntil = "2026-08-10"
+	t.Cleanup(func() { choreID, choreSkipDeferUntil = origID, origDefer })
+
+	out := captureStdout(func() {
+		if err := choreSkipCmd.RunE(choreSkipCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "skipped successfully") {
+		t.Errorf("expected skip confirmation with defer-until, got: %s", out)
+	}
+}
+
 func TestChoreClaimCmd(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
 	origID, origAssignee := choreID, choreAssigneeID
