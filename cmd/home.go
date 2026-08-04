@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -39,67 +38,62 @@ var homeCmd = &cobra.Command{
 		}
 
 		var (
-			events   []lib.CalendarEvent
-			chores   []lib.Chore
-			lists    []lib.List
-			meals    []lib.MealSitting
-			evtErr   error
-			choreErr error
-			listErr  error
-			mealErr  error
-			wg       sync.WaitGroup
+			events []lib.CalendarEvent
+			chores []lib.Chore
+			lists  []lib.List
+			meals  []lib.MealSitting
 		)
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			events, evtErr = client.ListCalendarEvents(ctx, frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
-		}()
-
+		fns := []func() error{
+			func() error {
+				var err error
+				events, err = client.ListCalendarEvents(ctx, frameID, monday.Format(lib.DateFormat), sunday.Format(lib.DateFormat), frame.TimeZone)
+				if err != nil {
+					return fmt.Errorf("listing calendar events: %w", err)
+				}
+				return nil
+			},
+		}
 		if !homeNoTasks {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				chores, choreErr = client.ListChores(ctx, frameID, lib.ChoreListOptions{
+			fns = append(fns, func() error {
+				var err error
+				chores, err = client.ListChores(ctx, frameID, lib.ChoreListOptions{
 					After:  today,
 					Before: today,
 					Status: lib.ChoreStatusPending,
 				})
-			}()
+				if err != nil {
+					return fmt.Errorf("listing chores: %w", err)
+				}
+				return nil
+			})
 		}
-
 		if !homeNoLists {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				lists, listErr = client.ListLists(ctx, frameID)
-			}()
+			fns = append(fns, func() error {
+				var err error
+				lists, err = client.ListLists(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("listing lists: %w", err)
+				}
+				return nil
+			})
 		}
-
 		if !homeNoMeals {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				meals, mealErr = client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{
+			fns = append(fns, func() error {
+				var err error
+				meals, err = client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{
 					DateMin: monday.Format(lib.DateFormat),
 					DateMax: sunday.Format(lib.DateFormat),
 				})
-			}()
+				if err != nil {
+					return fmt.Errorf("listing meal sittings: %w", err)
+				}
+				return nil
+			})
 		}
 
-		wg.Wait()
-
-		if evtErr != nil {
-			return fmt.Errorf("listing calendar events: %w", evtErr)
-		}
-		if choreErr != nil {
-			return fmt.Errorf("listing chores: %w", choreErr)
-		}
-		if listErr != nil {
-			return fmt.Errorf("listing lists: %w", listErr)
-		}
-		if mealErr != nil {
-			return fmt.Errorf("listing meal sittings: %w", mealErr)
+		if err := runConcurrent(fns...); err != nil {
+			return err
 		}
 
 		if outputFormat == outputJSON {

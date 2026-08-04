@@ -5,7 +5,6 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -44,57 +43,54 @@ var analyticsCmd = &cobra.Command{
 			rewards    []lib.Reward
 			points     []lib.RewardPointEntry
 			events     []lib.CalendarEvent
-
-			catErr    error
-			choreErr  error
-			rewardErr error
-			pointsErr error
-			eventErr  error
-
-			wg sync.WaitGroup
 		)
 
-		wg.Add(5)
-		go func() {
-			defer wg.Done()
-			categories, catErr = client.ListCategories(ctx, frameID)
-		}()
-		go func() {
-			defer wg.Done()
-			chores, choreErr = client.ListChores(ctx, frameID, lib.ChoreListOptions{
-				After:  startStr,
-				Before: endStr,
-			})
-		}()
-		go func() {
-			defer wg.Done()
-			rewards, rewardErr = client.ListRewards(ctx, frameID)
-		}()
-		go func() {
-			defer wg.Done()
-			points, pointsErr = client.GetRewardPoints(ctx, frameID)
-		}()
-		go func() {
-			defer wg.Done()
-			events, eventErr = client.ListCalendarEvents(ctx, frameID, startStr, endStr, frame.TimeZone)
-		}()
-		wg.Wait()
-
-		if catErr != nil {
-			return fmt.Errorf("listing categories: %w", catErr)
-		}
-		if choreErr != nil {
-			return fmt.Errorf("listing chores: %w", choreErr)
-		}
-		if rewardErr != nil {
-			return fmt.Errorf("listing rewards: %w", rewardErr)
-		}
-		if pointsErr != nil {
-			return fmt.Errorf("getting reward points: %w", pointsErr)
-		}
-		if eventErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: calendar events unavailable: %v\n", eventErr)
-			events = nil
+		if err := runConcurrent(
+			func() error {
+				var err error
+				categories, err = client.ListCategories(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("listing categories: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				chores, err = client.ListChores(ctx, frameID, lib.ChoreListOptions{
+					After:  startStr,
+					Before: endStr,
+				})
+				if err != nil {
+					return fmt.Errorf("listing chores: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				rewards, err = client.ListRewards(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("listing rewards: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				points, err = client.GetRewardPoints(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("getting reward points: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				events, err = client.ListCalendarEvents(ctx, frameID, startStr, endStr, frame.TimeZone)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: calendar events unavailable: %v\n", err)
+				}
+				return nil
+			},
+		); err != nil {
+			return err
 		}
 
 		catNames := buildCatNames(categories)

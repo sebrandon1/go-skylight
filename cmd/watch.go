@@ -227,116 +227,78 @@ func poll(ctx context.Context, client *lib.Client, state *watchState, resources 
 }
 
 func pollRewards(ctx context.Context, client *lib.Client, state *watchState, ts string) {
-	rewards, err := client.ListRewards(ctx, frameID)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[%s] Error listing rewards: %v\n", ts, err)
-		return
-	}
-	// Replace seen set with currently redeemed IDs so memory stays bounded.
-	current := make(map[string]struct{})
-	for _, r := range rewards {
-		if !r.Redeemed {
-			continue
-		}
-		current[r.ID] = struct{}{}
-		if _, seen := state.seenRewardIDs[r.ID]; seen {
-			continue
-		}
-		if state.seeding {
-			continue
-		}
-		if outputFormat == outputJSON {
-			printJSON(map[string]any{
-				"type": "reward_redeemed", "id": r.ID, "title": r.Title,
-				"points": r.Points, "category_id": r.CategoryID, "ts": ts,
-			})
-		} else {
-			fmt.Printf("[%s] REWARD REDEEMED  %s (%d pts) — category %s\n",
-				ts, r.Title, r.Points, r.CategoryID)
-		}
-	}
-	state.seenRewardIDs = current
+	// seen set is replaced each tick so memory stays bounded.
+	state.seenRewardIDs = pollAndDiff(ts,
+		func() ([]lib.Reward, error) { return client.ListRewards(ctx, frameID) },
+		func(r lib.Reward) string { return r.ID },
+		func(r lib.Reward) bool { return r.Redeemed },
+		func(r lib.Reward) {
+			if outputFormat == outputJSON {
+				printJSON(map[string]any{
+					"type": "reward_redeemed", "id": r.ID, "title": r.Title,
+					"points": r.Points, "category_id": r.CategoryID, "ts": ts,
+				})
+			} else {
+				fmt.Printf("[%s] REWARD REDEEMED  %s (%d pts) — category %s\n",
+					ts, r.Title, r.Points, r.CategoryID)
+			}
+		},
+		state.seenRewardIDs, state.seeding, watchResourceRewards,
+	)
 }
 
 func pollLists(ctx context.Context, client *lib.Client, state *watchState, ts string) {
-	lists, err := client.ListLists(ctx, frameID)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[%s] Error listing lists: %v\n", ts, err)
-		return
-	}
-	current := make(map[string]struct{})
-	for _, l := range lists {
-		current[l.ID] = struct{}{}
-		if _, seen := state.seenListIDs[l.ID]; seen {
-			continue
-		}
-		if state.seeding {
-			continue
-		}
-		if outputFormat == outputJSON {
-			printJSON(map[string]any{
-				"type": "list_created", "id": l.ID, "title": l.Title, "ts": ts,
-			})
-		} else {
-			fmt.Printf("[%s] LIST CREATED     %s\n", ts, l.Title)
-		}
-	}
-	state.seenListIDs = current
+	state.seenListIDs = pollAndDiff(ts,
+		func() ([]lib.List, error) { return client.ListLists(ctx, frameID) },
+		func(l lib.List) string { return l.ID },
+		nil,
+		func(l lib.List) {
+			if outputFormat == outputJSON {
+				printJSON(map[string]any{"type": "list_created", "id": l.ID, "title": l.Title, "ts": ts})
+			} else {
+				fmt.Printf("[%s] LIST CREATED     %s\n", ts, l.Title)
+			}
+		},
+		state.seenListIDs, state.seeding, watchResourceLists,
+	)
 }
 
 func pollRoutines(ctx context.Context, client *lib.Client, state *watchState, ts string) {
-	routines, err := client.ListRoutines(ctx, frameID)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[%s] Error listing routines: %v\n", ts, err)
-		return
-	}
-	current := make(map[string]struct{})
-	for _, r := range routines {
-		current[r.ID] = struct{}{}
-		if _, seen := state.seenRoutineIDs[r.ID]; seen {
-			continue
-		}
-		if state.seeding {
-			continue
-		}
-		if outputFormat == outputJSON {
-			printJSON(map[string]any{
-				"type": "routine_created", "id": r.ID, "title": r.Title, "ts": ts,
-			})
-		} else {
-			fmt.Printf("[%s] ROUTINE CREATED  %s\n", ts, r.Title)
-		}
-	}
-	state.seenRoutineIDs = current
+	state.seenRoutineIDs = pollAndDiff(ts,
+		func() ([]lib.Routine, error) { return client.ListRoutines(ctx, frameID) },
+		func(r lib.Routine) string { return r.ID },
+		nil,
+		func(r lib.Routine) {
+			if outputFormat == outputJSON {
+				printJSON(map[string]any{"type": "routine_created", "id": r.ID, "title": r.Title, "ts": ts})
+			} else {
+				fmt.Printf("[%s] ROUTINE CREATED  %s\n", ts, r.Title)
+			}
+		},
+		state.seenRoutineIDs, state.seeding, watchResourceRoutines,
+	)
 }
 
 func pollChores(ctx context.Context, client *lib.Client, state *watchState, now time.Time, ts string) {
 	today := now.Format(lib.DateFormat)
-	chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{After: today, Before: today, Status: lib.ChoreStatusComplete})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[%s] Error listing chores: %v\n", ts, err)
-		return
-	}
-	current := make(map[string]struct{})
-	for _, c := range chores {
-		current[c.ID] = struct{}{}
-		if _, seen := state.seenChoreIDs[c.ID]; seen {
-			continue
-		}
-		if state.seeding {
-			continue
-		}
-		if outputFormat == outputJSON {
-			printJSON(map[string]any{
-				"type": "chore_completed", "id": c.ID, "title": c.Title,
-				"assignee_id": c.AssigneeID, "ts": ts,
-			})
-		} else {
-			fmt.Printf("[%s] CHORE COMPLETED  %s — assignee %s\n",
-				ts, c.Title, c.AssigneeID)
-		}
-	}
-	state.seenChoreIDs = current
+	state.seenChoreIDs = pollAndDiff(ts,
+		func() ([]lib.Chore, error) {
+			return client.ListChores(ctx, frameID, lib.ChoreListOptions{After: today, Before: today, Status: lib.ChoreStatusComplete})
+		},
+		func(c lib.Chore) string { return c.ID },
+		nil,
+		func(c lib.Chore) {
+			if outputFormat == outputJSON {
+				printJSON(map[string]any{
+					"type": "chore_completed", "id": c.ID, "title": c.Title,
+					"assignee_id": c.AssigneeID, "ts": ts,
+				})
+			} else {
+				fmt.Printf("[%s] CHORE COMPLETED  %s — assignee %s\n", ts, c.Title, c.AssigneeID)
+			}
+		},
+		state.seenChoreIDs, state.seeding, watchResourceChores,
+	)
 }
 
 func pollCalendar(ctx context.Context, client *lib.Client, state *watchState, now time.Time, ts string) {
