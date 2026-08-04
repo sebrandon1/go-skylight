@@ -61,9 +61,9 @@ func TestCalendarCreateCmd(t *testing.T) {
 
 func TestCalendarDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, calendarMockHandler())
-	origID := calendarEventID
-	calendarEventID = "event1"
-	t.Cleanup(func() { calendarEventID = origID })
+	origID, origYes := calendarEventID, yes
+	calendarEventID, yes = "event1", true
+	t.Cleanup(func() { calendarEventID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := calendarDeleteCmd.RunE(calendarDeleteCmd, nil); err != nil {
@@ -72,6 +72,46 @@ func TestCalendarDeleteCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestCalendarDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := calendarEventID, dryRun
+	calendarEventID, dryRun = "event1", true
+	t.Cleanup(func() { calendarEventID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := calendarDeleteCmd.RunE(calendarDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
+func TestCalendarDeleteCmd_ConfirmationDeclined(t *testing.T) {
+	origID, origYes := calendarEventID, yes
+	calendarEventID, yes = "event1", false
+	t.Cleanup(func() { calendarEventID, yes = origID, origYes })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	mockStdin(t, "n\n")
+
+	out := captureStdout(func() {
+		if err := calendarDeleteCmd.RunE(calendarDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected no deletion when confirmation declined, got: %s", out)
 	}
 }
 

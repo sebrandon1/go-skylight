@@ -190,9 +190,9 @@ func TestRewardCreateCmd_WithOptionalFields(t *testing.T) {
 
 func TestRewardDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
-	origID := rewardID
-	rewardID = "reward1"
-	t.Cleanup(func() { rewardID = origID })
+	origID, origYes := rewardID, yes
+	rewardID, yes = "reward1", true
+	t.Cleanup(func() { rewardID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := rewardDeleteCmd.RunE(rewardDeleteCmd, nil); err != nil {
@@ -225,9 +225,9 @@ func TestRewardDeleteCmd_DryRun(t *testing.T) {
 
 func TestRewardRedeemCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
-	origID := rewardID
-	rewardID = "reward1"
-	t.Cleanup(func() { rewardID = origID })
+	origID, origYes := rewardID, yes
+	rewardID, yes = "reward1", true
+	t.Cleanup(func() { rewardID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := rewardRedeemCmd.RunE(rewardRedeemCmd, nil); err != nil {
@@ -260,9 +260,9 @@ func TestRewardRedeemCmd_DryRun(t *testing.T) {
 
 func TestRewardUnredeemCmd(t *testing.T) {
 	newCmdTestClient(t, rewardMockHandler())
-	origID := rewardID
-	rewardID = "reward1"
-	t.Cleanup(func() { rewardID = origID })
+	origID, origYes := rewardID, yes
+	rewardID, yes = "reward1", true
+	t.Cleanup(func() { rewardID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := rewardUnredeemCmd.RunE(rewardUnredeemCmd, nil); err != nil {

@@ -141,6 +141,10 @@ var rewardDeleteCmd = &cobra.Command{
 			return nil
 		}
 
+		if !confirmAction(fmt.Sprintf("Delete reward %s?", rewardID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -168,6 +172,10 @@ var rewardRedeemCmd = &cobra.Command{
 			return nil
 		}
 
+		if !confirmAction(fmt.Sprintf("Redeem reward %s?", rewardID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -192,6 +200,10 @@ var rewardUnredeemCmd = &cobra.Command{
 
 		if dryRun {
 			printDryRun("unredeem reward %s", rewardID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Unredeem reward %s?", rewardID)) {
 			return nil
 		}
 
@@ -314,13 +326,16 @@ func init() {
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
 	rewardDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	rewardDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(rewardDeleteCmd, "reward-id")
 
 	rewardRedeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
 	rewardRedeemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	rewardRedeemCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(rewardRedeemCmd, "reward-id")
 
 	rewardUnredeemCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
 	rewardUnredeemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	rewardUnredeemCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(rewardUnredeemCmd, "reward-id")
 }

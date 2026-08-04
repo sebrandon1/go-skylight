@@ -109,6 +109,15 @@ var photoDeleteCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			printDryRun("delete %d photo(s): %v", len(photoMessageID), photoMessageID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete %d photo(s)?", len(photoMessageID))) {
+			return nil
+		}
+
 		ids := make([]int, 0, len(photoMessageID))
 		for _, s := range photoMessageID {
 			id, err := strconv.Atoi(s)
@@ -226,6 +235,8 @@ func init() {
 	markFlagRequired(photoUploadCmd, "file")
 
 	photoDeleteCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to delete (repeatable)")
+	photoDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	photoDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(photoDeleteCmd, "message-id")
 
 	photoDownloadCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to download (repeatable)")

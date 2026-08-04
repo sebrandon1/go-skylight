@@ -80,6 +80,26 @@ func newCmdTestClient(t *testing.T, handler http.HandlerFunc) {
 	pointClientAt(t, newMockClient(t, handler))
 }
 
+// mockStdin replaces os.Stdin with a pipe pre-loaded with input for the
+// duration of the test, then restores the original stdin via t.Cleanup.
+func mockStdin(t *testing.T, input string) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("creating stdin pipe: %v", err)
+	}
+	if _, err := w.WriteString(input); err != nil {
+		t.Fatalf("writing to stdin pipe: %v", err)
+	}
+	w.Close()
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() {
+		os.Stdin = orig
+		r.Close()
+	})
+}
+
 // assertCommandRegistered fails the test unless parent has a direct
 // subcommand whose Use matches use.
 func assertCommandRegistered(t *testing.T, parent *cobra.Command, use string) {

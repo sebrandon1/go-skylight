@@ -64,9 +64,9 @@ func TestBountyListCmd(t *testing.T) {
 
 func TestBountyDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, bountyMockHandler())
-	origChoreID, origRewardID := bountyChoreID, bountyRewardID
-	bountyChoreID, bountyRewardID = "c1", "r1"
-	t.Cleanup(func() { bountyChoreID, bountyRewardID = origChoreID, origRewardID })
+	origChoreID, origRewardID, origYes := bountyChoreID, bountyRewardID, yes
+	bountyChoreID, bountyRewardID, yes = "c1", "r1", true
+	t.Cleanup(func() { bountyChoreID, bountyRewardID, yes = origChoreID, origRewardID, origYes })
 
 	out := captureStdout(func() {
 		if err := bountyDeleteCmd.RunE(bountyDeleteCmd, nil); err != nil {
@@ -75,6 +75,25 @@ func TestBountyDeleteCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Bounty deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestBountyDeleteCmd_DryRun(t *testing.T) {
+	origChoreID, origRewardID, origDryRun := bountyChoreID, bountyRewardID, dryRun
+	bountyChoreID, bountyRewardID, dryRun = "c1", "r1", true
+	t.Cleanup(func() { bountyChoreID, bountyRewardID, dryRun = origChoreID, origRewardID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := bountyDeleteCmd.RunE(bountyDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
 	}
 }
 

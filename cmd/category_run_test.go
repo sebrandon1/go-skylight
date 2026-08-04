@@ -54,9 +54,9 @@ func TestCategoryCreateCmd(t *testing.T) {
 
 func TestCategoryDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, categoryMockHandler())
-	origID := categoryID
-	categoryID = "cat1"
-	t.Cleanup(func() { categoryID = origID })
+	origID, origYes := categoryID, yes
+	categoryID, yes = "cat1", true
+	t.Cleanup(func() { categoryID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := categoryDeleteCmd.RunE(categoryDeleteCmd, nil); err != nil {
@@ -65,6 +65,25 @@ func TestCategoryDeleteCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestCategoryDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := categoryID, dryRun
+	categoryID, dryRun = "cat1", true
+	t.Cleanup(func() { categoryID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := categoryDeleteCmd.RunE(categoryDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
 	}
 }
 

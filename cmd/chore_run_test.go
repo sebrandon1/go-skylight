@@ -93,9 +93,9 @@ func TestChoreCreateCmd_UpForGrabs(t *testing.T) {
 
 func TestChoreDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
-	origID := choreID
-	choreID = "c1"
-	t.Cleanup(func() { choreID = origID })
+	origID, origYes := choreID, yes
+	choreID, yes = "c1", true
+	t.Cleanup(func() { choreID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
@@ -109,13 +109,9 @@ func TestChoreDeleteCmd(t *testing.T) {
 
 func TestChoreDeleteCmd_Quiet(t *testing.T) {
 	newCmdTestClient(t, choreMockHandler())
-	origID := choreID
-	choreID = "c1"
-	t.Cleanup(func() { choreID = origID })
-
-	origQuiet := quiet
-	quiet = true
-	t.Cleanup(func() { quiet = origQuiet })
+	origID, origYes, origQuiet := choreID, yes, quiet
+	choreID, yes, quiet = "c1", true, true
+	t.Cleanup(func() { choreID, yes, quiet = origID, origYes, origQuiet })
 
 	out := captureStdout(func() {
 		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {

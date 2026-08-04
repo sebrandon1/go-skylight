@@ -120,9 +120,9 @@ func TestPhotoDeleteCmd(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	origIDs := photoMessageID
-	photoMessageID = []string{"1", "2"}
-	t.Cleanup(func() { photoMessageID = origIDs })
+	origIDs, origYes := photoMessageID, yes
+	photoMessageID, yes = []string{"1", "2"}, true
+	t.Cleanup(func() { photoMessageID, yes = origIDs, origYes })
 
 	out := captureStdout(func() {
 		if err := photoDeleteCmd.RunE(photoDeleteCmd, nil); err != nil {
@@ -131,6 +131,46 @@ func TestPhotoDeleteCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Photos deleted successfully") {
 		t.Errorf("expected success message, got: %s", out)
+	}
+}
+
+func TestPhotoDeleteCmd_DryRun(t *testing.T) {
+	origIDs, origDryRun := photoMessageID, dryRun
+	photoMessageID, dryRun = []string{"1", "2"}, true
+	t.Cleanup(func() { photoMessageID, dryRun = origIDs, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := photoDeleteCmd.RunE(photoDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
+func TestPhotoDeleteCmd_ConfirmationDeclined(t *testing.T) {
+	origIDs, origYes := photoMessageID, yes
+	photoMessageID, yes = []string{"1", "2"}, false
+	t.Cleanup(func() { photoMessageID, yes = origIDs, origYes })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	mockStdin(t, "n\n")
+
+	out := captureStdout(func() {
+		if err := photoDeleteCmd.RunE(photoDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected no deletion when confirmation declined, got: %s", out)
 	}
 }
 

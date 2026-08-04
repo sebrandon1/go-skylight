@@ -78,9 +78,9 @@ func TestRoutineUpdateCmd(t *testing.T) {
 
 func TestRoutineDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, routineMockHandler())
-	origID := routineID
-	routineID = "routine1"
-	t.Cleanup(func() { routineID = origID })
+	origID, origYes := routineID, yes
+	routineID, yes = "routine1", true
+	t.Cleanup(func() { routineID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := routineDeleteCmd.RunE(routineDeleteCmd, nil); err != nil {
@@ -89,6 +89,46 @@ func TestRoutineDeleteCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestRoutineDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := routineID, dryRun
+	routineID, dryRun = "routine1", true
+	t.Cleanup(func() { routineID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := routineDeleteCmd.RunE(routineDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
+func TestRoutineDeleteCmd_ConfirmationDeclined(t *testing.T) {
+	origID, origYes := routineID, yes
+	routineID, yes = "routine1", false
+	t.Cleanup(func() { routineID, yes = origID, origYes })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	mockStdin(t, "n\n")
+
+	out := captureStdout(func() {
+		if err := routineDeleteCmd.RunE(routineDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected no deletion when confirmation declined, got: %s", out)
 	}
 }
 

@@ -148,6 +148,15 @@ var mealDeleteRecipeCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			printDryRun("delete recipe %s", recipeID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete recipe %s?", recipeID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -241,6 +250,15 @@ var mealDeleteSittingCmd = &cobra.Command{
 
 		if err := validateDate(sittingDate); err != nil {
 			return err
+		}
+
+		if dryRun {
+			printDryRun("delete meal sitting %s on %s", sittingID, sittingDate)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete meal sitting %s on %s?", sittingID, sittingDate)) {
+			return nil
 		}
 
 		client, err := getClient()
@@ -435,6 +453,8 @@ func init() {
 	markFlagRequired(mealUpdateRecipeCmd, "recipe-id")
 
 	mealDeleteRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+	mealDeleteRecipeCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	mealDeleteRecipeCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(mealDeleteRecipeCmd, "recipe-id")
 
 	mealSittingsCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date filter (YYYY-MM-DD)")
@@ -450,6 +470,8 @@ func init() {
 
 	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
+	mealDeleteSittingCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	mealDeleteSittingCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(mealDeleteSittingCmd, "sitting-id")
 	markFlagRequired(mealDeleteSittingCmd, "date")
 

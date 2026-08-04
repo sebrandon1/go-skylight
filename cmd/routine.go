@@ -114,6 +114,15 @@ var routineDeleteCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			printDryRun("delete routine %s", routineID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete routine %s?", routineID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -171,6 +180,8 @@ func init() {
 	markFlagRequired(routineUpdateCmd, "routine-id")
 
 	routineDeleteCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
+	routineDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	routineDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(routineDeleteCmd, "routine-id")
 
 	routineReorderCmd.Flags().StringSliceVar(&routineIDs, "routine-ids", nil, "Routine IDs in desired order (comma-separated)")
