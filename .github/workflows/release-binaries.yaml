@@ -23,6 +23,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
 
       - name: Build
         env:
@@ -58,6 +59,15 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -73,9 +83,17 @@ jobs:
           sha256sum *.tar.gz > checksums.txt
           cat checksums.txt
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: dist/sbom.cyclonedx.json
+          artifact-name: sbom.cyclonedx.json
+
       - name: Attach assets to release
         uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.tar.gz
             dist/checksums.txt
+            dist/sbom.cyclonedx.json
