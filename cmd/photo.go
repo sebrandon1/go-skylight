@@ -21,7 +21,7 @@ var (
 	photoPageToken   string
 	photoFile        string
 	photoCaption     string
-	photoID   []string
+	photoID          []string
 	photoOutputDir   string
 	photoDownloadAll bool
 )
