@@ -107,6 +107,25 @@ func TestHomeCmd_NoMeals(t *testing.T) {
 	}
 }
 
+func TestHomeCmd_FetchError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/calendar_events") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+	})
+
+	err := homeCmd.RunE(homeCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when calendar fetch fails")
+	}
+	if !strings.Contains(err.Error(), "listing calendar events") {
+		t.Errorf("expected 'listing calendar events' in error, got: %v", err)
+	}
+}
+
 func TestHomeCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "home")
 }
