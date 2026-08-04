@@ -364,6 +364,73 @@ func TestPollRoutines_ListError(t *testing.T) {
 	pollRoutines(context.Background(), client, state, "12:00:00")
 }
 
+func TestPollMealSittings(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Pasta Night","instances":["2026-08-04"]},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}]}`)
+	})
+
+	state := &watchState{seenMealSittingIDs: make(map[string]struct{})}
+
+	out := captureStdout(func() { pollMealSittings(context.Background(), client, state, time.Now(), "12:00:00") })
+	if !strings.Contains(out, "Pasta Night") {
+		t.Errorf("expected new meal sitting in output, got: %s", out)
+	}
+	if _, seen := state.seenMealSittingIDs["s1"]; !seen {
+		t.Error("expected meal sitting s1 to be marked seen")
+	}
+
+	out = captureStdout(func() { pollMealSittings(context.Background(), client, state, time.Now(), "12:00:01") })
+	if strings.Contains(out, "Pasta Night") {
+		t.Errorf("already-seen meal sitting should not be re-printed, got: %s", out)
+	}
+}
+
+func TestPollMealSittings_Seeding(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Pasta Night","instances":["2026-08-04"]},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}]}`)
+	})
+
+	state := &watchState{seenMealSittingIDs: make(map[string]struct{}), seeding: true}
+
+	out := captureStdout(func() { pollMealSittings(context.Background(), client, state, time.Now(), "12:00:00") })
+	if out != "" {
+		t.Errorf("expected no output while seeding, got: %s", out)
+	}
+	if _, seen := state.seenMealSittingIDs["s1"]; !seen {
+		t.Error("expected meal sitting to be marked seen even while seeding")
+	}
+}
+
+func TestPollMealSittings_JSONOutput(t *testing.T) {
+	t.Cleanup(func() { outputFormat = "" })
+	outputFormat = outputJSON
+
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Pasta Night","instances":["2026-08-04"]},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}]}`)
+	})
+
+	state := &watchState{seenMealSittingIDs: make(map[string]struct{})}
+	out := captureStdout(func() { pollMealSittings(context.Background(), client, state, time.Now(), "12:00:00") })
+	if !strings.Contains(out, `"type": "meal_scheduled"`) {
+		t.Errorf("expected meal_scheduled type in JSON output, got: %s", out)
+	}
+	if !strings.Contains(out, `"id": "s1"`) {
+		t.Errorf("expected meal sitting id in JSON output, got: %s", out)
+	}
+}
+
+func TestPollMealSittings_ListError(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	state := &watchState{seenMealSittingIDs: make(map[string]struct{})}
+	pollMealSittings(context.Background(), client, state, time.Now(), "12:00:00")
+}
+
 func TestPoll_AllResources(t *testing.T) {
 	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -378,17 +445,20 @@ func TestPoll_AllResources(t *testing.T) {
 			fmt.Fprint(w, `{"data":[]}`)
 		case strings.HasSuffix(r.URL.Path, "/routines"):
 			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
+			fmt.Fprint(w, `{"data":[]}`)
 		default:
 			t.Fatalf("unexpected request: %s", r.URL.Path)
 		}
 	})
 
 	state := &watchState{
-		seenRewardIDs:  make(map[string]struct{}),
-		seenChoreIDs:   make(map[string]struct{}),
-		seenEventIDs:   make(map[string]struct{}),
-		seenListIDs:    make(map[string]struct{}),
-		seenRoutineIDs: make(map[string]struct{}),
+		seenRewardIDs:      make(map[string]struct{}),
+		seenChoreIDs:       make(map[string]struct{}),
+		seenEventIDs:       make(map[string]struct{}),
+		seenListIDs:        make(map[string]struct{}),
+		seenRoutineIDs:     make(map[string]struct{}),
+		seenMealSittingIDs: make(map[string]struct{}),
 	}
 
 	// poll() fans the resources out over goroutines; a clean run with no

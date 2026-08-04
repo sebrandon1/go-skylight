@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -53,6 +54,9 @@ func (e *NetworkError) Error() string {
 }
 
 func (e *NetworkError) Unwrap() error { return e.Cause }
+
+// IsNotFound reports whether err is (or wraps) a *NotFoundError.
+func IsNotFound(err error) bool { return errors.As(err, new(*NotFoundError)) }
 
 // checkStatus inspects resp.StatusCode and returns a typed error for non-2xx
 // responses. body should be the already-read response body (may be nil).

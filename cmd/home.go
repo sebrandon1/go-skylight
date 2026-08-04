@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	homeNoTasks bool
-	homeNoLists bool
-	homeNoMeals bool
+	homeNoTasks    bool
+	homeNoLists    bool
+	homeNoMeals    bool
+	homeNoRoutines bool
 )
 
 var homeCmd = &cobra.Command{
@@ -38,10 +39,11 @@ var homeCmd = &cobra.Command{
 		}
 
 		var (
-			events []lib.CalendarEvent
-			chores []lib.Chore
-			lists  []lib.List
-			meals  []lib.MealSitting
+			events   []lib.CalendarEvent
+			chores   []lib.Chore
+			lists    []lib.List
+			meals    []lib.MealSitting
+			routines []lib.Routine
 		)
 
 		fns := []func() error{
@@ -91,6 +93,16 @@ var homeCmd = &cobra.Command{
 				return nil
 			})
 		}
+		if !homeNoRoutines {
+			fns = append(fns, func() error {
+				var err error
+				routines, err = client.ListRoutines(ctx, frameID)
+				if err != nil && !lib.IsNotFound(err) {
+					return fmt.Errorf("listing routines: %w", err)
+				}
+				return nil
+			})
+		}
 
 		if err := runConcurrent(fns...); err != nil {
 			return err
@@ -104,16 +116,17 @@ var homeCmd = &cobra.Command{
 				"tasks":      chores,
 				"lists":      lists,
 				"meals":      meals,
+				"routines":   routines,
 			})
 			return nil
 		}
 
-		printHomeTable(events, chores, lists, meals, monday)
+		printHomeTable(events, chores, lists, meals, routines, monday)
 		return nil
 	},
 }
 
-func printHomeTable(events []lib.CalendarEvent, chores []lib.Chore, lists []lib.List, meals []lib.MealSitting, monday time.Time) {
+func printHomeTable(events []lib.CalendarEvent, chores []lib.Chore, lists []lib.List, meals []lib.MealSitting, routines []lib.Routine, monday time.Time) {
 	fmt.Println("=== EVENTS THIS WEEK ===")
 	printCalendarWeekTable(buildCalendarWeeklyView(events, monday))
 
@@ -131,6 +144,11 @@ func printHomeTable(events []lib.CalendarEvent, chores []lib.Chore, lists []lib.
 		fmt.Println("\n=== MEALS THIS WEEK ===")
 		printMealSittingsTable(meals)
 	}
+
+	if len(routines) > 0 {
+		fmt.Println("\n=== ROUTINES ===")
+		printRoutinesTable(routines)
+	}
 }
 
 func init() {
@@ -139,4 +157,5 @@ func init() {
 	homeCmd.Flags().BoolVar(&homeNoTasks, "no-tasks", false, "Exclude pending tasks")
 	homeCmd.Flags().BoolVar(&homeNoLists, "no-lists", false, "Exclude active lists")
 	homeCmd.Flags().BoolVar(&homeNoMeals, "no-meals", false, "Exclude meal sittings")
+	homeCmd.Flags().BoolVar(&homeNoRoutines, "no-routines", false, "Exclude routines")
 }
