@@ -120,9 +120,9 @@ func TestPhotoDeleteCmd(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	origIDs, origYes := photoMessageID, yes
-	photoMessageID, yes = []string{"1", "2"}, true
-	t.Cleanup(func() { photoMessageID, yes = origIDs, origYes })
+	origIDs, origYes := photoID, yes
+	photoID, yes = []string{"1", "2"}, true
+	t.Cleanup(func() { photoID, yes = origIDs, origYes })
 
 	out := captureStdout(func() {
 		if err := photoDeleteCmd.RunE(photoDeleteCmd, nil); err != nil {
@@ -135,9 +135,9 @@ func TestPhotoDeleteCmd(t *testing.T) {
 }
 
 func TestPhotoDeleteCmd_DryRun(t *testing.T) {
-	origIDs, origDryRun := photoMessageID, dryRun
-	photoMessageID, dryRun = []string{"1", "2"}, true
-	t.Cleanup(func() { photoMessageID, dryRun = origIDs, origDryRun })
+	origIDs, origDryRun := photoID, dryRun
+	photoID, dryRun = []string{"1", "2"}, true
+	t.Cleanup(func() { photoID, dryRun = origIDs, origDryRun })
 
 	origFrameID := frameID
 	frameID = "test-frame"
@@ -154,9 +154,9 @@ func TestPhotoDeleteCmd_DryRun(t *testing.T) {
 }
 
 func TestPhotoDeleteCmd_ConfirmationDeclined(t *testing.T) {
-	origIDs, origYes := photoMessageID, yes
-	photoMessageID, yes = []string{"1", "2"}, false
-	t.Cleanup(func() { photoMessageID, yes = origIDs, origYes })
+	origIDs, origYes := photoID, yes
+	photoID, yes = []string{"1", "2"}, false
+	t.Cleanup(func() { photoID, yes = origIDs, origYes })
 
 	origFrameID := frameID
 	frameID = "test-frame"
@@ -174,7 +174,11 @@ func TestPhotoDeleteCmd_ConfirmationDeclined(t *testing.T) {
 	}
 }
 
-func TestPhotoDownloadCmd(t *testing.T) {
+// photoDownloadTestServer starts a mock HTTP server that lists the given photo
+// IDs from its root endpoint and serves fake bytes from /asset.jpg. It returns
+// the output directory callers should use for downloads.
+func photoDownloadTestServer(t *testing.T, ids []string) string {
+	t.Helper()
 	var assetURL string
 	mux := http.NewServeMux()
 	mux.HandleFunc("/asset.jpg", func(w http.ResponseWriter, r *http.Request) {
@@ -182,21 +186,28 @@ func TestPhotoDownloadCmd(t *testing.T) {
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"data":[{"id":"p1","attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":%q}}]}`, assetURL)
+		parts := make([]string, len(ids))
+		for i, id := range ids {
+			parts[i] = fmt.Sprintf(`{"id":%q,"attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":%q}}`, id, assetURL)
+		}
+		fmt.Fprintf(w, `{"data":[%s]}`, strings.Join(parts, ","))
 	})
-
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	assetURL = srv.URL + "/asset.jpg"
 	pointClientAt(t, clientAtURL(t, srv.URL))
+	return t.TempDir()
+}
 
-	dir := t.TempDir()
-	origAll, origIDs, origDir := photoDownloadAll, photoMessageID, photoOutputDir
+func TestPhotoDownloadCmd(t *testing.T) {
+	dir := photoDownloadTestServer(t, []string{"p1"})
+
+	origAll, origIDs, origDir := photoDownloadAll, photoID, photoOutputDir
 	photoDownloadAll = true
-	photoMessageID = nil
+	photoID = nil
 	photoOutputDir = dir
 	t.Cleanup(func() {
-		photoDownloadAll, photoMessageID, photoOutputDir = origAll, origIDs, origDir
+		photoDownloadAll, photoID, photoOutputDir = origAll, origIDs, origDir
 	})
 
 	out := captureStdout(func() {
@@ -220,10 +231,10 @@ func TestPhotoDownloadCmd_NoMatches(t *testing.T) {
 		fmt.Fprint(w, `{"data":[]}`)
 	})
 
-	origAll, origIDs := photoDownloadAll, photoMessageID
+	origAll, origIDs := photoDownloadAll, photoID
 	photoDownloadAll = true
-	photoMessageID = nil
-	t.Cleanup(func() { photoDownloadAll, photoMessageID = origAll, origIDs })
+	photoID = nil
+	t.Cleanup(func() { photoDownloadAll, photoID = origAll, origIDs })
 
 	out := captureStdout(func() {
 		if err := photoDownloadCmd.RunE(photoDownloadCmd, nil); err != nil {
@@ -232,5 +243,56 @@ func TestPhotoDownloadCmd_NoMatches(t *testing.T) {
 	})
 	if !strings.Contains(out, "No matching photos found") {
 		t.Errorf("expected no-matches message, got: %s", out)
+	}
+}
+
+func TestPhotoDownloadCmd_ByPhotoID(t *testing.T) {
+	dir := photoDownloadTestServer(t, []string{"p1", "p2"})
+
+	origAll, origIDs, origDir := photoDownloadAll, photoID, photoOutputDir
+	photoDownloadAll = false
+	photoID = []string{"p1"}
+	photoOutputDir = dir
+	t.Cleanup(func() { photoDownloadAll, photoID, photoOutputDir = origAll, origIDs, origDir })
+
+	out := captureStdout(func() {
+		if err := photoDownloadCmd.RunE(photoDownloadCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Saved") {
+		t.Errorf("expected save confirmation, got: %s", out)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 {
+		t.Errorf("expected exactly one downloaded file (p1 only), got %v (err=%v)", entries, err)
+	}
+}
+
+func TestPhotoDownloadCmd_NoFlagsError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {})
+
+	origAll, origIDs := photoDownloadAll, photoID
+	photoDownloadAll = false
+	photoID = nil
+	t.Cleanup(func() { photoDownloadAll, photoID = origAll, origIDs })
+
+	err := photoDownloadCmd.RunE(photoDownloadCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "--photo-id or --all") {
+		t.Errorf("expected '--photo-id or --all' error, got: %v", err)
+	}
+}
+
+func TestPhotoDeleteCmd_InvalidID(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {})
+
+	origIDs, origYes := photoID, yes
+	photoID, yes = []string{"not-a-number"}, true
+	t.Cleanup(func() { photoID, yes = origIDs, origYes })
+
+	err := photoDeleteCmd.RunE(photoDeleteCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "invalid photo ID") {
+		t.Errorf("expected 'invalid photo ID' error, got: %v", err)
 	}
 }

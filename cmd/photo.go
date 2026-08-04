@@ -21,7 +21,7 @@ var (
 	photoPageToken   string
 	photoFile        string
 	photoCaption     string
-	photoMessageID   []string
+	photoID   []string
 	photoOutputDir   string
 	photoDownloadAll bool
 )
@@ -103,26 +103,26 @@ var photoUploadCmd = &cobra.Command{
 
 var photoDeleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "Delete one or more photos by message ID",
+	Short: "Delete one or more photos by photo ID",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
 			return err
 		}
 
 		if dryRun {
-			printDryRun("delete %d photo(s): %v", len(photoMessageID), photoMessageID)
+			printDryRun("delete %d photo(s): %v", len(photoID), photoID)
 			return nil
 		}
 
-		if !confirmAction(fmt.Sprintf("Delete %d photo(s)?", len(photoMessageID))) {
+		if !confirmAction(fmt.Sprintf("Delete %d photo(s)?", len(photoID))) {
 			return nil
 		}
 
-		ids := make([]int, 0, len(photoMessageID))
-		for _, s := range photoMessageID {
+		ids := make([]int, 0, len(photoID))
+		for _, s := range photoID {
 			id, err := strconv.Atoi(s)
 			if err != nil {
-				return fmt.Errorf("invalid message ID %q: %w", s, err)
+				return fmt.Errorf("invalid photo ID %q: %w", s, err)
 			}
 			ids = append(ids, id)
 		}
@@ -149,8 +149,8 @@ var photoDownloadCmd = &cobra.Command{
 			return err
 		}
 
-		if !photoDownloadAll && len(photoMessageID) == 0 {
-			return fmt.Errorf("specify --message-id or --all")
+		if !photoDownloadAll && len(photoID) == 0 {
+			return fmt.Errorf("specify --photo-id or --all")
 		}
 
 		client, err := getClient()
@@ -158,8 +158,8 @@ var photoDownloadCmd = &cobra.Command{
 			return err
 		}
 
-		wantIDs := make(map[string]bool, len(photoMessageID))
-		for _, id := range photoMessageID {
+		wantIDs := make(map[string]bool, len(photoID))
+		for _, id := range photoID {
 			wantIDs[id] = true
 		}
 
@@ -234,12 +234,12 @@ func init() {
 	photoUploadCmd.Flags().StringVar(&photoCaption, "caption", "", "Optional caption for the photo")
 	markFlagRequired(photoUploadCmd, "file")
 
-	photoDeleteCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to delete (repeatable)")
+	photoDeleteCmd.Flags().StringArrayVar(&photoID, "photo-id", nil, "Photo ID to delete (repeatable)")
 	photoDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	photoDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
-	markFlagRequired(photoDeleteCmd, "message-id")
+	markFlagRequired(photoDeleteCmd, "photo-id")
 
-	photoDownloadCmd.Flags().StringArrayVar(&photoMessageID, "message-id", nil, "Message ID to download (repeatable)")
+	photoDownloadCmd.Flags().StringArrayVar(&photoID, "photo-id", nil, "Photo ID to download (repeatable)")
 	photoDownloadCmd.Flags().BoolVar(&photoDownloadAll, "all", false, "Download all photos")
 	photoDownloadCmd.Flags().StringVar(&photoOutputDir, "output-dir", ".", "Directory to save downloaded files")
 }
