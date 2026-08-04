@@ -11,7 +11,7 @@ import (
 
 // loadSkylightConfig reads ~/.skylight/config and populates the provided
 // pointers only when the corresponding value is currently empty.
-func loadSkylightConfig(email, password, frameID *string) {
+func loadSkylightConfig(refreshToken, fingerprint, frameID *string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
@@ -23,9 +23,9 @@ func loadSkylightConfig(email, password, frameID *string) {
 	defer f.Close()
 
 	vars := map[string]*string{
-		"SKYLIGHT_EMAIL":    email,
-		"SKYLIGHT_PASSWORD": password,
-		"SKYLIGHT_FRAME_ID": frameID,
+		"SKYLIGHT_REFRESH_TOKEN":      refreshToken,
+		"SKYLIGHT_DEVICE_FINGERPRINT": fingerprint,
+		"SKYLIGHT_FRAME_ID":           frameID,
 	}
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {

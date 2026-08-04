@@ -4,7 +4,6 @@ package lib
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -24,28 +23,24 @@ var (
 func integrationClient(t *testing.T) (*Client, string) {
 	t.Helper()
 
-	email := os.Getenv("SKYLIGHT_EMAIL")
-	password := os.Getenv("SKYLIGHT_PASSWORD")
+	refreshToken := os.Getenv("SKYLIGHT_REFRESH_TOKEN")
+	fingerprint := os.Getenv("SKYLIGHT_DEVICE_FINGERPRINT")
 	frameID := os.Getenv("SKYLIGHT_FRAME_ID")
 
-	loadSkylightConfig(&email, &password, &frameID)
+	loadSkylightConfig(&refreshToken, &fingerprint, &frameID)
 
 	if frameID == "" {
 		t.Skip("skipping: set SKYLIGHT_FRAME_ID or add it to ~/.skylight/config")
 	}
-	if email == "" || password == "" {
-		t.Skip("skipping: set SKYLIGHT_EMAIL and SKYLIGHT_PASSWORD or add them to ~/.skylight/config")
+	if refreshToken == "" {
+		t.Skip("skipping: set SKYLIGHT_REFRESH_TOKEN or add it to ~/.skylight/config")
+	}
+	if fingerprint == "" {
+		fingerprint = "integration-test-" + frameID
 	}
 
 	clientOnce.Do(func() {
-		fingerprint := "integration-test-" + frameID
-		tok, err := LoginHeadless(email, password, fingerprint)
-		if err != nil {
-			clientErr = fmt.Errorf("LoginHeadless: %w", err)
-			return
-		}
-
-		sharedClient, clientErr = NewClientWithToken("integration", tok.AccessToken,
+		sharedClient, clientErr = NewClientWithRefreshToken(refreshToken, fingerprint,
 			WithRateLimit(rate.Limit(2), 5),
 			WithRetry(3, 500*time.Millisecond, 10*time.Second),
 		)
