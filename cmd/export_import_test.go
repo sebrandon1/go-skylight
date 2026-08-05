@@ -150,6 +150,45 @@ func TestRunImportDryRun_PrintsCounts(t *testing.T) {
 	}
 }
 
+func TestRunImportDryRun_ExcludesCategories(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	data := ExportData{
+		Routines:   []lib.Routine{{Title: "Morning"}},
+		Bounties:   []lib.Bounty{{}},
+		Categories: []lib.Category{{ID: "cat1"}},
+	}
+	want := map[string]bool{
+		exportResourceRoutines:   true,
+		exportResourceBounties:   true,
+		exportResourceCategories: true,
+	}
+	runImportDryRun(data, want)
+
+	w.Close()
+	os.Stdout = old
+
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	out := string(buf[:n])
+
+	if !strings.Contains(out, "routines") {
+		t.Errorf("expected routines in dry-run output, got: %s", out)
+	}
+	if !strings.Contains(out, "bounties") {
+		t.Errorf("expected bounties in dry-run output, got: %s", out)
+	}
+	if strings.Contains(out, "categories") {
+		t.Errorf("expected categories excluded from dry-run output (export-only), got: %s", out)
+	}
+}
+
 func TestExportDataRoundTrip(t *testing.T) {
 	data := ExportData{
 		ExportedAt: "2026-05-02T00:00:00Z",
@@ -202,6 +241,10 @@ func exportMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/routines"):
+			fmt.Fprint(w, `{"data":[{"id":"rt1","type":"routine","attributes":{"title":"Morning Routine","assignee_id":"","steps":[]}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/categories"):
+			fmt.Fprint(w, `{"data":[{"id":"cat1","type":"category","attributes":{"label":"Alice","color":"blue"}}]}`)
 		default:
 			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
 		}
@@ -233,7 +276,13 @@ func TestExportCmd_AllResourcesToStdout(t *testing.T) {
 		t.Errorf("expected frame_id test-frame, got %q", data.FrameID)
 	}
 	if len(data.Chores) != 1 || len(data.Rewards) != 1 || len(data.Lists) != 1 || len(data.Recipes) != 1 || len(data.CalendarEvents) != 1 {
-		t.Errorf("expected one of each resource, got: %+v", data)
+		t.Errorf("expected one of each legacy resource, got: %+v", data)
+	}
+	if len(data.Routines) != 1 {
+		t.Errorf("expected 1 routine, got %d", len(data.Routines))
+	}
+	if len(data.Categories) != 1 {
+		t.Errorf("expected 1 category, got %d", len(data.Categories))
 	}
 }
 

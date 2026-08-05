@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	exportResourceChores   = "chores"
-	exportResourceRewards  = "rewards"
-	exportResourceLists    = "lists"
-	exportResourceRecipes  = "recipes"
-	exportResourceSittings = "sittings"
-	exportResourceCalendar = "calendar"
+	exportResourceChores     = "chores"
+	exportResourceRewards    = "rewards"
+	exportResourceLists      = "lists"
+	exportResourceRecipes    = "recipes"
+	exportResourceSittings   = "sittings"
+	exportResourceCalendar   = "calendar"
+	exportResourceRoutines   = "routines"
+	exportResourceBounties   = "bounties"
+	exportResourceCategories = "categories"
 
 	// resourceAll is the documented default/wildcard value for the various
 	// --resources flags across commands, meaning "no filter, include all".
@@ -32,6 +35,9 @@ var allExportResources = []string{
 	exportResourceRecipes,
 	exportResourceSittings,
 	exportResourceCalendar,
+	exportResourceRoutines,
+	exportResourceBounties,
+	exportResourceCategories,
 }
 
 type ExportData struct {
@@ -43,6 +49,9 @@ type ExportData struct {
 	Recipes        []lib.Recipe        `json:"recipes,omitempty"`
 	MealSittings   []lib.MealSitting   `json:"meal_sittings,omitempty"`
 	CalendarEvents []lib.CalendarEvent `json:"calendar_events,omitempty"`
+	Routines       []lib.Routine       `json:"routines,omitempty"`
+	Bounties       []lib.Bounty        `json:"bounties,omitempty"`
+	Categories     []lib.Category      `json:"categories,omitempty"`
 }
 
 var (
@@ -56,7 +65,7 @@ var exportCmd = &cobra.Command{
 	Short: "Dump frame data to a JSON file",
 	Long: `Export frame data to a JSON file for backup or migration.
 
-Resources exported: chores, rewards, lists, recipes, sittings, calendar.
+Resources exported: chores, rewards, lists, recipes, sittings, calendar, routines, bounties, categories.
 Time-bounded resources (chores, sittings, calendar) use --days to set the window
 centered on today. Use --resources to limit which resource types are included.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -183,6 +192,39 @@ centered on today. Use --resources to limit which resource types are included.`,
 				return err
 			})
 		}
+		if want[exportResourceRoutines] {
+			launch(exportResourceRoutines, func() error {
+				routines, err := client.ListRoutines(ctx, frameID)
+				if err == nil {
+					mu.Lock()
+					data.Routines = routines
+					mu.Unlock()
+				}
+				return err
+			})
+		}
+		if want[exportResourceBounties] {
+			launch(exportResourceBounties, func() error {
+				bounties, err := client.ListBounties(ctx, frameID)
+				if err == nil {
+					mu.Lock()
+					data.Bounties = bounties
+					mu.Unlock()
+				}
+				return err
+			})
+		}
+		if want[exportResourceCategories] {
+			launch(exportResourceCategories, func() error {
+				categories, err := client.ListCategories(ctx, frameID)
+				if err == nil {
+					mu.Lock()
+					data.Categories = categories
+					mu.Unlock()
+				}
+				return err
+			})
+		}
 
 		go func() {
 			wg.Wait()
@@ -258,6 +300,6 @@ func parseResourceList(s string, all []string) ([]string, error) {
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.Flags().StringVar(&exportOutputFile, "output-file", "", "Output file path (default: stdout)")
-	exportCmd.Flags().StringVar(&exportResources, "resources", resourceAll, "Comma-separated resource types: chores,rewards,lists,recipes,sittings,calendar")
+	exportCmd.Flags().StringVar(&exportResources, "resources", resourceAll, "Comma-separated resource types: chores,rewards,lists,recipes,sittings,calendar,routines,bounties,categories")
 	exportCmd.Flags().IntVar(&exportDays, "days", 90, "Window (in days before/after today) for time-bounded resources")
 }
