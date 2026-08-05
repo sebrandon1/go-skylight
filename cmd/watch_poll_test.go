@@ -431,6 +431,113 @@ func TestPollMealSittings_ListError(t *testing.T) {
 	pollMealSittings(context.Background(), client, state, time.Now(), "12:00:00")
 }
 
+func TestPollPhotos(t *testing.T) {
+	origFormat := outputFormat
+	outputFormat = ""
+	t.Cleanup(func() { outputFormat = origFormat })
+
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"asset_type":"image","status":"active","created_at":"2026-01-01T00:00:00Z"}}]}`)
+	})
+
+	state := &watchState{seenPhotoIDs: make(map[string]struct{})}
+
+	out := captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:00") })
+	if !strings.Contains(out, "PHOTO ADDED") {
+		t.Errorf("expected photo added in output, got: %s", out)
+	}
+	if _, seen := state.seenPhotoIDs["p1"]; !seen {
+		t.Error("expected photo p1 to be marked seen")
+	}
+
+	// Polling again should not re-print the already-seen photo.
+	out = captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:01") })
+	if strings.Contains(out, "PHOTO ADDED") {
+		t.Errorf("already-seen photo should not be re-printed, got: %s", out)
+	}
+}
+
+func TestPollPhotos_Seeding(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"asset_type":"image","status":"active"}}]}`)
+	})
+
+	state := &watchState{seenPhotoIDs: make(map[string]struct{}), seeding: true}
+
+	out := captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:00") })
+	if out != "" {
+		t.Errorf("expected no output while seeding, got: %s", out)
+	}
+	if _, seen := state.seenPhotoIDs["p1"]; !seen {
+		t.Error("expected photo to be marked seen even while seeding")
+	}
+}
+
+func TestPollPhotos_JSONOutput(t *testing.T) {
+	t.Cleanup(func() { outputFormat = "" })
+	outputFormat = outputJSON
+
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"asset_type":"video","status":"active"}}]}`)
+	})
+
+	state := &watchState{seenPhotoIDs: make(map[string]struct{})}
+	out := captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:00") })
+	if !strings.Contains(out, `"type": "photo_added"`) {
+		t.Errorf("expected photo_added type in JSON output, got: %s", out)
+	}
+	if !strings.Contains(out, `"id": "p1"`) {
+		t.Errorf("expected photo id in JSON output, got: %s", out)
+	}
+}
+
+func TestPollPhotos_ListError(t *testing.T) {
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	state := &watchState{seenPhotoIDs: make(map[string]struct{})}
+	// Errors go to stderr, not stdout; just confirm it doesn't panic.
+	pollPhotos(context.Background(), client, state, "12:00:00")
+}
+
+func TestPollPhotos_Pagination(t *testing.T) {
+	origFormat := outputFormat
+	outputFormat = ""
+	t.Cleanup(func() { outputFormat = origFormat })
+
+	callCount := 0
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		callCount++
+		switch r.URL.Query().Get("page_token") {
+		case "", "__START__":
+			fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"asset_type":"image","status":"active"}}],"meta":{"next_page_token":"tok2"}}`)
+		default:
+			fmt.Fprint(w, `{"data":[{"id":"p2","attributes":{"asset_type":"image","status":"active"}}]}`)
+		}
+	})
+
+	state := &watchState{seenPhotoIDs: make(map[string]struct{})}
+	out := captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:00") })
+
+	if callCount < 2 {
+		t.Errorf("expected at least 2 API calls for pagination, got %d", callCount)
+	}
+	if _, seen := state.seenPhotoIDs["p1"]; !seen {
+		t.Error("expected photo p1 from page 1 to be marked seen")
+	}
+	if _, seen := state.seenPhotoIDs["p2"]; !seen {
+		t.Error("expected photo p2 from page 2 to be marked seen")
+	}
+	if !strings.Contains(out, "p1") || !strings.Contains(out, "p2") {
+		t.Errorf("expected both photos in output, got: %s", out)
+	}
+}
+
 func TestPoll_AllResources(t *testing.T) {
 	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -447,6 +554,8 @@ func TestPoll_AllResources(t *testing.T) {
 			fmt.Fprint(w, `{"data":[]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
 			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/messages"):
+			fmt.Fprint(w, `{"data":[]}`)
 		default:
 			t.Fatalf("unexpected request: %s", r.URL.Path)
 		}
@@ -459,6 +568,7 @@ func TestPoll_AllResources(t *testing.T) {
 		seenListIDs:        make(map[string]struct{}),
 		seenRoutineIDs:     make(map[string]struct{}),
 		seenMealSittingIDs: make(map[string]struct{}),
+		seenPhotoIDs:       make(map[string]struct{}),
 	}
 
 	// poll() fans the resources out over goroutines; a clean run with no
