@@ -21,6 +21,8 @@ var (
 	sittingDateMin    string
 	sittingDateMax    string
 	mealCategoryID    string
+	mealCategoryName  string
+	mealCategoryColor string
 
 	mealPlanRecipeIDs   []string
 	mealPlanCategoryIDs []string
@@ -61,6 +63,94 @@ var mealCategoriesCmd = &cobra.Command{
 		}
 
 		printOutput(categories)
+		return nil
+	},
+}
+
+var mealCreateCategoryCmd = &cobra.Command{
+	Use:   "create-category",
+	Short: "Create a meal category",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		category, err := client.CreateMealCategory(cmd.Context(), frameID, lib.MealCategoryData{
+			Name:  mealCategoryName,
+			Color: mealCategoryColor,
+		})
+		if err != nil {
+			return fmt.Errorf("creating meal category: %w", err)
+		}
+
+		printJSON(category)
+		return nil
+	},
+}
+
+var mealUpdateCategoryCmd = &cobra.Command{
+	Use:   "update-category",
+	Short: "Update a meal category",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		data := lib.MealCategoryData{}
+		if cmd.Flags().Changed("name") {
+			data.Name = mealCategoryName
+		}
+		if cmd.Flags().Changed("color") {
+			data.Color = mealCategoryColor
+		}
+
+		category, err := client.UpdateMealCategory(cmd.Context(), frameID, mealCategoryID, data)
+		if err != nil {
+			return fmt.Errorf("updating meal category: %w", err)
+		}
+
+		printJSON(category)
+		return nil
+	},
+}
+
+var mealDeleteCategoryCmd = &cobra.Command{
+	Use:   "delete-category",
+	Short: "Delete a meal category",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		if dryRun {
+			printDryRun("delete meal category %s", mealCategoryID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete meal category %s?", mealCategoryID)) {
+			return nil
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.DeleteMealCategory(cmd.Context(), frameID, mealCategoryID); err != nil {
+			return fmt.Errorf("deleting meal category: %w", err)
+		}
+
+		printSuccess("Meal category deleted successfully")
 		return nil
 	},
 }
@@ -422,6 +512,9 @@ var mealUpdateRecipeCmd = &cobra.Command{
 
 func init() {
 	mealCmd.AddCommand(mealCategoriesCmd)
+	mealCmd.AddCommand(mealCreateCategoryCmd)
+	mealCmd.AddCommand(mealUpdateCategoryCmd)
+	mealCmd.AddCommand(mealDeleteCategoryCmd)
 	mealCmd.AddCommand(mealRecipesCmd)
 	mealCmd.AddCommand(mealRecipeInfoCmd)
 	mealCmd.AddCommand(mealCreateRecipeCmd)
@@ -434,6 +527,20 @@ func init() {
 	mealCmd.AddCommand(mealAddToGroceryCmd)
 	mealCmd.AddCommand(mealSittingRecipeCmd)
 	mealCmd.AddCommand(mealPlanCmd)
+
+	mealCreateCategoryCmd.Flags().StringVar(&mealCategoryName, "name", "", "Category name")
+	mealCreateCategoryCmd.Flags().StringVar(&mealCategoryColor, "color", "", "Category color")
+	markFlagRequired(mealCreateCategoryCmd, "name")
+
+	mealUpdateCategoryCmd.Flags().StringVar(&mealCategoryID, "category-id", "", "Meal category ID")
+	mealUpdateCategoryCmd.Flags().StringVar(&mealCategoryName, "name", "", "Category name")
+	mealUpdateCategoryCmd.Flags().StringVar(&mealCategoryColor, "color", "", "Category color")
+	markFlagRequired(mealUpdateCategoryCmd, "category-id")
+
+	mealDeleteCategoryCmd.Flags().StringVar(&mealCategoryID, "category-id", "", "Meal category ID")
+	mealDeleteCategoryCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	mealDeleteCategoryCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
+	markFlagRequired(mealDeleteCategoryCmd, "category-id")
 
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	markFlagRequired(mealRecipeInfoCmd, "recipe-id")

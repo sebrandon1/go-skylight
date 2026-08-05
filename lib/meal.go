@@ -26,6 +26,52 @@ func (c *Client) ListMealCategories(ctx context.Context, frameID string) ([]Meal
 	return categories, nil
 }
 
+// CreateMealCategory creates a new meal category.
+func (c *Client) CreateMealCategory(ctx context.Context, frameID string, data MealCategoryData) (*MealCategory, error) {
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/meals/categories", c.effectiveURL(), pathSeg(frameID)), data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create meal category request: %w", err)
+	}
+
+	var apiResp mealCategoryAPISingleResponse
+	if err := c.post(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to create meal category: %w", err)
+	}
+
+	result := apiResp.Data.toMealCategory()
+	return &result, nil
+}
+
+// UpdateMealCategory updates an existing meal category.
+func (c *Client) UpdateMealCategory(ctx context.Context, frameID, categoryID string, data MealCategoryData) (*MealCategory, error) {
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/meals/categories/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(categoryID)), data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create update meal category request: %w", err)
+	}
+
+	var apiResp mealCategoryAPISingleResponse
+	if err := c.patch(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to update meal category: %w", err)
+	}
+
+	result := apiResp.Data.toMealCategory()
+	return &result, nil
+}
+
+// DeleteMealCategory deletes a meal category.
+func (c *Client) DeleteMealCategory(ctx context.Context, frameID, categoryID string) error {
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/meals/categories/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(categoryID)))
+	if err != nil {
+		return fmt.Errorf("failed to create delete meal category request: %w", err)
+	}
+
+	if err := c.doDelete(req); err != nil {
+		return fmt.Errorf("failed to delete meal category: %w", err)
+	}
+
+	return nil
+}
+
 // ListRecipes retrieves recipes for a frame.
 func (c *Client) ListRecipes(ctx context.Context, frameID string) ([]Recipe, error) {
 	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/meals/recipes", c.effectiveURL(), pathSeg(frameID)))

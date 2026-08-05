@@ -339,6 +339,157 @@ func TestListMealCategories(t *testing.T) {
 	}
 }
 
+func TestCreateMealCategory(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    MealCategoryData
+		status   int
+		response string
+		wantName string
+		wantErr  bool
+	}{
+		{
+			name:     "creates category",
+			input:    MealCategoryData{Name: "Dinner", Color: "#FF0000"},
+			status:   http.StatusCreated,
+			response: `{"data":{"id":"mc1","attributes":{"label":"Dinner","color":"#FF0000"}}}`,
+			wantName: "Dinner",
+		},
+		{
+			name:    "server error returns error",
+			input:   MealCategoryData{Name: "Lunch"},
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/meals/categories" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			category, err := client.CreateMealCategory(context.Background(), "frame1", tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && category.Name != tc.wantName {
+				t.Errorf("Name: want %q got %q", tc.wantName, category.Name)
+			}
+		})
+	}
+}
+
+func TestUpdateMealCategory(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   int
+		response string
+		wantName string
+		wantErr  bool
+	}{
+		{
+			name:     "updates category",
+			status:   http.StatusOK,
+			response: `{"data":{"id":"mc1","attributes":{"label":"Updated Dinner","color":"#00FF00"}}}`,
+			wantName: "Updated Dinner",
+		},
+		{
+			name:    "server error returns error",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch {
+					t.Errorf("expected PATCH, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/meals/categories/mc1" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			category, err := client.UpdateMealCategory(context.Background(), "frame1", "mc1", MealCategoryData{Name: "Updated Dinner"})
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && category.Name != tc.wantName {
+				t.Errorf("Name: want %q got %q", tc.wantName, category.Name)
+			}
+		})
+	}
+}
+
+func TestDeleteMealCategory(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		wantErr bool
+	}{
+		{"deletes with 204", http.StatusNoContent, false},
+		{"server error returns error", http.StatusInternalServerError, true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete {
+					t.Errorf("expected DELETE, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/meals/categories/mc1" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.DeleteMealCategory(context.Background(), "frame1", "mc1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
 func TestListMealSittings(t *testing.T) {
 	tests := []struct {
 		name     string
