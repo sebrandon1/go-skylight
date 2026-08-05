@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -71,6 +72,42 @@ func TestCalendarListCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Meeting") {
 		t.Errorf("expected event in output, got: %s", out)
+	}
+}
+
+func TestCalendarCreateCmd_WithColorAndCategory(t *testing.T) {
+	var gotColor, gotCatID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/calendar_events") && r.Method == http.MethodPost:
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+				gotColor, _ = body["color"].(string)
+				gotCatID, _ = body["category_id"].(string)
+			}
+			fmt.Fprint(w, `{"data":{"id":"e1","type":"calendar_event","attributes":{"summary":"Dentist","color":"red","all_day":false},"relationships":{"categories":{"data":[{"id":"cat1","type":"category"}]}}}}`)
+		default:
+			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+		}
+	})
+	newCmdTestClient(t, handler)
+	orig := struct{ title, start, color, cat string }{calendarTitle, calendarStartAt, calendarColor, calendarCategoryID}
+	calendarTitle, calendarStartAt, calendarColor, calendarCategoryID = "Dentist", "2026-08-10T09:00:00Z", "red", "cat1"
+	t.Cleanup(func() {
+		calendarTitle, calendarStartAt, calendarColor, calendarCategoryID = orig.title, orig.start, orig.color, orig.cat
+	})
+
+	captureStdout(func() {
+		if err := calendarCreateCmd.RunE(calendarCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if gotColor != "red" {
+		t.Errorf("color in request body: want %q got %q", "red", gotColor)
+	}
+	if gotCatID != "cat1" {
+		t.Errorf("category_id in request body: want %q got %q", "cat1", gotCatID)
 	}
 }
 
@@ -156,6 +193,49 @@ func TestSourceCalendarsCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Family") {
 		t.Errorf("expected source calendar in output, got: %s", out)
+	}
+}
+
+func TestCalendarUpdateCmd_WithColorAndCategory(t *testing.T) {
+	var gotColor, gotCatID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/event1") && r.Method == http.MethodPut:
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+				gotColor, _ = body["color"].(string)
+				gotCatID, _ = body["category_id"].(string)
+			}
+			fmt.Fprint(w, `{"data":{"id":"event1","type":"calendar_event","attributes":{"summary":"Updated","all_day":false},"relationships":{"categories":{"data":[]}}}}`)
+		default:
+			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+		}
+	})
+	newCmdTestClient(t, handler)
+
+	origID, origColor, origCat := calendarEventID, calendarColor, calendarCategoryID
+	calendarEventID, calendarColor, calendarCategoryID = "event1", "blue", "cat2"
+	t.Cleanup(func() { calendarEventID, calendarColor, calendarCategoryID = origID, origColor, origCat })
+
+	// pflag.Set() marks flags as permanently Changed on the shared singleton.
+	if err := calendarUpdateCmd.Flags().Set("color", "blue"); err != nil {
+		t.Fatalf("setting color flag: %v", err)
+	}
+	if err := calendarUpdateCmd.Flags().Set("category-id", "cat2"); err != nil {
+		t.Fatalf("setting category-id flag: %v", err)
+	}
+
+	captureStdout(func() {
+		if err := calendarUpdateCmd.RunE(calendarUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if gotColor != "blue" {
+		t.Errorf("color in PUT body: want %q got %q", "blue", gotColor)
+	}
+	if gotCatID != "cat2" {
+		t.Errorf("category_id in PUT body: want %q got %q", "cat2", gotCatID)
 	}
 }
 
