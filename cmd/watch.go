@@ -20,6 +20,7 @@ const (
 	watchResourceLists    = "lists"
 	watchResourceRoutines = "routines"
 	watchResourceMeals    = "meals"
+	watchResourcePhotos   = "photos"
 )
 
 var (
@@ -27,7 +28,7 @@ var (
 	watchResources string
 	watchPersist   bool
 
-	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar, watchResourceLists, watchResourceRoutines, watchResourceMeals}
+	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar, watchResourceLists, watchResourceRoutines, watchResourceMeals, watchResourcePhotos}
 
 	validWatchResources = func() map[string]struct{} {
 		m := make(map[string]struct{}, len(allWatchResources))
@@ -50,6 +51,7 @@ Tracks previously-seen IDs in memory and emits only newly-observed changes:
   - lists:    newly created lists
   - routines: newly created routines
   - meals:    newly scheduled meal sittings (today through end of week)
+  - photos:   newly uploaded photos and videos
 
 Use --persist to persist reward deduplication state to disk
 (~/.skylight/poller-state.json) so restarts do not re-emit already-seen
@@ -92,6 +94,7 @@ Press Ctrl+C to stop.`,
 			seenListIDs:        make(map[string]struct{}),
 			seenRoutineIDs:     make(map[string]struct{}),
 			seenMealSittingIDs: make(map[string]struct{}),
+			seenPhotoIDs:       make(map[string]struct{}),
 			timezone:           frame.TimeZone,
 		}
 
@@ -146,6 +149,7 @@ type watchState struct {
 	seenListIDs        map[string]struct{}
 	seenRoutineIDs     map[string]struct{}
 	seenMealSittingIDs map[string]struct{}
+	seenPhotoIDs       map[string]struct{}
 	seeding            bool
 	timezone           string
 }
@@ -231,6 +235,12 @@ func poll(ctx context.Context, client *lib.Client, state *watchState, resources 
 				defer wg.Done()
 				pollMealSittings(ctx, client, state, now, ts)
 			}()
+		case watchResourcePhotos:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollPhotos(ctx, client, state, ts)
+			}()
 		}
 	}
 	wg.Wait()
@@ -310,6 +320,36 @@ func pollMealSittings(ctx context.Context, client *lib.Client, state *watchState
 	)
 }
 
+func pollPhotos(ctx context.Context, client *lib.Client, state *watchState, ts string) {
+	state.seenPhotoIDs = pollAndDiff(ts,
+		func() ([]lib.Photo, error) {
+			var all []lib.Photo
+			pageToken := ""
+			for {
+				page, next, err := client.ListPhotos(ctx, frameID, lib.PhotoListOptions{PageToken: pageToken})
+				if err != nil {
+					return nil, err
+				}
+				all = append(all, page...)
+				if next == "" {
+					return all, nil
+				}
+				pageToken = next
+			}
+		},
+		func(p lib.Photo) string { return p.ID },
+		nil,
+		func(p lib.Photo) {
+			if outputFormat == outputJSON {
+				printJSON(map[string]any{"type": "photo_added", "id": p.ID, "asset_type": p.AssetType, "ts": ts})
+			} else {
+				fmt.Printf("[%s] PHOTO ADDED      %s (%s)\n", ts, p.ID, p.AssetType)
+			}
+		},
+		state.seenPhotoIDs, state.seeding, watchResourcePhotos,
+	)
+}
+
 func pollChores(ctx context.Context, client *lib.Client, state *watchState, now time.Time, ts string) {
 	today := now.Format(lib.DateFormat)
 	state.seenChoreIDs = pollAndDiff(ts,
@@ -376,8 +416,8 @@ func pollCalendar(ctx context.Context, client *lib.Client, state *watchState, no
 func init() {
 	rootCmd.AddCommand(watchCmd)
 	watchCmd.Flags().IntVar(&watchInterval, "interval", 60, "Poll interval in seconds")
-	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar,lists,routines,meals")
+	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar,lists,routines,meals,photos")
 	watchCmd.Flags().BoolVar(&watchPersist, "persist", false, "Persist reward deduplication state to disk across restarts (~/.skylight/poller-state.json)")
 	registerEnumFlagCompletion(watchCmd, "resources",
-		"rewards", "chores", "calendar", "lists", "routines", "meals", "all")
+		"rewards", "chores", "calendar", "lists", "routines", "meals", "photos", "all")
 }

@@ -139,9 +139,21 @@ func TestWatchCmdHasFlags(t *testing.T) {
 
 func TestWatchCmdLong_ContainsResources(t *testing.T) {
 	long := watchCmd.Long
-	for _, r := range []string{"rewards", "chores", "calendar", "lists", "routines", "meals"} {
+	for _, r := range []string{"rewards", "chores", "calendar", "lists", "routines", "meals", "photos"} {
 		if !strings.Contains(long, r) {
 			t.Errorf("expected %q mentioned in watch command long description", r)
 		}
+	}
+}
+
+func TestWatchState_TracksSeenPhotos(t *testing.T) {
+	state := &watchState{seenPhotoIDs: make(map[string]struct{})}
+
+	if _, seen := state.seenPhotoIDs["p1"]; seen {
+		t.Error("expected p1 not yet seen")
+	}
+	state.seenPhotoIDs["p1"] = struct{}{}
+	if _, seen := state.seenPhotoIDs["p1"]; !seen {
+		t.Error("expected p1 to be seen after marking")
 	}
 }
