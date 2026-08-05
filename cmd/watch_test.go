@@ -139,7 +139,7 @@ func TestWatchCmdHasFlags(t *testing.T) {
 
 func TestWatchCmdLong_ContainsResources(t *testing.T) {
 	long := watchCmd.Long
-	for _, r := range []string{"rewards", "chores", "calendar", "lists", "routines"} {
+	for _, r := range []string{"rewards", "chores", "calendar", "lists", "routines", "meals"} {
 		if !strings.Contains(long, r) {
 			t.Errorf("expected %q mentioned in watch command long description", r)
 		}

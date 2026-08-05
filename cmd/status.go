@@ -70,6 +70,11 @@ var statusCmd = &cobra.Command{
 		}
 		incompleteItems, listErrors := countIncompleteListItems(ctx, client, frameID, lists)
 
+		routines, err := client.ListRoutines(ctx, frameID)
+		if err != nil && !lib.IsNotFound(err) {
+			return fmt.Errorf("listing routines: %w", err)
+		}
+
 		pointEntries := resolveRewardPointNames(points, categories)
 
 		var pointParts []string
@@ -91,20 +96,22 @@ var statusCmd = &cobra.Command{
 				"active_lists":          len(lists),
 				"incomplete_list_items": incompleteItems,
 				"list_errors":           listErrors,
+				"routines":              len(routines),
 			})
 			return nil
 		}
 
-		fmt.Printf("Frame:   %s\n", frame.Name)
-		fmt.Printf("Chores:  %d pending today\n", len(chores))
-		fmt.Printf("Events:  %d today\n", len(events))
-		fmt.Printf("Meals:   %d today\n", len(sittings))
+		fmt.Printf("Frame:    %s\n", frame.Name)
+		fmt.Printf("Chores:   %d pending today\n", len(chores))
+		fmt.Printf("Events:   %d today\n", len(events))
+		fmt.Printf("Meals:    %d today\n", len(sittings))
 		listsLine := fmt.Sprintf("%d active, %d incomplete items", len(lists), incompleteItems)
 		if listErrors > 0 {
 			listsLine += fmt.Sprintf(" (%d lists unavailable)", listErrors)
 		}
-		fmt.Printf("Lists:   %s\n", listsLine)
-		fmt.Printf("Points:  %s\n", pointsStr)
+		fmt.Printf("Lists:    %s\n", listsLine)
+		fmt.Printf("Routines: %d\n", len(routines))
+		fmt.Printf("Points:   %s\n", pointsStr)
 		return nil
 	},
 }

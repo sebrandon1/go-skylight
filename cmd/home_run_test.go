@@ -19,6 +19,8 @@ func homeMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
 			fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/routines"):
+			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine","assignee_id":"","steps":[]}}]}`)
 		default:
 			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
 		}
@@ -30,9 +32,11 @@ func TestHomeCmd_Text(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	origNoTasks, origNoLists, origNoMeals := homeNoTasks, homeNoLists, homeNoMeals
-	homeNoTasks, homeNoLists, homeNoMeals = false, false, false
-	t.Cleanup(func() { homeNoTasks, homeNoLists, homeNoMeals = origNoTasks, origNoLists, origNoMeals })
+	origNoTasks, origNoLists, origNoMeals, origNoRoutines := homeNoTasks, homeNoLists, homeNoMeals, homeNoRoutines
+	homeNoTasks, homeNoLists, homeNoMeals, homeNoRoutines = false, false, false, false
+	t.Cleanup(func() {
+		homeNoTasks, homeNoLists, homeNoMeals, homeNoRoutines = origNoTasks, origNoLists, origNoMeals, origNoRoutines
+	})
 
 	out := captureStdout(func() {
 		if err := homeCmd.RunE(homeCmd, nil); err != nil {
@@ -45,6 +49,9 @@ func TestHomeCmd_Text(t *testing.T) {
 	if !strings.Contains(out, "Dinner") {
 		t.Errorf("expected meal sitting in output, got: %s", out)
 	}
+	if !strings.Contains(out, "Morning Routine") {
+		t.Errorf("expected routine in output, got: %s", out)
+	}
 }
 
 func TestHomeCmd_JSON(t *testing.T) {
@@ -52,9 +59,11 @@ func TestHomeCmd_JSON(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = outputJSON
 
-	origNoTasks, origNoLists, origNoMeals := homeNoTasks, homeNoLists, homeNoMeals
-	homeNoTasks, homeNoLists, homeNoMeals = false, false, false
-	t.Cleanup(func() { homeNoTasks, homeNoLists, homeNoMeals = origNoTasks, origNoLists, origNoMeals })
+	origNoTasks, origNoLists, origNoMeals, origNoRoutines := homeNoTasks, homeNoLists, homeNoMeals, homeNoRoutines
+	homeNoTasks, homeNoLists, homeNoMeals, homeNoRoutines = false, false, false, false
+	t.Cleanup(func() {
+		homeNoTasks, homeNoLists, homeNoMeals, homeNoRoutines = origNoTasks, origNoLists, origNoMeals, origNoRoutines
+	})
 
 	out := captureStdout(func() {
 		if err := homeCmd.RunE(homeCmd, nil); err != nil {
@@ -67,6 +76,9 @@ func TestHomeCmd_JSON(t *testing.T) {
 	if !strings.Contains(out, `"meals"`) {
 		t.Errorf("expected meals key in JSON output, got: %s", out)
 	}
+	if !strings.Contains(out, `"routines"`) {
+		t.Errorf("expected routines key in JSON output, got: %s", out)
+	}
 }
 
 func TestHomeCmd_NoTasksNoLists(t *testing.T) {
@@ -74,9 +86,9 @@ func TestHomeCmd_NoTasksNoLists(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	origNoTasks, origNoLists := homeNoTasks, homeNoLists
-	homeNoTasks, homeNoLists = true, true
-	t.Cleanup(func() { homeNoTasks, homeNoLists = origNoTasks, origNoLists })
+	origNoTasks, origNoLists, origNoRoutines := homeNoTasks, homeNoLists, homeNoRoutines
+	homeNoTasks, homeNoLists, homeNoRoutines = true, true, false
+	t.Cleanup(func() { homeNoTasks, homeNoLists, homeNoRoutines = origNoTasks, origNoLists, origNoRoutines })
 
 	out := captureStdout(func() {
 		if err := homeCmd.RunE(homeCmd, nil); err != nil {
@@ -93,9 +105,9 @@ func TestHomeCmd_NoMeals(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	origNoMeals := homeNoMeals
-	homeNoMeals = true
-	t.Cleanup(func() { homeNoMeals = origNoMeals })
+	origNoMeals, origNoRoutines := homeNoMeals, homeNoRoutines
+	homeNoMeals, homeNoRoutines = true, false
+	t.Cleanup(func() { homeNoMeals, homeNoRoutines = origNoMeals, origNoRoutines })
 
 	out := captureStdout(func() {
 		if err := homeCmd.RunE(homeCmd, nil); err != nil {
@@ -104,6 +116,78 @@ func TestHomeCmd_NoMeals(t *testing.T) {
 	})
 	if strings.Contains(out, "=== MEALS THIS WEEK ===") {
 		t.Errorf("expected meals section to be skipped, got: %s", out)
+	}
+}
+
+func TestHomeCmd_NoRoutines(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/routines") {
+			t.Error("routines endpoint should not be called with --no-routines")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		homeMockHandler()(w, r)
+	})
+	t.Cleanup(func() { outputFormat = "" })
+	outputFormat = ""
+
+	origNoRoutines := homeNoRoutines
+	homeNoRoutines = true
+	t.Cleanup(func() { homeNoRoutines = origNoRoutines })
+
+	out := captureStdout(func() {
+		if err := homeCmd.RunE(homeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "=== ROUTINES ===") {
+		t.Errorf("expected routines section to be skipped with --no-routines, got: %s", out)
+	}
+}
+
+func TestHomeCmd_RoutinesNotFound(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/routines") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		homeMockHandler()(w, r)
+	})
+	origNoRoutines := homeNoRoutines
+	homeNoRoutines = false
+	t.Cleanup(func() { homeNoRoutines = origNoRoutines })
+
+	out := captureStdout(func() {
+		if err := homeCmd.RunE(homeCmd, nil); err != nil {
+			t.Errorf("expected 404 on routines to be swallowed, got error: %v", err)
+		}
+	})
+	if strings.Contains(out, "=== ROUTINES ===") {
+		t.Errorf("expected no routines section when API returns 404, got: %s", out)
+	}
+}
+
+func TestHomeCmd_RoutinesFetchError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/routines") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		homeMockHandler()(w, r)
+	})
+	origNoRoutines := homeNoRoutines
+	homeNoRoutines = false
+	t.Cleanup(func() { homeNoRoutines = origNoRoutines })
+
+	err := homeCmd.RunE(homeCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when routines API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing routines") {
+		t.Errorf("expected 'listing routines' in error, got: %v", err)
 	}
 }
 

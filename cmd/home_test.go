@@ -16,7 +16,7 @@ func TestPrintHomeTable(t *testing.T) {
 		lists := []lib.List{{ID: "l1", Title: "Groceries"}}
 		meals := []lib.MealSitting{{ID: "s1", Summary: "Dinner"}}
 
-		out := captureStdout(func() { printHomeTable(nil, chores, lists, meals, monday) })
+		out := captureStdout(func() { printHomeTable(nil, chores, lists, meals, nil, monday) })
 
 		if !strings.Contains(out, "EVENTS THIS WEEK") {
 			t.Errorf("expected events section header, got: %s", out)
@@ -33,7 +33,7 @@ func TestPrintHomeTable(t *testing.T) {
 	})
 
 	t.Run("omits tasks, lists, and meals sections when empty", func(t *testing.T) {
-		out := captureStdout(func() { printHomeTable(nil, nil, nil, nil, monday) })
+		out := captureStdout(func() { printHomeTable(nil, nil, nil, nil, nil, monday) })
 
 		if strings.Contains(out, "PENDING TASKS TODAY") {
 			t.Errorf("expected no tasks section when chores empty, got: %s", out)
@@ -44,13 +44,28 @@ func TestPrintHomeTable(t *testing.T) {
 		if strings.Contains(out, "=== MEALS THIS WEEK ===") {
 			t.Errorf("expected no meals section when meals empty, got: %s", out)
 		}
+		if strings.Contains(out, "=== ROUTINES ===") {
+			t.Errorf("expected no routines section when routines empty, got: %s", out)
+		}
+	})
+
+	t.Run("shows routines when present", func(t *testing.T) {
+		routines := []lib.Routine{{ID: "r1", Title: "Morning"}}
+		out := captureStdout(func() { printHomeTable(nil, nil, nil, nil, routines, monday) })
+
+		if !strings.Contains(out, "=== ROUTINES ===") {
+			t.Errorf("expected routines section header, got: %s", out)
+		}
+		if !strings.Contains(out, "Morning") {
+			t.Errorf("expected routine title in output, got: %s", out)
+		}
 	})
 
 	t.Run("includes events in the weekly view", func(t *testing.T) {
 		events := []lib.CalendarEvent{
 			{ID: "e1", Title: "Standup", StartAt: monday.Format(time.RFC3339)},
 		}
-		out := captureStdout(func() { printHomeTable(events, nil, nil, nil, monday) })
+		out := captureStdout(func() { printHomeTable(events, nil, nil, nil, nil, monday) })
 		if !strings.Contains(out, "Standup") {
 			t.Errorf("expected event title in weekly view, got: %s", out)
 		}

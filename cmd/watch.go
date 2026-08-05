@@ -19,6 +19,7 @@ const (
 	watchResourceCalendar = "calendar"
 	watchResourceLists    = "lists"
 	watchResourceRoutines = "routines"
+	watchResourceMeals    = "meals"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 	watchResources string
 	watchPersist   bool
 
-	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar, watchResourceLists, watchResourceRoutines}
+	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar, watchResourceLists, watchResourceRoutines, watchResourceMeals}
 
 	validWatchResources = func() map[string]struct{} {
 		m := make(map[string]struct{}, len(allWatchResources))
@@ -48,6 +49,7 @@ Tracks previously-seen IDs in memory and emits only newly-observed changes:
   - calendar: events starting within the next hour
   - lists:    newly created lists
   - routines: newly created routines
+  - meals:    newly scheduled meal sittings (today through end of week)
 
 Use --persist to persist reward deduplication state to disk
 (~/.skylight/poller-state.json) so restarts do not re-emit already-seen
@@ -84,12 +86,13 @@ Press Ctrl+C to stop.`,
 		}
 
 		state := &watchState{
-			seenRewardIDs:  make(map[string]struct{}),
-			seenChoreIDs:   make(map[string]struct{}),
-			seenEventIDs:   make(map[string]struct{}),
-			seenListIDs:    make(map[string]struct{}),
-			seenRoutineIDs: make(map[string]struct{}),
-			timezone:       frame.TimeZone,
+			seenRewardIDs:      make(map[string]struct{}),
+			seenChoreIDs:       make(map[string]struct{}),
+			seenEventIDs:       make(map[string]struct{}),
+			seenListIDs:        make(map[string]struct{}),
+			seenRoutineIDs:     make(map[string]struct{}),
+			seenMealSittingIDs: make(map[string]struct{}),
+			timezone:           frame.TimeZone,
 		}
 
 		pollResources := resources
@@ -137,13 +140,14 @@ Press Ctrl+C to stop.`,
 }
 
 type watchState struct {
-	seenRewardIDs  map[string]struct{}
-	seenChoreIDs   map[string]struct{}
-	seenEventIDs   map[string]struct{}
-	seenListIDs    map[string]struct{}
-	seenRoutineIDs map[string]struct{}
-	seeding        bool
-	timezone       string
+	seenRewardIDs      map[string]struct{}
+	seenChoreIDs       map[string]struct{}
+	seenEventIDs       map[string]struct{}
+	seenListIDs        map[string]struct{}
+	seenRoutineIDs     map[string]struct{}
+	seenMealSittingIDs map[string]struct{}
+	seeding            bool
+	timezone           string
 }
 
 func printRedemptionEvent(e lib.RedemptionEvent) {
@@ -221,6 +225,12 @@ func poll(ctx context.Context, client *lib.Client, state *watchState, resources 
 				defer wg.Done()
 				pollRoutines(ctx, client, state, ts)
 			}()
+		case watchResourceMeals:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pollMealSittings(ctx, client, state, now, ts)
+			}()
 		}
 	}
 	wg.Wait()
@@ -276,6 +286,27 @@ func pollRoutines(ctx context.Context, client *lib.Client, state *watchState, ts
 			}
 		},
 		state.seenRoutineIDs, state.seeding, watchResourceRoutines,
+	)
+}
+
+func pollMealSittings(ctx context.Context, client *lib.Client, state *watchState, now time.Time, ts string) {
+	today := now.Format(lib.DateFormat)
+	monday, _ := weekStart("")
+	sunday := monday.AddDate(0, 0, 6).Format(lib.DateFormat)
+	state.seenMealSittingIDs = pollAndDiff(ts,
+		func() ([]lib.MealSitting, error) {
+			return client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{DateMin: today, DateMax: sunday})
+		},
+		func(s lib.MealSitting) string { return s.ID },
+		nil,
+		func(s lib.MealSitting) {
+			if outputFormat == outputJSON {
+				printJSON(map[string]any{"type": "meal_scheduled", "id": s.ID, "summary": s.Summary, "date": s.Date, "ts": ts})
+			} else {
+				fmt.Printf("[%s] MEAL SCHEDULED   %s on %s\n", ts, s.Summary, s.Date)
+			}
+		},
+		state.seenMealSittingIDs, state.seeding, watchResourceMeals,
 	)
 }
 
@@ -345,8 +376,8 @@ func pollCalendar(ctx context.Context, client *lib.Client, state *watchState, no
 func init() {
 	rootCmd.AddCommand(watchCmd)
 	watchCmd.Flags().IntVar(&watchInterval, "interval", 60, "Poll interval in seconds")
-	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar,lists,routines")
+	watchCmd.Flags().StringVar(&watchResources, "resources", resourceAll, "Comma-separated resources to watch: rewards,chores,calendar,lists,routines,meals")
 	watchCmd.Flags().BoolVar(&watchPersist, "persist", false, "Persist reward deduplication state to disk across restarts (~/.skylight/poller-state.json)")
 	registerEnumFlagCompletion(watchCmd, "resources",
-		"rewards", "chores", "calendar", "lists", "routines", "all")
+		"rewards", "chores", "calendar", "lists", "routines", "meals", "all")
 }
