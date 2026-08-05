@@ -17,6 +17,8 @@ func calendarMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events") && r.Method == http.MethodPost:
 			fmt.Fprint(w, `{"data":{"id":"e1","type":"calendar_event","attributes":{"summary":"New Event","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}}`)
+		case strings.HasSuffix(r.URL.Path, "/event1") && r.Method == http.MethodGet:
+			fmt.Fprint(w, `{"data":{"id":"event1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}}`)
 		case strings.HasSuffix(r.URL.Path, "/event1") && r.Method == http.MethodPut:
 			fmt.Fprint(w, `{"data":{"id":"event1","type":"calendar_event","attributes":{"summary":"Updated","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}}`)
 		case strings.HasSuffix(r.URL.Path, "/event1") && r.Method == http.MethodDelete:
@@ -24,6 +26,35 @@ func calendarMockHandler() http.HandlerFunc {
 		default:
 			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
 		}
+	}
+}
+
+func TestCalendarGetCmd(t *testing.T) {
+	newCmdTestClient(t, calendarMockHandler())
+	origID := calendarEventID
+	calendarEventID = "event1"
+	t.Cleanup(func() { calendarEventID = origID })
+
+	out := captureStdout(func() {
+		if err := calendarGetCmd.RunE(calendarGetCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Meeting") {
+		t.Errorf("expected event in output, got: %s", out)
+	}
+}
+
+func TestCalendarGetCmd_APIError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	origID := calendarEventID
+	calendarEventID = "event1"
+	t.Cleanup(func() { calendarEventID = origID })
+
+	if err := calendarGetCmd.RunE(calendarGetCmd, nil); err == nil {
+		t.Error("expected error when API returns 404, got nil")
 	}
 }
 

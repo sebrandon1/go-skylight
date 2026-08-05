@@ -426,3 +426,91 @@ func TestListSourceCalendars(t *testing.T) {
 		})
 	}
 }
+
+func TestGetCalendarEvent(t *testing.T) {
+	tests := []struct {
+		name      string
+		eventID   string
+		status    int
+		response  string
+		wantTitle string
+		wantCatID string
+		wantErr   bool
+	}{
+		{
+			name:      "returns event",
+			eventID:   "ev1",
+			status:    http.StatusOK,
+			response:  `{"data":{"id":"ev1","type":"calendar_event","attributes":{"summary":"Dentist","starts_at":"2026-08-10T09:00:00Z","ends_at":"2026-08-10T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}}`,
+			wantTitle: "Dentist",
+		},
+		{
+			name:      "parses category from relationship",
+			eventID:   "ev2",
+			status:    http.StatusOK,
+			response:  `{"data":{"id":"ev2","type":"calendar_event","attributes":{"summary":"Party","all_day":false},"relationships":{"categories":{"data":[{"id":"cat7","type":"category"}]}}}}`,
+			wantTitle: "Party",
+			wantCatID: "cat7",
+		},
+		{
+			name:    "not found returns error",
+			eventID: "nope",
+			status:  http.StatusNotFound,
+			wantErr: true,
+		},
+		{
+			name:     "invalid JSON returns error",
+			eventID:  "ev3",
+			status:   http.StatusOK,
+			response: `not valid json`,
+			wantErr:  true,
+		},
+		{
+			name:    "server error returns error",
+			eventID: "ev4",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				want := "/api/frames/frame1/calendar_events/" + tc.eventID
+				if r.URL.Path != want {
+					t.Errorf("path: want %q got %q", want, r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			event, err := client.GetCalendarEvent(context.Background(), "frame1", tc.eventID)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if event.Title != tc.wantTitle {
+				t.Errorf("Title: want %q got %q", tc.wantTitle, event.Title)
+			}
+			if tc.wantCatID != "" && event.CategoryID != tc.wantCatID {
+				t.Errorf("CategoryID: want %q got %q", tc.wantCatID, event.CategoryID)
+			}
+		})
+	}
+}

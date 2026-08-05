@@ -102,6 +102,29 @@ var calendarCreateCmd = &cobra.Command{
 	},
 }
 
+var calendarGetCmd = &cobra.Command{
+	Use:   "get",
+	Short: "Get a single calendar event by ID",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		event, err := client.GetCalendarEvent(cmd.Context(), frameID, calendarEventID)
+		if err != nil {
+			return fmt.Errorf("getting calendar event: %w", err)
+		}
+
+		printOutput(event)
+		return nil
+	},
+}
+
 var calendarDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a calendar event",
@@ -277,12 +300,16 @@ var calendarWeekCmd = &cobra.Command{
 
 func init() {
 	calendarCmd.AddCommand(calendarListCmd)
+	calendarCmd.AddCommand(calendarGetCmd)
 	calendarCmd.AddCommand(calendarCreateCmd)
 	calendarCmd.AddCommand(calendarCreateCountdownCmd)
 	calendarCmd.AddCommand(calendarUpdateCmd)
 	calendarCmd.AddCommand(calendarDeleteCmd)
 	calendarCmd.AddCommand(sourceCalendarsCmd)
 	calendarCmd.AddCommand(calendarWeekCmd)
+
+	calendarGetCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to get")
+	markFlagRequired(calendarGetCmd, "event-id")
 
 	calendarListCmd.Flags().StringVar(&calendarStartDate, "start-date", "", "Start date filter")
 	calendarListCmd.Flags().StringVar(&calendarEndDate, "end-date", "", "End date filter")
