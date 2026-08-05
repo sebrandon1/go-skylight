@@ -33,6 +33,8 @@ func mealMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"recipe1","type":"meal_recipe","attributes":{"summary":"Tacos","description":""}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/sitting1/instances/2026-01-01"):
 			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/sitting1") && r.Method == http.MethodPatch:
+			fmt.Fprint(w, `{"data":{"id":"sitting1","type":"meal_sitting","attributes":{"summary":"Updated Dinner"},"relationships":{"meal_recipe":{"data":null},"meal_category":{"data":null}}}}`)
 		case strings.HasSuffix(r.URL.Path, "/sitting1"):
 			fmt.Fprint(w, `{"data":{"id":"sitting1","type":"meal_sitting","attributes":{"summary":"dinner"},"relationships":{"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings") && r.Method == http.MethodPost:
@@ -382,6 +384,27 @@ func TestMealDeleteCategoryCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestMealUpdateSittingCmd(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	origID := sittingID
+	sittingID = "sitting1"
+	t.Cleanup(func() { sittingID = origID })
+
+	// pflag.Set() permanently marks the flag as Changed on the shared singleton.
+	if err := mealUpdateSittingCmd.Flags().Set("summary", "Updated Dinner"); err != nil {
+		t.Fatalf("setting summary flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := mealUpdateSittingCmd.RunE(mealUpdateSittingCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Updated Dinner") {
+		t.Errorf("expected updated summary in output, got: %s", out)
 	}
 }
 

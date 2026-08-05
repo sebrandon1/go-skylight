@@ -330,6 +330,46 @@ var mealCreateSittingCmd = &cobra.Command{
 	},
 }
 
+var mealUpdateSittingCmd = &cobra.Command{
+	Use:   "update-sitting",
+	Short: "Update a meal sitting",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		data := lib.MealSittingData{}
+		if cmd.Flags().Changed("summary") {
+			data.Summary = sittingSummary
+		}
+		if cmd.Flags().Changed("date") {
+			if err := validateDate(sittingDate); err != nil {
+				return err
+			}
+			data.Date = sittingDate
+		}
+		if cmd.Flags().Changed("recipe-id") {
+			data.RecipeID = recipeID
+		}
+		if cmd.Flags().Changed("meal-category-id") {
+			data.MealCategoryID = mealCategoryID
+		}
+
+		sitting, err := client.UpdateMealSitting(cmd.Context(), frameID, sittingID, data)
+		if err != nil {
+			return fmt.Errorf("updating meal sitting: %w", err)
+		}
+
+		printJSON(sitting)
+		return nil
+	},
+}
+
 var mealDeleteSittingCmd = &cobra.Command{
 	Use:   "delete-sitting",
 	Short: "Delete a meal sitting instance",
@@ -522,6 +562,7 @@ func init() {
 	mealCmd.AddCommand(mealDeleteRecipeCmd)
 	mealCmd.AddCommand(mealSittingsCmd)
 	mealCmd.AddCommand(mealCreateSittingCmd)
+	mealCmd.AddCommand(mealUpdateSittingCmd)
 	mealCmd.AddCommand(mealDeleteSittingCmd)
 	mealCmd.AddCommand(mealGetSittingCmd)
 	mealCmd.AddCommand(mealAddToGroceryCmd)
@@ -574,6 +615,13 @@ func init() {
 	markFlagRequired(mealCreateSittingCmd, "recipe-id")
 	markFlagRequired(mealCreateSittingCmd, "date")
 	markFlagRequired(mealCreateSittingCmd, "meal-category-id")
+
+	mealUpdateSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealUpdateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
+	mealUpdateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date (YYYY-MM-DD)")
+	mealUpdateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
+	mealUpdateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
+	markFlagRequired(mealUpdateSittingCmd, "sitting-id")
 
 	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")

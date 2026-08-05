@@ -185,6 +185,22 @@ func (c *Client) ListMealSittings(ctx context.Context, frameID string, opts Meal
 	return sittings, nil
 }
 
+// UpdateMealSitting updates an existing meal sitting.
+func (c *Client) UpdateMealSitting(ctx context.Context, frameID, sittingID string, data MealSittingData) (*MealSitting, error) {
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID)), data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create update meal sitting request: %w", err)
+	}
+
+	var apiResp mealSittingAPISingleResponse
+	if err := c.patch(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to update meal sitting: %w", err)
+	}
+
+	result := apiResp.Data.toMealSitting()
+	return &result, nil
+}
+
 // CreateMealSitting creates a new meal sitting.
 // The API expects a flat JSON body (no meal_sitting wrapper).
 func (c *Client) CreateMealSitting(ctx context.Context, frameID string, sitting MealSittingData) (*MealSitting, error) {
