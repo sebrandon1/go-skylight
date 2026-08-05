@@ -8,11 +8,14 @@ import (
 )
 
 var (
-	groceryListID   string
-	groceryTitle    string
-	groceryRetailer string
-	groceryItems    []string
-	groceryRecipeID string
+	groceryListID    string
+	groceryTitle     string
+	groceryRetailer  string
+	groceryItems     []string
+	groceryRecipeID  string
+	groceryItemID    string
+	groceryItemTitle string
+	groceryCompleted bool
 )
 
 var groceryCmd = &cobra.Command{
@@ -200,6 +203,99 @@ var groceryAddRecipeCmd = &cobra.Command{
 	},
 }
 
+var groceryDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete a grocery list",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		if dryRun {
+			printDryRun("delete grocery list %s", groceryListID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete grocery list %s?", groceryListID)) {
+			return nil
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.DeleteList(cmd.Context(), frameID, groceryListID); err != nil {
+			return fmt.Errorf("deleting grocery list: %w", err)
+		}
+
+		printSuccess("Grocery list deleted successfully")
+		return nil
+	},
+}
+
+var groceryDeleteItemCmd = &cobra.Command{
+	Use:   "delete-item",
+	Short: "Delete an item from a grocery list",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		if dryRun {
+			printDryRun("delete item %s from grocery list %s", groceryItemID, groceryListID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete item %s from grocery list %s?", groceryItemID, groceryListID)) {
+			return nil
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.DeleteListItem(cmd.Context(), frameID, groceryListID, groceryItemID); err != nil {
+			return fmt.Errorf("deleting grocery list item: %w", err)
+		}
+
+		printSuccess("Grocery list item deleted successfully")
+		return nil
+	},
+}
+
+var groceryUpdateItemCmd = &cobra.Command{
+	Use:   "update-item",
+	Short: "Update an item in a grocery list",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		data := lib.ListItemData{}
+		if cmd.Flags().Changed("title") {
+			data.Title = groceryItemTitle
+		}
+		if cmd.Flags().Changed("completed") {
+			data.Completed = groceryCompleted
+		}
+
+		item, err := client.UpdateListItem(cmd.Context(), frameID, groceryListID, groceryItemID, data)
+		if err != nil {
+			return fmt.Errorf("updating grocery list item: %w", err)
+		}
+
+		printJSON(item)
+		return nil
+	},
+}
+
 var groceryClearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "Clear completed items from a grocery list",
@@ -237,6 +333,9 @@ func init() {
 	groceryCmd.AddCommand(groceryClearCmd)
 	groceryCmd.AddCommand(groceryOrganizeCmd)
 	groceryCmd.AddCommand(groceryOrderCmd)
+	groceryCmd.AddCommand(groceryDeleteCmd)
+	groceryCmd.AddCommand(groceryDeleteItemCmd)
+	groceryCmd.AddCommand(groceryUpdateItemCmd)
 
 	groceryCreateCmd.Flags().StringVar(&groceryTitle, "title", "", "Grocery list title")
 	markFlagRequired(groceryCreateCmd, "title")
@@ -261,4 +360,23 @@ func init() {
 	groceryOrderCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
 	groceryOrderCmd.Flags().StringVar(&groceryRetailer, "retailer", "", "Retailer slug (e.g. costco)")
 	markFlagRequired(groceryOrderCmd, "list-id")
+
+	groceryDeleteCmd.Flags().StringVar(&groceryListID, "list-id", "", "Grocery list ID to delete")
+	groceryDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	groceryDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
+	markFlagRequired(groceryDeleteCmd, "list-id")
+
+	groceryDeleteItemCmd.Flags().StringVar(&groceryListID, "list-id", "", "Grocery list ID")
+	groceryDeleteItemCmd.Flags().StringVar(&groceryItemID, "item-id", "", "Item ID to delete")
+	groceryDeleteItemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	groceryDeleteItemCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
+	markFlagRequired(groceryDeleteItemCmd, "list-id")
+	markFlagRequired(groceryDeleteItemCmd, "item-id")
+
+	groceryUpdateItemCmd.Flags().StringVar(&groceryListID, "list-id", "", "Grocery list ID")
+	groceryUpdateItemCmd.Flags().StringVar(&groceryItemID, "item-id", "", "Item ID to update")
+	groceryUpdateItemCmd.Flags().StringVar(&groceryItemTitle, "title", "", "New item title")
+	groceryUpdateItemCmd.Flags().BoolVar(&groceryCompleted, "completed", false, "Mark item completed")
+	markFlagRequired(groceryUpdateItemCmd, "list-id")
+	markFlagRequired(groceryUpdateItemCmd, "item-id")
 }
