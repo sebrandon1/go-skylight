@@ -1190,3 +1190,78 @@ func TestPlanMealsPartialFailure(t *testing.T) {
 		t.Errorf("want 2 partial sittings, got %d", len(result.Sittings))
 	}
 }
+
+func TestUpdateMealSitting(t *testing.T) {
+	tests := []struct {
+		name      string
+		sittingID string
+		status    int
+		response  string
+		wantTitle string
+		wantErr   bool
+	}{
+		{
+			name:      "updates sitting",
+			sittingID: "s1",
+			status:    http.StatusOK,
+			response:  `{"data":{"id":"s1","type":"meal_sitting","attributes":{"summary":"Pasta Night","instances":["2026-06-01"]},"relationships":{"meal_category":{"data":null},"meal_recipe":{"data":null}}}}`,
+			wantTitle: "Pasta Night",
+		},
+		{
+			name:      "not found returns error",
+			sittingID: "s1",
+			status:    http.StatusNotFound,
+			wantErr:   true,
+		},
+		{
+			name:      "server error returns error",
+			sittingID: "s1",
+			status:    http.StatusInternalServerError,
+			wantErr:   true,
+		},
+		{
+			name:      "invalid JSON returns error",
+			sittingID: "s1",
+			status:    http.StatusOK,
+			response:  `{invalid json`,
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch {
+					t.Errorf("expected PATCH, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/meals/sittings/"+tc.sittingID {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			sitting, err := client.UpdateMealSitting(context.Background(), "frame1", tc.sittingID, MealSittingData{Summary: "Pasta Night"})
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if sitting.Summary != tc.wantTitle {
+				t.Errorf("Summary: want %q got %q", tc.wantTitle, sitting.Summary)
+			}
+		})
+	}
+}
