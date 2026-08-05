@@ -35,10 +35,11 @@ type Client struct {
 	HTTPClient   *http.Client
 	authCache    string
 
-	baseURL string
-	logger  *slog.Logger
-	limiter *rate.Limiter
-	retry   retryConfig
+	baseURL    string
+	apiVersion string
+	logger     *slog.Logger
+	limiter    *rate.Limiter
+	retry      retryConfig
 }
 
 func newHTTPClient() *http.Client {
@@ -72,6 +73,7 @@ func NewClient(email, password string, opts ...ClientOption) (*Client, error) {
 	c := &Client{
 		HTTPClient: cfg.httpClient,
 		baseURL:    cfg.baseURL,
+		apiVersion: cfg.apiVersion,
 		logger:     cfg.logger,
 		limiter:    cfg.limiter,
 		retry:      cfg.retry,
@@ -116,6 +118,7 @@ func NewClientWithRefreshToken(refreshToken, fingerprint string, opts ...ClientO
 		authCache:    "Bearer " + tok.AccessToken,
 		HTTPClient:   cfg.httpClient,
 		baseURL:      cfg.baseURL,
+		apiVersion:   cfg.apiVersion,
 		logger:       cfg.logger,
 		limiter:      cfg.limiter,
 		retry:        cfg.retry,
@@ -141,6 +144,7 @@ func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, er
 		authCache:  "Bearer " + token,
 		HTTPClient: cfg.httpClient,
 		baseURL:    cfg.baseURL,
+		apiVersion: cfg.apiVersion,
 		logger:     cfg.logger,
 		limiter:    cfg.limiter,
 		retry:      cfg.retry,
@@ -150,7 +154,7 @@ func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, er
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Authorization", c.authCache)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("skylight-api-version", "2026-03-01")
+	req.Header.Set("skylight-api-version", c.apiVersion)
 }
 
 // effectiveURL returns the client's base URL, falling back to the package-level
