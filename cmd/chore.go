@@ -254,6 +254,8 @@ var choreUpdateCmd = &cobra.Command{
 	},
 }
 
+var choreSkipDeferUntil string
+
 var choreSkipCmd = &cobra.Command{
 	Use:   "skip",
 	Short: "Skip a recurring chore instance",
@@ -267,9 +269,16 @@ and recurring; up-for-grabs or non-recurring chores cannot be skipped.
   skylight chore list --status pending      # find the chore ID
   skylight chore skip --chore-id 12345678-2026-06-25
 
+  # Skip and defer to a later date
+  skylight chore skip --chore-id 12345678-2026-06-25 --defer-until 2026-07-01
+
 The date suffix in the chore ID identifies the specific instance.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		if err := validateDate(choreSkipDeferUntil); err != nil {
 			return err
 		}
 
@@ -278,7 +287,7 @@ The date suffix in the chore ID identifies the specific instance.`,
 			return err
 		}
 
-		if err := client.SkipChore(cmd.Context(), frameID, choreID); err != nil {
+		if err := client.SkipChore(cmd.Context(), frameID, choreID, choreSkipDeferUntil); err != nil {
 			return fmt.Errorf("skipping chore: %w", err)
 		}
 
@@ -358,6 +367,7 @@ func init() {
 	markFlagRequired(choreCompleteCmd, "chore-id")
 
 	choreSkipCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to skip")
+	choreSkipCmd.Flags().StringVar(&choreSkipDeferUntil, "defer-until", "", "Reschedule skipped instance to DATE (YYYY-MM-DD)")
 	markFlagRequired(choreSkipCmd, "chore-id")
 
 	choreClaimCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to claim")

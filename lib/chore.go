@@ -28,12 +28,13 @@ func parseChoreID(choreID string) (baseID, instanceDate string) {
 	return choreID, ""
 }
 
-// setCompletion calls the chore completions endpoint with the given status.
-func (c *Client) setCompletion(ctx context.Context, frameID, choreID, status string) error {
+// setCompletion calls the chore completions endpoint with the given data.
+// It fills in InstanceDate from the choreID before sending.
+func (c *Client) setCompletion(ctx context.Context, frameID, choreID string, data ChoreCompletionData) error {
 	baseID, instanceDate := parseChoreID(choreID)
-	body := ChoreCompletionData{Status: status, InstanceDate: instanceDate}
+	data.InstanceDate = instanceDate
 	req, err := newRequestWithBody(ctx, "PUT",
-		fmt.Sprintf("%s/frames/%s/chores/%s/completions", c.effectiveURL(), pathSeg(frameID), pathSeg(baseID)), body)
+		fmt.Sprintf("%s/frames/%s/chores/%s/completions", c.effectiveURL(), pathSeg(frameID), pathSeg(baseID)), data)
 	if err != nil {
 		return fmt.Errorf("failed to create completion request: %w", err)
 	}
@@ -158,14 +159,15 @@ func (c *Client) UpdateChore(ctx context.Context, frameID, choreID string, chore
 	return &result, nil
 }
 
-// SkipChore skips a single instance of a recurring chore.
-func (c *Client) SkipChore(ctx context.Context, frameID, choreID string) error {
-	return c.setCompletion(ctx, frameID, choreID, ChoreStatusSkipped)
+// SkipChore skips a single instance of a recurring chore. Pass deferUntil as
+// a YYYY-MM-DD date to reschedule the instance, or "" to skip without deferring.
+func (c *Client) SkipChore(ctx context.Context, frameID, choreID, deferUntil string) error {
+	return c.setCompletion(ctx, frameID, choreID, ChoreCompletionData{Status: ChoreStatusSkipped, DeferUntil: deferUntil})
 }
 
 // CompleteChore marks a chore instance as completed via the completions endpoint.
 func (c *Client) CompleteChore(ctx context.Context, frameID, choreID string) error {
-	return c.setCompletion(ctx, frameID, choreID, ChoreStatusComplete)
+	return c.setCompletion(ctx, frameID, choreID, ChoreCompletionData{Status: ChoreStatusComplete})
 }
 
 // ClaimChore assigns an up-for-grabs chore to the given assignee.

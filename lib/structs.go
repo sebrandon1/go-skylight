@@ -422,6 +422,7 @@ type removeStarsRequest struct {
 type ChoreCompletionData struct {
 	Status       string `json:"status"`
 	InstanceDate string `json:"instance_date,omitempty"`
+	DeferUntil   string `json:"defer_until,omitempty"`
 }
 
 // ChoreListOptions holds optional filters for listing chores.
