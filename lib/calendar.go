@@ -38,6 +38,22 @@ func (c *Client) ListCalendarEvents(ctx context.Context, frameID, dateMin, dateM
 	return events, nil
 }
 
+// GetCalendarEvent retrieves a single calendar event by ID.
+func (c *Client) GetCalendarEvent(ctx context.Context, frameID, eventID string) (*CalendarEvent, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/calendar_events/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(eventID)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get calendar event request: %w", err)
+	}
+
+	var apiResp calendarAPISingleResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to get calendar event: %w", err)
+	}
+
+	result := apiResp.Data.toCalendarEvent()
+	return &result, nil
+}
+
 // CreateCalendarEvent creates a new calendar event on a frame.
 func (c *Client) CreateCalendarEvent(ctx context.Context, frameID string, event CalendarEventData) (*CalendarEvent, error) {
 	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/calendar_events", c.effectiveURL(), pathSeg(frameID)), event)
