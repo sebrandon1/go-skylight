@@ -96,6 +96,15 @@ var bountyDeleteCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			printDryRun("delete bounty (chore %s + reward %s)", bountyChoreID, bountyRewardID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete bounty (chore %s + reward %s)?", bountyChoreID, bountyRewardID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -175,6 +184,8 @@ func init() {
 
 	bountyDeleteCmd.Flags().StringVar(&bountyChoreID, "chore-id", "", "Chore ID of the bounty")
 	bountyDeleteCmd.Flags().StringVar(&bountyRewardID, "reward-id", "", "Reward ID of the bounty")
+	bountyDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	bountyDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(bountyDeleteCmd, "chore-id")
 	markFlagRequired(bountyDeleteCmd, "reward-id")
 

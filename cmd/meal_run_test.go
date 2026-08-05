@@ -97,11 +97,30 @@ func TestMealCreateRecipeCmd(t *testing.T) {
 	}
 }
 
+func TestMealDeleteRecipeCmd_DryRun(t *testing.T) {
+	origID, origDryRun := recipeID, dryRun
+	recipeID, dryRun = "recipe1", true
+	t.Cleanup(func() { recipeID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := mealDeleteRecipeCmd.RunE(mealDeleteRecipeCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
 func TestMealDeleteRecipeCmd(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
-	origID := recipeID
-	recipeID = "recipe1"
-	t.Cleanup(func() { recipeID = origID })
+	origID, origYes := recipeID, yes
+	recipeID, yes = "recipe1", true
+	t.Cleanup(func() { recipeID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := mealDeleteRecipeCmd.RunE(mealDeleteRecipeCmd, nil); err != nil {
@@ -144,9 +163,9 @@ func TestMealCreateSittingCmd(t *testing.T) {
 
 func TestMealDeleteSittingCmd(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
-	origID, origDate := sittingID, sittingDate
-	sittingID, sittingDate = "sitting1", "2026-01-01"
-	t.Cleanup(func() { sittingID, sittingDate = origID, origDate })
+	origID, origDate, origYes := sittingID, sittingDate, yes
+	sittingID, sittingDate, yes = "sitting1", "2026-01-01", true
+	t.Cleanup(func() { sittingID, sittingDate, yes = origID, origDate, origYes })
 
 	out := captureStdout(func() {
 		if err := mealDeleteSittingCmd.RunE(mealDeleteSittingCmd, nil); err != nil {
@@ -155,6 +174,25 @@ func TestMealDeleteSittingCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "deleted successfully") {
 		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestMealDeleteSittingCmd_DryRun(t *testing.T) {
+	origID, origDate, origDryRun := sittingID, sittingDate, dryRun
+	sittingID, sittingDate, dryRun = "sitting1", "2026-01-01", true
+	t.Cleanup(func() { sittingID, sittingDate, dryRun = origID, origDate, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := mealDeleteSittingCmd.RunE(mealDeleteSittingCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
 	}
 }
 

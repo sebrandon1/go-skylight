@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -20,10 +21,25 @@ const (
 	boolNo  = "no"
 )
 
-// dryRun is shared by delete/redeem/unredeem commands that support --dry-run
-// (only one command runs per invocation, so sharing the backing var across
-// several commands' flag registrations is safe).
-var dryRun bool
+// dryRun and yes are shared by all destructive commands. Only one command
+// runs per invocation, so sharing a backing var across multiple flag
+// registrations is safe.
+var (
+	dryRun bool
+	yes    bool
+)
+
+// confirmAction prompts on stderr to keep stdout pipeable.
+func confirmAction(prompt string) bool {
+	if yes {
+		return true
+	}
+	fmt.Fprintf(os.Stderr, "%s [y/N]: ", prompt)
+	sc := bufio.NewScanner(os.Stdin)
+	sc.Scan()
+	r := strings.ToLower(sc.Text())
+	return r == "y" || r == boolYes
+}
 
 // activeCatNames holds the category ID → name map used by table renderers to
 // resolve raw IDs to human-readable names. Set by list commands that support

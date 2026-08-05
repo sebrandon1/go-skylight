@@ -110,6 +110,15 @@ var calendarDeleteCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			printDryRun("delete calendar event %s", calendarEventID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete calendar event %s?", calendarEventID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -293,6 +302,8 @@ func init() {
 	markFlagRequired(calendarUpdateCmd, "event-id")
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
+	calendarDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	calendarDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(calendarDeleteCmd, "event-id")
 
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, "title", "", "Countdown event title")

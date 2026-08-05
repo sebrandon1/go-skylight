@@ -789,6 +789,40 @@ func TestPrintSuccessf(t *testing.T) {
 	}
 }
 
+func TestConfirmAction(t *testing.T) {
+	cases := []struct {
+		name    string
+		yesFlag bool
+		input   string
+		want    bool
+	}{
+		{"yes_flag_bypasses_stdin", true, "", true},
+		{"y_accepted", false, "y\n", true},
+		{"Y_accepted_case_insensitive", false, "Y\n", true},
+		{"yes_accepted", false, "yes\n", true},
+		{"YES_accepted", false, "YES\n", true},
+		{"n_declined", false, "n\n", false},
+		{"no_declined", false, "no\n", false},
+		{"empty_input_eof_declined", false, "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			origYes := yes
+			yes = tc.yesFlag
+			t.Cleanup(func() { yes = origYes })
+
+			if !tc.yesFlag {
+				mockStdin(t, tc.input)
+			}
+
+			got := confirmAction("test prompt")
+			if got != tc.want {
+				t.Errorf("confirmAction: got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestPrintDryRun(t *testing.T) {
 	t.Cleanup(func() { quiet = false })
 

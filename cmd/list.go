@@ -121,6 +121,10 @@ var listDeleteCmd = &cobra.Command{
 			return nil
 		}
 
+		if !confirmAction(fmt.Sprintf("Delete list %s?", listID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -171,6 +175,10 @@ var listDeleteItemCmd = &cobra.Command{
 
 		if dryRun {
 			printDryRun("delete item %s from list %s", listItemID, listID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete item %s from list %s?", listItemID, listID)) {
 			return nil
 		}
 
@@ -333,6 +341,7 @@ func init() {
 
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	listDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(listDeleteCmd, "list-id")
 
 	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
@@ -358,6 +367,7 @@ func init() {
 	listDeleteItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
 	listDeleteItemCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	listDeleteItemCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(listDeleteItemCmd, "list-id")
 	markFlagRequired(listDeleteItemCmd, "item-id")
 

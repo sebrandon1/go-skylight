@@ -102,9 +102,9 @@ func TestListCreateCmd_HideFromFrame(t *testing.T) {
 
 func TestListDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, listMockHandler())
-	origID := listID
-	listID = "list1"
-	t.Cleanup(func() { listID = origID })
+	origID, origYes := listID, yes
+	listID, yes = "list1", true
+	t.Cleanup(func() { listID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := listDeleteCmd.RunE(listDeleteCmd, nil); err != nil {
@@ -153,9 +153,9 @@ func TestListAddItemCmd(t *testing.T) {
 
 func TestListDeleteItemCmd(t *testing.T) {
 	newCmdTestClient(t, listMockHandler())
-	origID, origItemID := listID, listItemID
-	listID, listItemID = "list1", "item1"
-	t.Cleanup(func() { listID, listItemID = origID, origItemID })
+	origID, origItemID, origYes := listID, listItemID, yes
+	listID, listItemID, yes = "list1", "item1", true
+	t.Cleanup(func() { listID, listItemID, yes = origID, origItemID, origYes })
 
 	out := captureStdout(func() {
 		if err := listDeleteItemCmd.RunE(listDeleteItemCmd, nil); err != nil {

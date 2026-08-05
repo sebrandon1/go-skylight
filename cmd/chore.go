@@ -163,6 +163,10 @@ var choreDeleteCmd = &cobra.Command{
 			return nil
 		}
 
+		if !confirmAction(fmt.Sprintf("Delete chore %s?", choreID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -361,6 +365,7 @@ func init() {
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
 	choreDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	choreDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(choreDeleteCmd, "chore-id")
 
 	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")

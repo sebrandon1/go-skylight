@@ -79,6 +79,15 @@ var categoryDeleteCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			printDryRun("delete category %s", categoryID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete category %s?", categoryID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -135,6 +144,8 @@ func init() {
 	markFlagRequired(categoryCreateCmd, "name")
 
 	categoryDeleteCmd.Flags().StringVar(&categoryID, "category-id", "", "Category ID")
+	categoryDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	categoryDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(categoryDeleteCmd, "category-id")
 
 	categoryUpdateCmd.Flags().StringVar(&categoryID, "category-id", "", "Category ID to update")
