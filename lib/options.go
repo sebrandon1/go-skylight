@@ -20,6 +20,7 @@ type ClientOption func(*clientConfig)
 
 type clientConfig struct {
 	baseURL    string
+	apiVersion string
 	httpClient *http.Client
 	logger     *slog.Logger
 	limiter    *rate.Limiter
@@ -62,6 +63,16 @@ func WithRateLimit(r rate.Limit, b int) ClientOption {
 	}
 }
 
+const defaultAPIVersion = "2026-03-01"
+
+// WithAPIVersion overrides the skylight-api-version header sent with every
+// request. The default is "2026-03-01".
+func WithAPIVersion(version string) ClientOption {
+	return func(c *clientConfig) {
+		c.apiVersion = version
+	}
+}
+
 // WithRetry configures exponential-backoff retry behavior. By default the
 // client makes exactly one attempt. maxAttempts is the total number of tries
 // (1 = no retry), baseDelay is the initial wait before the second attempt,
@@ -79,6 +90,7 @@ func WithRetry(maxAttempts int, baseDelay, maxDelay time.Duration) ClientOption 
 func defaultClientConfig() clientConfig {
 	return clientConfig{
 		baseURL:    SkylightURL,
+		apiVersion: defaultAPIVersion,
 		httpClient: newHTTPClient(),
 		// Retry is disabled by default (maxAttempts=1 means one attempt, no retry).
 		// Use WithRetry to opt in.

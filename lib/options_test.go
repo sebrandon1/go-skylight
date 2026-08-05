@@ -71,6 +71,56 @@ func TestWithRetry(t *testing.T) {
 	}
 }
 
+func TestWithAPIVersion(t *testing.T) {
+	var gotVersion string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotVersion = r.Header.Get("skylight-api-version")
+		if err := json.NewEncoder(w).Encode(calendarAPIResponse{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	client, err := NewClientWithToken("u", "t",
+		WithBaseURL(srv.URL+"/api"),
+		WithAPIVersion("2099-01-01"),
+	)
+	if err != nil {
+		t.Fatalf("NewClientWithToken: %v", err)
+	}
+	if client.apiVersion != "2099-01-01" {
+		t.Errorf("apiVersion = %q, want %q", client.apiVersion, "2099-01-01")
+	}
+	if _, err = client.ListCalendarEvents(context.Background(), "f1", "", "", ""); err != nil {
+		t.Fatalf("ListCalendarEvents: %v", err)
+	}
+	if gotVersion != "2099-01-01" {
+		t.Errorf("skylight-api-version header = %q, want %q", gotVersion, "2099-01-01")
+	}
+}
+
+func TestDefaultAPIVersion(t *testing.T) {
+	var gotVersion string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotVersion = r.Header.Get("skylight-api-version")
+		if err := json.NewEncoder(w).Encode(calendarAPIResponse{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	client, err := NewClientWithToken("u", "t", WithBaseURL(srv.URL+"/api"))
+	if err != nil {
+		t.Fatalf("NewClientWithToken: %v", err)
+	}
+	if _, err = client.ListCalendarEvents(context.Background(), "f1", "", "", ""); err != nil {
+		t.Fatalf("ListCalendarEvents: %v", err)
+	}
+	if gotVersion != defaultAPIVersion {
+		t.Errorf("skylight-api-version header = %q, want %q", gotVersion, defaultAPIVersion)
+	}
+}
+
 func TestWithLogger(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(calendarAPIResponse{Data: []calendarAPIEntry{{ID: "1"}}}); err != nil {
