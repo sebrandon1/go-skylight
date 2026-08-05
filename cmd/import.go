@@ -94,16 +94,19 @@ types. Use --dry-run to preview what would be created without making API calls.`
 
 func runImportDryRun(data ExportData, want map[string]bool) {
 	counts := map[string]int{
-		exportResourceChores:   len(data.Chores),
-		exportResourceRewards:  len(data.Rewards),
-		exportResourceLists:    len(data.Lists),
-		exportResourceRecipes:  len(data.Recipes),
-		exportResourceSittings: len(data.MealSittings),
-		exportResourceCalendar: len(data.CalendarEvents),
+		exportResourceChores:     len(data.Chores),
+		exportResourceRewards:    len(data.Rewards),
+		exportResourceLists:      len(data.Lists),
+		exportResourceRecipes:    len(data.Recipes),
+		exportResourceSittings:   len(data.MealSittings),
+		exportResourceCalendar:   len(data.CalendarEvents),
+		exportResourceRoutines:   len(data.Routines),
+		exportResourceBounties:   len(data.Bounties),
+		exportResourceCategories: len(data.Categories),
 	}
 	fmt.Printf("Dry run — would import into frame %s:\n", frameID)
 	for _, r := range allExportResources {
-		if want[r] {
+		if want[r] && r != exportResourceCategories {
 			fmt.Printf("  %-10s %d items\n", r, counts[r])
 		}
 	}
@@ -130,6 +133,12 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 	}
 	if want[exportResourceCalendar] {
 		tasks = append(tasks, func() (int, int) { return importCalendarEvents(ctx, client, data.CalendarEvents) })
+	}
+	if want[exportResourceRoutines] {
+		tasks = append(tasks, func() (int, int) { return importRoutines(ctx, client, data.Routines) })
+	}
+	if want[exportResourceBounties] {
+		tasks = append(tasks, func() (int, int) { return importBounties(ctx, client, data.Bounties) })
 	}
 
 	total, failed := parallelImport(tasks, func(fn importFn) (int, int) { return fn() })
@@ -208,6 +217,36 @@ func importCalendarEvents(ctx context.Context, client *lib.Client, events []lib.
 		allDay := e.AllDay
 		if _, err := client.CreateCalendarEvent(ctx, frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: &allDay}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating calendar event %q: %v\n", e.Title, err)
+			return 1, 1
+		}
+		return 1, 0
+	})
+}
+
+func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Routine) (total, failed int) {
+	return parallelImport(routines, func(r lib.Routine) (int, int) {
+		steps := make([]string, len(r.Steps))
+		for i, s := range r.Steps {
+			steps[i] = s.Title
+		}
+		if _, err := client.CreateRoutine(ctx, frameID, lib.RoutineData{Title: r.Title, Steps: steps}); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating routine %q: %v\n", r.Title, err)
+			return 1, 1
+		}
+		return 1, 0
+	})
+}
+
+func importBounties(ctx context.Context, client *lib.Client, bounties []lib.Bounty) (total, failed int) {
+	return parallelImport(bounties, func(b lib.Bounty) (int, int) {
+		if _, err := client.CreateBounty(ctx, frameID, lib.BountyData{
+			Title:       b.Chore.Title,
+			Points:      b.Chore.Points,
+			DueDate:     b.Chore.DueDate,
+			RewardTitle: b.Reward.Title,
+			EmojiIcon:   b.Reward.EmojiIcon,
+		}); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating bounty %q: %v\n", b.Chore.Title, err)
 			return 1, 1
 		}
 		return 1, 0
