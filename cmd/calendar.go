@@ -15,6 +15,8 @@ var (
 	calendarStartAt       string
 	calendarEndAt         string
 	calendarAllDay        bool
+	calendarColor         string
+	calendarCategoryID    string
 	calendarWeekDate      string
 	calendarCountdownDate string
 )
@@ -88,10 +90,12 @@ var calendarCreateCmd = &cobra.Command{
 
 		allDay := calendarAllDay
 		event, err := client.CreateCalendarEvent(cmd.Context(), frameID, lib.CalendarEventData{
-			Title:   calendarTitle,
-			StartAt: calendarStartAt,
-			EndAt:   calendarEndAt,
-			AllDay:  &allDay,
+			Title:      calendarTitle,
+			StartAt:    calendarStartAt,
+			EndAt:      calendarEndAt,
+			AllDay:     &allDay,
+			Color:      calendarColor,
+			CategoryID: calendarCategoryID,
 		})
 		if err != nil {
 			return fmt.Errorf("creating calendar event: %w", err)
@@ -182,6 +186,12 @@ var calendarUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("all-day") {
 			allDay := calendarAllDay
 			data.AllDay = &allDay
+		}
+		if cmd.Flags().Changed("color") {
+			data.Color = calendarColor
+		}
+		if cmd.Flags().Changed("category-id") {
+			data.CategoryID = calendarCategoryID
 		}
 
 		event, err := client.UpdateCalendarEvent(cmd.Context(), frameID, calendarEventID, data)
@@ -291,6 +301,8 @@ func init() {
 	calendarCreateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarCreateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarCreateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
+	calendarCreateCmd.Flags().StringVar(&calendarColor, "color", "", "Event color")
+	calendarCreateCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Category ID to assign to this event")
 	markFlagRequired(calendarCreateCmd, "title")
 	markFlagRequired(calendarCreateCmd, "start-at")
 
@@ -299,6 +311,8 @@ func init() {
 	calendarUpdateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarUpdateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
+	calendarUpdateCmd.Flags().StringVar(&calendarColor, "color", "", "Event color")
+	calendarUpdateCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Category ID to assign to this event")
 	markFlagRequired(calendarUpdateCmd, "event-id")
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
