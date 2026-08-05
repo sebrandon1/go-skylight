@@ -19,8 +19,12 @@ func groceryMockHandler() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 		case strings.HasSuffix(r.URL.Path, "/list_items") && r.Method == http.MethodPost:
 			fmt.Fprint(w, `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Eggs","status":"pending","position":0}}}`)
+		case strings.HasSuffix(r.URL.Path, "/item1") && r.Method == http.MethodPut:
+			fmt.Fprint(w, `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated Item","status":"pending","position":0}}}`)
 		case strings.HasSuffix(r.URL.Path, "/item1"):
 			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/list1") && r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
 		case strings.HasSuffix(r.URL.Path, "/lists") && r.Method == http.MethodPost:
 			fmt.Fprint(w, `{"data":{"id":"list1","type":"list","attributes":{"label":"Groceries","kind":"grocery"}}}`)
 		case strings.HasSuffix(r.URL.Path, "/lists"):
@@ -156,6 +160,159 @@ func TestGroceryClearCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Cleared") {
 		t.Errorf("expected clear confirmation, got: %s", out)
+	}
+}
+
+func TestGroceryDeleteCmd(t *testing.T) {
+	newCmdTestClient(t, groceryMockHandler())
+	origID, origYes := groceryListID, yes
+	groceryListID, yes = "list1", true
+	t.Cleanup(func() { groceryListID, yes = origID, origYes })
+
+	out := captureStdout(func() {
+		if err := groceryDeleteCmd.RunE(groceryDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestGroceryDeleteCmd_DryRun(t *testing.T) {
+	origID, origDryRun := groceryListID, dryRun
+	groceryListID, dryRun = "list1", true
+	t.Cleanup(func() { groceryListID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := groceryDeleteCmd.RunE(groceryDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
+func TestGroceryDeleteItemCmd(t *testing.T) {
+	newCmdTestClient(t, groceryMockHandler())
+	origListID, origItemID, origYes := groceryListID, groceryItemID, yes
+	groceryListID, groceryItemID, yes = "list1", "item1", true
+	t.Cleanup(func() { groceryListID, groceryItemID, yes = origListID, origItemID, origYes })
+
+	out := captureStdout(func() {
+		if err := groceryDeleteItemCmd.RunE(groceryDeleteItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+}
+
+func TestGroceryUpdateItemCmd(t *testing.T) {
+	newCmdTestClient(t, groceryMockHandler())
+	origListID, origItemID := groceryListID, groceryItemID
+	groceryListID, groceryItemID = "list1", "item1"
+	t.Cleanup(func() { groceryListID, groceryItemID = origListID, origItemID })
+
+	if err := groceryUpdateItemCmd.Flags().Set("title", "Updated Item"); err != nil {
+		t.Fatalf("setting title flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := groceryUpdateItemCmd.RunE(groceryUpdateItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Updated Item") {
+		t.Errorf("expected updated item in output, got: %s", out)
+	}
+}
+
+func TestGroceryDeleteCmd_ConfirmationDeclined(t *testing.T) {
+	origID, origYes := groceryListID, yes
+	groceryListID, yes = "list1", false
+	t.Cleanup(func() { groceryListID, yes = origID, origYes })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	mockStdin(t, "n\n")
+
+	out := captureStdout(func() {
+		if err := groceryDeleteCmd.RunE(groceryDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected no deletion when confirmation declined, got: %s", out)
+	}
+}
+
+func TestGroceryDeleteItemCmd_DryRun(t *testing.T) {
+	origListID, origItemID, origDryRun := groceryListID, groceryItemID, dryRun
+	groceryListID, groceryItemID, dryRun = "list1", "item1", true
+	t.Cleanup(func() { groceryListID, groceryItemID, dryRun = origListID, origItemID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := groceryDeleteItemCmd.RunE(groceryDeleteItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
+func TestGroceryDeleteItemCmd_ConfirmationDeclined(t *testing.T) {
+	origListID, origItemID, origYes := groceryListID, groceryItemID, yes
+	groceryListID, groceryItemID, yes = "list1", "item1", false
+	t.Cleanup(func() { groceryListID, groceryItemID, yes = origListID, origItemID, origYes })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	mockStdin(t, "n\n")
+
+	out := captureStdout(func() {
+		if err := groceryDeleteItemCmd.RunE(groceryDeleteItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected no deletion when confirmation declined, got: %s", out)
+	}
+}
+
+func TestGroceryUpdateItemCmd_Completed(t *testing.T) {
+	newCmdTestClient(t, groceryMockHandler())
+	origListID, origItemID := groceryListID, groceryItemID
+	groceryListID, groceryItemID = "list1", "item1"
+	t.Cleanup(func() { groceryListID, groceryItemID = origListID, origItemID })
+
+	// pflag.Set() marks flags as permanently Changed on the shared singleton.
+	if err := groceryUpdateItemCmd.Flags().Set("completed", "true"); err != nil {
+		t.Fatalf("setting completed flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := groceryUpdateItemCmd.RunE(groceryUpdateItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if out == "" {
+		t.Error("expected non-empty output after update")
 	}
 }
 
