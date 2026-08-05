@@ -592,9 +592,20 @@ type MealCategory struct {
 	Color string `json:"color,omitempty"`
 }
 
+// MealCategoryData holds the fields for meal category create/update requests.
+type MealCategoryData struct {
+	Name  string `json:"label,omitempty"`
+	Color string `json:"color,omitempty"`
+}
+
 // mealCategoryAPIResponse wraps the JSON-API envelope for meal category list responses.
 type mealCategoryAPIResponse struct {
 	Data []mealCategoryAPIEntry `json:"data"`
+}
+
+// mealCategoryAPISingleResponse wraps the JSON-API envelope for single meal category responses.
+type mealCategoryAPISingleResponse struct {
+	Data mealCategoryAPIEntry `json:"data"`
 }
 
 // mealCategoryAPIEntry represents a single meal category in JSON-API format.

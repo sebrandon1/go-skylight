@@ -11,6 +11,12 @@ func mealMockHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
+		case strings.HasSuffix(r.URL.Path, "/meals/categories/mc1") && r.Method == http.MethodPatch:
+			fmt.Fprint(w, `{"data":{"id":"mc1","attributes":{"label":"Updated","color":"#00FF00"}}}`)
+		case strings.HasSuffix(r.URL.Path, "/meals/categories/mc1"):
+			w.WriteHeader(http.StatusNoContent)
+		case strings.HasSuffix(r.URL.Path, "/meals/categories") && r.Method == http.MethodPost:
+			fmt.Fprint(w, `{"data":{"id":"mc1","attributes":{"label":"Dinner","color":"#FF0000"}}}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/categories"):
 			fmt.Fprint(w, `{"data":[{"id":"mc1","attributes":{"label":"Dinner","color":"#FF0000"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/recipe1/add_to_grocery_list"):
@@ -303,6 +309,79 @@ func TestMealUpdateRecipeCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Updated") {
 		t.Errorf("expected updated recipe in output, got: %s", out)
+	}
+}
+
+func TestMealCreateCategoryCmd(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	origName, origColor := mealCategoryName, mealCategoryColor
+	mealCategoryName, mealCategoryColor = "Dinner", "#FF0000"
+	t.Cleanup(func() { mealCategoryName, mealCategoryColor = origName, origColor })
+
+	out := captureStdout(func() {
+		if err := mealCreateCategoryCmd.RunE(mealCreateCategoryCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "mc1") {
+		t.Errorf("expected category ID in output, got: %s", out)
+	}
+}
+
+func TestMealUpdateCategoryCmd(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	origID, origName := mealCategoryID, mealCategoryName
+	mealCategoryID, mealCategoryName = "mc1", "Updated"
+	t.Cleanup(func() { mealCategoryID, mealCategoryName = origID, origName })
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := mealUpdateCategoryCmd.Flags().Set("name", "Updated"); err != nil {
+		t.Fatalf("setting name flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := mealUpdateCategoryCmd.RunE(mealUpdateCategoryCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "mc1") {
+		t.Errorf("expected category ID in output, got: %s", out)
+	}
+}
+
+func TestMealDeleteCategoryCmd_DryRun(t *testing.T) {
+	origID, origDryRun := mealCategoryID, dryRun
+	mealCategoryID, dryRun = "mc1", true
+	t.Cleanup(func() { mealCategoryID, dryRun = origID, origDryRun })
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	out := captureStdout(func() {
+		if err := mealDeleteCategoryCmd.RunE(mealDeleteCategoryCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry run output, got: %s", out)
+	}
+}
+
+func TestMealDeleteCategoryCmd(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	origID, origYes := mealCategoryID, yes
+	mealCategoryID, yes = "mc1", true
+	t.Cleanup(func() { mealCategoryID, yes = origID, origYes })
+
+	out := captureStdout(func() {
+		if err := mealDeleteCategoryCmd.RunE(mealDeleteCategoryCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
 }
 
