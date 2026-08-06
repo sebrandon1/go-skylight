@@ -16,14 +16,14 @@ skylight reward create --title "Movie night pick" --points 50 --emoji-icon 🎬
 ## Redeem a reward for a family member
 
 ```bash
-# Get reward ID from `reward list`, category ID from `category list`
-skylight reward redeem --reward-id REWARD_ID --category-id CATEGORY_ID
+# Get reward ID from `reward list`
+skylight reward redeem --reward-id REWARD_ID
 ```
 
 ## Undo a redemption
 
 ```bash
-skylight reward unredeem --reward-id REWARD_ID --category-id CATEGORY_ID
+skylight reward unredeem --reward-id REWARD_ID
 ```
 
 ## Update a reward

@@ -36,7 +36,7 @@ skylight chore create --title "Vacuum living room" --points 10
 ```bash
 skylight chore list  # get the chore ID
 
-skylight chore complete --chore-id CHORE_ID --assignee-id 6750876
+skylight chore complete --chore-id CHORE_ID
 ```
 
 ## Claim an up-for-grabs chore
