@@ -17,11 +17,11 @@ skylight export --resources chores,rewards --output-file chores-rewards.json
 ## Restore from a backup
 
 ```bash
-skylight import --input-file skylight-backup.json
+skylight import --file skylight-backup.json
 ```
 
 Preview what would be imported without making changes:
 
 ```bash
-skylight import --input-file skylight-backup.json --dry-run
+skylight import --file skylight-backup.json --dry-run
 ```
