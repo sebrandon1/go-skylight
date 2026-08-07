@@ -32,6 +32,7 @@ const (
 	skylightClientID    = "skylight-mobile"
 	skylightScope       = "everything"
 	skylightRedirectURI = "https://ourskylight.com/welcome"
+	oauthRefreshToken   = "refresh_token"
 )
 
 var (
@@ -50,8 +51,8 @@ var (
 // use; callers must persist the new RefreshToken from the response.
 func RefreshOAuthToken(refreshToken, fingerprint string) (*OAuthTokenResponse, error) {
 	return postOAuthToken(url.Values{
-		"grant_type":                             {"refresh_token"},
-		"refresh_token":                          {refreshToken},
+		"grant_type":                             {oauthRefreshToken},
+		oauthRefreshToken:                        {refreshToken},
 		"client_id":                              {skylightClientID},
 		"skylight_api_client_device_fingerprint": {fingerprint},
 	})

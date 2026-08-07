@@ -9,6 +9,13 @@ import (
 	"strings"
 )
 
+const (
+	mimeJPEG      = "image/jpeg"
+	mimePNG       = "image/png"
+	mimeMP4       = "video/mp4"
+	mimeQuicktime = "video/quicktime"
+)
+
 // ListPhotos retrieves photos (and videos) for a frame with optional pagination.
 // Pass PageToken "__START__" (or empty string) to start from the beginning.
 // Returns the photos, the next page token (empty when no more pages), and any error.
@@ -135,16 +142,16 @@ func (c *Client) DeletePhotos(ctx context.Context, frameID string, messageIDs []
 func extToContentType(ext string) string {
 	switch strings.ToLower(ext) {
 	case "png":
-		return "image/png"
+		return mimePNG
 	case "gif":
 		return "image/gif"
 	case "webp":
 		return "image/webp"
 	case "mp4":
-		return "video/mp4"
+		return mimeMP4
 	case "mov":
-		return "video/quicktime"
+		return mimeQuicktime
 	default:
-		return "image/jpeg"
+		return mimeJPEG
 	}
 }

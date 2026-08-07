@@ -30,7 +30,7 @@ var (
 )
 
 var mealCmd = &cobra.Command{
-	Use:   "meal",
+	Use:   subMeal,
 	Short: "Meal and recipe management commands",
 	Long: `Manage recipes and scheduled meal sittings on a Skylight frame.
 
@@ -347,7 +347,7 @@ var mealUpdateSittingCmd = &cobra.Command{
 		if cmd.Flags().Changed("summary") {
 			data.Summary = sittingSummary
 		}
-		if cmd.Flags().Changed("date") {
+		if cmd.Flags().Changed(subDate) {
 			if err := validateDate(sittingDate); err != nil {
 				return err
 			}
@@ -527,7 +527,7 @@ var mealUpdateRecipeCmd = &cobra.Command{
 		}
 
 		data := lib.RecipeData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = recipeTitle
 		}
 		if cmd.Flags().Changed("description") {
@@ -586,15 +586,15 @@ func init() {
 	mealRecipeInfoCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	markFlagRequired(mealRecipeInfoCmd, "recipe-id")
 
-	mealCreateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
+	mealCreateRecipeCmd.Flags().StringVar(&recipeTitle, subTitle, "", "Recipe title")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealCreateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
 	mealCreateRecipeCmd.Flags().StringVar(&recipeCategoryID, "meal-category-id", "", "Meal category ID")
-	markFlagRequired(mealCreateRecipeCmd, "title")
+	markFlagRequired(mealCreateRecipeCmd, subTitle)
 
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID to update")
-	mealUpdateRecipeCmd.Flags().StringVar(&recipeTitle, "title", "", "Recipe title")
+	mealUpdateRecipeCmd.Flags().StringVar(&recipeTitle, subTitle, "", "Recipe title")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeDescription, "description", "", "Recipe description")
 	mealUpdateRecipeCmd.Flags().StringSliceVar(&recipeIngredients, "ingredients", nil, "Ingredients (comma-separated)")
 	mealUpdateRecipeCmd.Flags().StringVar(&recipeURL, "url", "", "Recipe URL")
@@ -610,25 +610,25 @@ func init() {
 
 	mealCreateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
-	mealCreateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date")
+	mealCreateSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Sitting date")
 	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
 	markFlagRequired(mealCreateSittingCmd, "recipe-id")
-	markFlagRequired(mealCreateSittingCmd, "date")
+	markFlagRequired(mealCreateSittingCmd, subDate)
 	markFlagRequired(mealCreateSittingCmd, "meal-category-id")
 
 	mealUpdateSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealUpdateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
-	mealUpdateSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Sitting date (YYYY-MM-DD)")
+	mealUpdateSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Sitting date (YYYY-MM-DD)")
 	mealUpdateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealUpdateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
 	markFlagRequired(mealUpdateSittingCmd, "sitting-id")
 
 	mealDeleteSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
-	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, "date", "", "Instance date to delete (YYYY-MM-DD)")
+	mealDeleteSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Instance date to delete (YYYY-MM-DD)")
 	mealDeleteSittingCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	mealDeleteSittingCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(mealDeleteSittingCmd, "sitting-id")
-	markFlagRequired(mealDeleteSittingCmd, "date")
+	markFlagRequired(mealDeleteSittingCmd, subDate)
 
 	mealGetSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	markFlagRequired(mealGetSittingCmd, "sitting-id")

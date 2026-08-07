@@ -20,7 +20,7 @@ var (
 )
 
 var listCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List management commands",
 	Long: `Manage to-do and shopping lists and their items on a Skylight frame.
 
@@ -57,7 +57,7 @@ var listListCmd = &cobra.Command{
 }
 
 var listGetCmd = &cobra.Command{
-	Use:   "info",
+	Use:   subInfo,
 	Short: "Get a specific list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -80,7 +80,7 @@ var listGetCmd = &cobra.Command{
 }
 
 var listCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a new list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -110,7 +110,7 @@ var listCreateCmd = &cobra.Command{
 }
 
 var listDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -167,7 +167,7 @@ var listAddItemCmd = &cobra.Command{
 }
 
 var listDeleteItemCmd = &cobra.Command{
-	Use:   "delete-item",
+	Use:   subDeleteItem,
 	Short: "Delete an item from a list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -198,7 +198,7 @@ var listDeleteItemCmd = &cobra.Command{
 }
 
 var listUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -211,7 +211,7 @@ var listUpdateCmd = &cobra.Command{
 		}
 
 		data := lib.ListData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = listTitle
 		}
 		if cmd.Flags().Changed("color") {
@@ -245,7 +245,7 @@ var listUpdateItemCmd = &cobra.Command{
 		}
 
 		data := lib.ListItemData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = listItemTitle
 		}
 		if cmd.Flags().Changed("completed") {
@@ -390,16 +390,16 @@ func init() {
 	listCmd.AddCommand(listClearCompletedCmd)
 	listCmd.AddCommand(taskBoxItemCreateCmd)
 
-	taskBoxItemCreateCmd.Flags().StringVar(&listItemTitle, "title", "", "Task box item title")
-	markFlagRequired(taskBoxItemCreateCmd, "title")
+	taskBoxItemCreateCmd.Flags().StringVar(&listItemTitle, subTitle, "", "Task box item title")
+	markFlagRequired(taskBoxItemCreateCmd, subTitle)
 
 	listGetCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	markFlagRequired(listGetCmd, "list-id")
 
-	listCreateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
+	listCreateCmd.Flags().StringVar(&listTitle, subTitle, "", "List title")
 	listCreateCmd.Flags().StringVar(&listColor, "color", "", "List color")
 	listCreateCmd.Flags().BoolVar(&listHideFromFrame, "hide-from-frame", false, "Hide list from calendar devices")
-	markFlagRequired(listCreateCmd, "title")
+	markFlagRequired(listCreateCmd, subTitle)
 
 	listDeleteCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
@@ -407,20 +407,20 @@ func init() {
 	markFlagRequired(listDeleteCmd, "list-id")
 
 	listUpdateCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
-	listUpdateCmd.Flags().StringVar(&listTitle, "title", "", "List title")
+	listUpdateCmd.Flags().StringVar(&listTitle, subTitle, "", "List title")
 	listUpdateCmd.Flags().StringVar(&listColor, "color", "", "List color")
 	listUpdateCmd.Flags().BoolVar(&listHideFromFrame, "hide-from-frame", false, "Hide list from calendar devices")
 	markFlagRequired(listUpdateCmd, "list-id")
 
 	listAddItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
-	listAddItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
+	listAddItemCmd.Flags().StringVar(&listItemTitle, subTitle, "", "Item title")
 	listAddItemCmd.Flags().IntVar(&listItemPosition, "position", 0, "Item position/order in the list")
 	markFlagRequired(listAddItemCmd, "list-id")
-	markFlagRequired(listAddItemCmd, "title")
+	markFlagRequired(listAddItemCmd, subTitle)
 
 	listUpdateItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	listUpdateItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID")
-	listUpdateItemCmd.Flags().StringVar(&listItemTitle, "title", "", "Item title")
+	listUpdateItemCmd.Flags().StringVar(&listItemTitle, subTitle, "", "Item title")
 	listUpdateItemCmd.Flags().BoolVar(&listItemCompleted, "completed", false, "Mark item as completed")
 	listUpdateItemCmd.Flags().IntVar(&listItemPosition, "position", 0, "Item position/order in the list")
 	markFlagRequired(listUpdateItemCmd, "list-id")

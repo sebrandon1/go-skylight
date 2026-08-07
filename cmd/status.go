@@ -88,15 +88,15 @@ var statusCmd = &cobra.Command{
 
 		if outputFormat == outputJSON {
 			printJSON(map[string]any{
-				"frame":                 frame.Name,
+				subFrame:                frame.Name,
 				"pending_chores":        len(chores),
 				"events_today":          len(events),
-				"points":                pointEntries,
+				subPoints:               pointEntries,
 				"meal_sittings_today":   len(sittings),
 				"active_lists":          len(lists),
 				"incomplete_list_items": incompleteItems,
 				"list_errors":           listErrors,
-				"routines":              len(routines),
+				watchResourceRoutines:   len(routines),
 			})
 			return nil
 		}

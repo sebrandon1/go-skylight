@@ -45,7 +45,7 @@ func SetVersion(v string) {
 }
 
 var getCmd = &cobra.Command{
-	Use:   "get",
+	Use:   subGet,
 	Short: "Get objects from Skylight",
 }
 
@@ -93,7 +93,7 @@ func rootPersistentPreRun(cmd *cobra.Command, args []string) error {
 	// Skip auto-login for login command itself, help, and config subcommands
 	// (config commands must work even when credentials are missing or expired).
 	if cmd.Name() == loginCmd.Name() || cmd.Name() == "help" ||
-		(cmd.Parent() != nil && cmd.Parent().Name() == "config") {
+		(cmd.Parent() != nil && cmd.Parent().Name() == subConfig) {
 		return nil
 	}
 
@@ -167,8 +167,8 @@ func getClient() (*lib.Client, error) {
 // file. Auth has already succeeded at this point, so failure is non-fatal.
 func persistRotatedToken(newToken, fingerprint string) {
 	if err := saveConfig(map[string]string{
-		"SKYLIGHT_REFRESH_TOKEN":      newToken,
-		"SKYLIGHT_DEVICE_FINGERPRINT": fingerprint,
+		cfgRefreshToken:      newToken,
+		cfgDeviceFingerprint: fingerprint,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: refresh token rotated but failed to persist: %v\n", err)
 	}

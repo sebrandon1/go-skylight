@@ -28,7 +28,7 @@ const (
 var rewardStatuses = []string{statusRedeemed, statusAvailable}
 
 var rewardCmd = &cobra.Command{
-	Use:   "reward",
+	Use:   subReward,
 	Short: "Reward management commands",
 	Long: `Create, list, update, delete, redeem, and unredeem rewards.
 
@@ -42,7 +42,7 @@ balances per family member.
 }
 
 var rewardListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List rewards",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -92,7 +92,7 @@ var rewardListCmd = &cobra.Command{
 }
 
 var rewardCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a reward",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -129,7 +129,7 @@ var rewardCreateCmd = &cobra.Command{
 }
 
 var rewardDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a reward",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -222,7 +222,7 @@ var rewardUnredeemCmd = &cobra.Command{
 }
 
 var rewardPointsCmd = &cobra.Command{
-	Use:   "points",
+	Use:   subPoints,
 	Short: "Get reward points",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -251,7 +251,7 @@ var rewardPointsCmd = &cobra.Command{
 }
 
 var rewardUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a reward",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -264,10 +264,10 @@ var rewardUpdateCmd = &cobra.Command{
 		}
 
 		data := lib.RewardData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = rewardTitle
 		}
-		if cmd.Flags().Changed("points") {
+		if cmd.Flags().Changed(subPoints) {
 			data.Points = rewardPoints
 		}
 		if cmd.Flags().Changed("emoji-icon") {
@@ -308,17 +308,17 @@ func init() {
 	rewardListCmd.Flags().StringVar(&rewardListStatus, "status", "", "Filter by status: redeemed or available")
 	registerEnumFlagCompletion(rewardListCmd, "status", rewardStatuses...)
 
-	rewardCreateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
-	rewardCreateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
+	rewardCreateCmd.Flags().StringVar(&rewardTitle, subTitle, "", "Reward title")
+	rewardCreateCmd.Flags().IntVar(&rewardPoints, subPoints, 0, "Points cost")
 	rewardCreateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
 	rewardCreateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
 	rewardCreateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
-	markFlagRequired(rewardCreateCmd, "title")
-	markFlagRequired(rewardCreateCmd, "points")
+	markFlagRequired(rewardCreateCmd, subTitle)
+	markFlagRequired(rewardCreateCmd, subPoints)
 
 	rewardUpdateCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID to update")
-	rewardUpdateCmd.Flags().StringVar(&rewardTitle, "title", "", "Reward title")
-	rewardUpdateCmd.Flags().IntVar(&rewardPoints, "points", 0, "Points cost")
+	rewardUpdateCmd.Flags().StringVar(&rewardTitle, subTitle, "", "Reward title")
+	rewardUpdateCmd.Flags().IntVar(&rewardPoints, subPoints, 0, "Points cost")
 	rewardUpdateCmd.Flags().StringVar(&rewardEmojiIcon, "emoji-icon", "", "Emoji icon for the reward")
 	rewardUpdateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
 	rewardUpdateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")

@@ -15,11 +15,10 @@ Go 1.26 (see `go.mod`)
 
 ```bash
 make build              # go build with version injection via ldflags → ./skylight
-make build-trigger      # go build → ./alpaca-trigger (Alpaca Markets integration)
 make test               # go test ./... -v
 make lint               # golangci-lint run ./...
 make vet                # go vet ./...
-make clean              # rm -f skylight alpaca-trigger
+make clean              # rm -f skylight
 make integration        # go test with -tags integration (full API, requires credentials)
 make integration-read   # integration tests limited to read-only operations
 ```
@@ -64,10 +63,6 @@ cmd/                           # Cobra command definitions
   table_output.go              # Table renderers for all resource types (--output table)
   helpers.go                   # printJSON, printOutput, printSuccess, printDryRun, table writer, utilities
   *_test.go                    # Unit tests
-cmd/alpaca-trigger/            # Standalone binary: reward-triggered stock purchases
-  main.go                      # Entrypoint, env-based config, polls for reward redemptions
-  alpaca.go                    # Alpaca Markets v2 REST API client (BuyVOO)
-  alpaca_test.go               # Unit tests
 lib/                           # API client library
   client.go                    # HTTP client, auth, request helpers (get/post/put/patch/delete)
   session.go                   # Login (POST /api/sessions), OAuth2 refresh token flow
@@ -96,7 +91,6 @@ lib/                           # API client library
 docs/                          # User and library documentation
   cli-reference.md             # CLI command reference
   library-usage.md             # Library usage guide
-  alpaca-trigger.md            # Alpaca trigger daemon docs
   examples/                    # Example walkthroughs
 ```
 
@@ -187,20 +181,6 @@ Several destructive commands support `--dry-run` to preview the action without m
 
 - `import --dry-run` -- Preview what would be imported
 - Delete and redeem commands with `--dry-run` flag
-
-## alpaca-trigger Binary
-
-Standalone daemon (`cmd/alpaca-trigger/`) that watches for Skylight reward redemptions and places a notional VOO market buy order on Alpaca Markets (paper trading by default).
-
-Build: `make build-trigger`
-
-Configuration (all via environment variables):
-- `ALPACA_API_KEY`, `ALPACA_API_SECRET` -- Alpaca Markets API credentials (required)
-- `ALPACA_BASE_URL` -- Alpaca API base URL (default: paper trading)
-- `SKYLIGHT_USER_ID`, `SKYLIGHT_TOKEN`, `SKYLIGHT_FRAME_ID` -- Skylight credentials (required)
-- `POLLER_INTERVAL` -- Poll interval (default: `60s`)
-- `POLLER_STATE_FILE` -- Path to persist dedup state across restarts
-- `VOO_NOTIONAL` -- Dollar amount per buy (default: `1.00`)
 
 ## API Base URL
 

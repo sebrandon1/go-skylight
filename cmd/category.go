@@ -14,12 +14,12 @@ var (
 )
 
 var categoryCmd = &cobra.Command{
-	Use:   "category",
+	Use:   subCategory,
 	Short: "Category (profile/label) management commands",
 }
 
 var categoryListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List family members/categories",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -42,7 +42,7 @@ var categoryListCmd = &cobra.Command{
 }
 
 var categoryCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a category (profile/label)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -72,7 +72,7 @@ var categoryCreateCmd = &cobra.Command{
 }
 
 var categoryDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a category (profile/label)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -103,7 +103,7 @@ var categoryDeleteCmd = &cobra.Command{
 }
 
 var categoryUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a category (profile/label)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {

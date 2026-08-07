@@ -9,7 +9,7 @@ import (
 var currentAlbumID int
 
 var frameCmd = &cobra.Command{
-	Use:   "frame",
+	Use:   subFrame,
 	Short: "Frame and device info commands",
 	Long: `Inspect and configure the Skylight frame device itself.
 
@@ -23,7 +23,7 @@ categories), and switching the active photo slideshow album.
 }
 
 var frameListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List all frames",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := getClient()
@@ -42,7 +42,7 @@ var frameListCmd = &cobra.Command{
 }
 
 var frameInfoCmd = &cobra.Command{
-	Use:   "info",
+	Use:   subInfo,
 	Short: "Get frame information",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {

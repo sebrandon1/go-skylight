@@ -32,7 +32,7 @@ var (
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
 
 var choreCmd = &cobra.Command{
-	Use:   "chore",
+	Use:   subChore,
 	Short: "Chore management commands",
 	Long: `Create, list, update, complete, delete, skip, and claim chores on a Skylight frame.
 
@@ -46,7 +46,7 @@ list by date range, and --status to filter by pending/complete/skipped.
 }
 
 var choreListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List chores",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -61,7 +61,7 @@ var choreListCmd = &cobra.Command{
 		for _, f := range []struct {
 			name string
 			val  string
-		}{{"date", choreDate}, {"after", choreAfter}, {"before", choreBefore}} {
+		}{{subDate, choreDate}, {"after", choreAfter}, {"before", choreBefore}} {
 			if cmd.Flags().Changed(f.name) {
 				if err := validateDate(f.val); err != nil {
 					return err
@@ -116,7 +116,7 @@ var choreListCmd = &cobra.Command{
 }
 
 var choreCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a chore",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -173,7 +173,7 @@ var choreCreateCmd = &cobra.Command{
 }
 
 var choreDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a chore",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -226,14 +226,14 @@ var choreCompleteCmd = &cobra.Command{
 }
 
 var choreUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a chore",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
 			return err
 		}
 
-		if cmd.Flags().Changed("date") {
+		if cmd.Flags().Changed(subDate) {
 			if err := validateDate(choreDate); err != nil {
 				return err
 			}
@@ -251,19 +251,19 @@ var choreUpdateCmd = &cobra.Command{
 		}
 
 		data := lib.ChoreData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = choreTitle
 		}
 		if cmd.Flags().Changed("status") {
 			data.Status = choreStatus
 		}
-		if cmd.Flags().Changed("points") {
+		if cmd.Flags().Changed(subPoints) {
 			data.Points = chorePoints
 		}
 		if cmd.Flags().Changed("assignee-id") {
 			data.AssigneeID = choreAssigneeID
 		}
-		if cmd.Flags().Changed("date") {
+		if cmd.Flags().Changed(subDate) {
 			data.DueDate = choreDate
 		}
 		if cmd.Flags().Changed("description") {
@@ -397,7 +397,7 @@ func init() {
 	choreCmd.AddCommand(choreClaimCmd)
 	choreCmd.AddCommand(choreSearchCmd)
 
-	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Date filter")
+	choreListCmd.Flags().StringVar(&choreDate, subDate, "", "Date filter")
 	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter: pending, complete, skipped")
 	choreListCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
 	registerEnumFlagCompletion(choreListCmd, "status", choreStatuses...)
@@ -409,11 +409,11 @@ func init() {
 	choreListCmd.Flags().StringVar(&choreWeek, "week", "", "Show weekly calendar view; optionally specify YYYY-MM-DD to select the week")
 	choreListCmd.Flags().Lookup("week").NoOptDefVal = "current"
 
-	choreCreateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
+	choreCreateCmd.Flags().StringVar(&choreTitle, subTitle, "", "Chore title")
 	choreCreateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
-	choreCreateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
+	choreCreateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
-	choreCreateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
+	choreCreateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
 	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
 	choreCreateCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Make chore claimable by anyone")
 	choreCreateCmd.Flags().StringVar(&choreFrequency, "frequency", "", "Recurrence frequency: daily, weekly, monthly")
@@ -421,15 +421,15 @@ func init() {
 	choreCreateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri)")
 	choreCreateCmd.Flags().StringVar(&choreEndDate, "end-date", "", "End date for recurring chore (YYYY-MM-DD)")
 	choreCreateCmd.Flags().StringVar(&choreRecurFrom, "recur-from", "", "When to anchor recurrence: scheduled or completed")
-	markFlagRequired(choreCreateCmd, "title")
+	markFlagRequired(choreCreateCmd, subTitle)
 
 	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
-	choreUpdateCmd.Flags().StringVar(&choreTitle, "title", "", "Chore title")
+	choreUpdateCmd.Flags().StringVar(&choreTitle, subTitle, "", "Chore title")
 	choreUpdateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
 	choreUpdateCmd.Flags().StringVar(&choreStatus, "status", "", "Chore status: pending, complete, skipped")
-	choreUpdateCmd.Flags().IntVar(&chorePoints, "points", 0, "Points value")
+	choreUpdateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
-	choreUpdateCmd.Flags().StringVar(&choreDate, "date", "", "Due date")
+	choreUpdateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
 	choreUpdateCmd.Flags().StringVar(&choreFrequency, "frequency", "", "Recurrence frequency: daily, weekly, monthly")
 	choreUpdateCmd.Flags().IntVar(&choreInterval, "interval", 0, "Recurrence interval (every N periods)")
 	choreUpdateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri)")

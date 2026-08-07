@@ -236,7 +236,7 @@ var templateApplyCmd = &cobra.Command{
 }
 
 var templateListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List saved templates",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := templateDir()
@@ -287,7 +287,7 @@ var templateListCmd = &cobra.Command{
 }
 
 var templateDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a saved template",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := templateDir()

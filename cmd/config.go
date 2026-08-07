@@ -64,13 +64,13 @@ func loadConfig() {
 	}
 
 	vars := map[string]*string{
-		"SKYLIGHT_EMAIL":              &email,
-		"SKYLIGHT_PASSWORD":           &password,
-		"SKYLIGHT_TOKEN":              &token,
-		"SKYLIGHT_USER_ID":            &userID,
-		"SKYLIGHT_FRAME_ID":           &frameID,
-		"SKYLIGHT_REFRESH_TOKEN":      &refreshToken,
-		"SKYLIGHT_DEVICE_FINGERPRINT": &deviceFingerprint,
+		cfgEmail:             &email,
+		cfgPassword:          &password,
+		cfgToken:             &token,
+		cfgUserID:            &userID,
+		cfgFrameID:           &frameID,
+		cfgRefreshToken:      &refreshToken,
+		cfgDeviceFingerprint: &deviceFingerprint,
 	}
 
 	values, _, err := parseConfigFile(f)

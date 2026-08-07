@@ -31,7 +31,7 @@ points to redeem the paired reward.
 }
 
 var bountyCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a bounty (chore + paired reward)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -66,7 +66,7 @@ var bountyCreateCmd = &cobra.Command{
 }
 
 var bountyListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List bounties (matched chore+reward pairs)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -89,7 +89,7 @@ var bountyListCmd = &cobra.Command{
 }
 
 var bountyDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a bounty (removes both the chore and the paired reward)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -120,7 +120,7 @@ var bountyDeleteCmd = &cobra.Command{
 }
 
 var bountyUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a bounty's chore and paired reward",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -139,13 +139,13 @@ var bountyUpdateCmd = &cobra.Command{
 		}
 
 		data := lib.BountyData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = bountyTitle
 		}
 		if cmd.Flags().Changed("reward-title") {
 			data.RewardTitle = bountyRewardTitle
 		}
-		if cmd.Flags().Changed("points") {
+		if cmd.Flags().Changed(subPoints) {
 			data.Points = bountyPoints
 		}
 		if cmd.Flags().Changed("due-date") {
@@ -171,15 +171,15 @@ func init() {
 	bountyCmd.AddCommand(bountyDeleteCmd)
 	bountyCmd.AddCommand(bountyUpdateCmd)
 
-	bountyCreateCmd.Flags().StringVar(&bountyTitle, "title", "", "Chore title")
-	bountyCreateCmd.Flags().IntVar(&bountyPoints, "points", 0, "Point value for chore and reward")
+	bountyCreateCmd.Flags().StringVar(&bountyTitle, subTitle, "", "Chore title")
+	bountyCreateCmd.Flags().IntVar(&bountyPoints, subPoints, 0, "Point value for chore and reward")
 	bountyCreateCmd.Flags().StringVar(&bountyAssigneeID, "assignee-id", "", "Assignee ID")
 	bountyCreateCmd.Flags().StringVar(&bountyDueDate, "due-date", "", "Due date (YYYY-MM-DD)")
 	bountyCreateCmd.Flags().StringVar(&bountyRewardTitle, "reward-title", "", "Reward title")
 	bountyCreateCmd.Flags().StringVar(&bountyEmojiIcon, "emoji-icon", "", "Reward emoji icon")
 	bountyCreateCmd.Flags().BoolVar(&bountyRecurring, "recurring", false, "Make chore recurring")
-	markFlagRequired(bountyCreateCmd, "title")
-	markFlagRequired(bountyCreateCmd, "points")
+	markFlagRequired(bountyCreateCmd, subTitle)
+	markFlagRequired(bountyCreateCmd, subPoints)
 	markFlagRequired(bountyCreateCmd, "reward-title")
 
 	bountyDeleteCmd.Flags().StringVar(&bountyChoreID, "chore-id", "", "Chore ID of the bounty")
@@ -191,9 +191,9 @@ func init() {
 
 	bountyUpdateCmd.Flags().StringVar(&bountyChoreID, "chore-id", "", "Chore ID of the bounty")
 	bountyUpdateCmd.Flags().StringVar(&bountyRewardID, "reward-id", "", "Reward ID of the bounty")
-	bountyUpdateCmd.Flags().StringVar(&bountyTitle, "title", "", "New chore title")
+	bountyUpdateCmd.Flags().StringVar(&bountyTitle, subTitle, "", "New chore title")
 	bountyUpdateCmd.Flags().StringVar(&bountyRewardTitle, "reward-title", "", "New reward title")
-	bountyUpdateCmd.Flags().IntVar(&bountyPoints, "points", 0, "New point value for chore and reward")
+	bountyUpdateCmd.Flags().IntVar(&bountyPoints, subPoints, 0, "New point value for chore and reward")
 	bountyUpdateCmd.Flags().StringVar(&bountyDueDate, "due-date", "", "New due date (YYYY-MM-DD)")
 	bountyUpdateCmd.Flags().StringVar(&bountyEmojiIcon, "emoji-icon", "", "New reward emoji icon")
 	markFlagRequired(bountyUpdateCmd, "chore-id")

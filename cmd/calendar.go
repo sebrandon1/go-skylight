@@ -23,7 +23,7 @@ var (
 )
 
 var calendarCmd = &cobra.Command{
-	Use:   "calendar",
+	Use:   exportResourceCalendar,
 	Short: "Calendar event management commands",
 	Long: `Create, list, update, and delete calendar events on a Skylight frame.
 
@@ -37,7 +37,7 @@ Events created here appear alongside any connected source calendars
 }
 
 var calendarListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List calendar events",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -77,7 +77,7 @@ var calendarListCmd = &cobra.Command{
 }
 
 var calendarCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a calendar event",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -108,7 +108,7 @@ var calendarCreateCmd = &cobra.Command{
 }
 
 var calendarGetCmd = &cobra.Command{
-	Use:   "get",
+	Use:   subGet,
 	Short: "Get a single calendar event by ID",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -131,7 +131,7 @@ var calendarGetCmd = &cobra.Command{
 }
 
 var calendarDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a calendar event",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -185,7 +185,7 @@ var sourceCalendarsCmd = &cobra.Command{
 }
 
 var calendarUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a calendar event",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -198,7 +198,7 @@ var calendarUpdateCmd = &cobra.Command{
 		}
 
 		data := lib.CalendarEventData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = calendarTitle
 		}
 		if cmd.Flags().Changed("start-at") {
@@ -313,7 +313,7 @@ var calendarWeekCmd = &cobra.Command{
 			return err
 		}
 
-		if cmd.Flags().Changed("date") {
+		if cmd.Flags().Changed(subDate) {
 			if err := validateDate(calendarWeekDate); err != nil {
 				return err
 			}
@@ -371,17 +371,17 @@ func init() {
 	calendarListCmd.Flags().StringVar(&calendarStartDate, "start-date", "", "Start date filter")
 	calendarListCmd.Flags().StringVar(&calendarEndDate, "end-date", "", "End date filter")
 
-	calendarCreateCmd.Flags().StringVar(&calendarTitle, "title", "", "Event title")
+	calendarCreateCmd.Flags().StringVar(&calendarTitle, subTitle, "", "Event title")
 	calendarCreateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarCreateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarCreateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
 	calendarCreateCmd.Flags().StringVar(&calendarColor, "color", "", "Event color")
 	calendarCreateCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Category ID to assign to this event")
-	markFlagRequired(calendarCreateCmd, "title")
+	markFlagRequired(calendarCreateCmd, subTitle)
 	markFlagRequired(calendarCreateCmd, "start-at")
 
 	calendarUpdateCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to update")
-	calendarUpdateCmd.Flags().StringVar(&calendarTitle, "title", "", "Event title")
+	calendarUpdateCmd.Flags().StringVar(&calendarTitle, subTitle, "", "Event title")
 	calendarUpdateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")
 	calendarUpdateCmd.Flags().StringVar(&calendarEndAt, "end-at", "", "Event end time")
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
@@ -394,12 +394,12 @@ func init() {
 	calendarDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(calendarDeleteCmd, "event-id")
 
-	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, "title", "", "Countdown event title")
-	calendarCreateCountdownCmd.Flags().StringVar(&calendarCountdownDate, "date", "", "Target date (YYYY-MM-DD)")
-	markFlagRequired(calendarCreateCountdownCmd, "title")
-	markFlagRequired(calendarCreateCountdownCmd, "date")
+	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, subTitle, "", "Countdown event title")
+	calendarCreateCountdownCmd.Flags().StringVar(&calendarCountdownDate, subDate, "", "Target date (YYYY-MM-DD)")
+	markFlagRequired(calendarCreateCountdownCmd, subTitle)
+	markFlagRequired(calendarCreateCountdownCmd, subDate)
 
-	calendarWeekCmd.Flags().StringVar(&calendarWeekDate, "date", "", "Week containing this date (YYYY-MM-DD, default current week)")
+	calendarWeekCmd.Flags().StringVar(&calendarWeekDate, subDate, "", "Week containing this date (YYYY-MM-DD, default current week)")
 
 	calendarSourceEnableCmd.Flags().StringVar(&calendarSourceID, "source-id", "", "Source calendar ID")
 	markFlagRequired(calendarSourceEnableCmd, "source-id")

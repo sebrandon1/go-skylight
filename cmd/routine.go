@@ -21,7 +21,7 @@ var routineCmd = &cobra.Command{
 }
 
 var routineListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List routines",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -46,7 +46,7 @@ var routineListCmd = &cobra.Command{
 }
 
 var routineCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a routine",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -73,7 +73,7 @@ var routineCreateCmd = &cobra.Command{
 }
 
 var routineUpdateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   subUpdate,
 	Short: "Update a routine",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -86,7 +86,7 @@ var routineUpdateCmd = &cobra.Command{
 		}
 
 		data := lib.RoutineData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = routineTitle
 		}
 		if cmd.Flags().Changed("assignee-id") {
@@ -107,7 +107,7 @@ var routineUpdateCmd = &cobra.Command{
 }
 
 var routineDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a routine",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -168,13 +168,13 @@ func init() {
 	routineCmd.AddCommand(routineDeleteCmd)
 	routineCmd.AddCommand(routineReorderCmd)
 
-	routineCreateCmd.Flags().StringVar(&routineTitle, "title", "", "Routine title")
+	routineCreateCmd.Flags().StringVar(&routineTitle, subTitle, "", "Routine title")
 	routineCreateCmd.Flags().StringVar(&routineAssignee, "assignee-id", "", "Assignee ID")
 	routineCreateCmd.Flags().StringSliceVar(&routineSteps, "steps", nil, "Step titles (comma-separated)")
-	markFlagRequired(routineCreateCmd, "title")
+	markFlagRequired(routineCreateCmd, subTitle)
 
 	routineUpdateCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
-	routineUpdateCmd.Flags().StringVar(&routineTitle, "title", "", "Routine title")
+	routineUpdateCmd.Flags().StringVar(&routineTitle, subTitle, "", "Routine title")
 	routineUpdateCmd.Flags().StringVar(&routineAssignee, "assignee-id", "", "Assignee ID")
 	routineUpdateCmd.Flags().StringSliceVar(&routineSteps, "steps", nil, "Step titles (comma-separated)")
 	markFlagRequired(routineUpdateCmd, "routine-id")
