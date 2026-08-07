@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -72,6 +73,9 @@ func (opts ChoreListOptions) queryParams() map[string]string {
 			params["before"] = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
 		}
 	}
+	if opts.Search != "" {
+		params["q"] = opts.Search
+	}
 	return params
 }
 
@@ -91,6 +95,7 @@ func (c *Client) ListChores(ctx context.Context, frameID string, opts ChoreListO
 		return nil, fmt.Errorf("failed to list chores: %w", err)
 	}
 
+	searchLower := strings.ToLower(opts.Search)
 	chores := make([]Chore, 0, len(apiResp.Data))
 	for i := range apiResp.Data {
 		c := apiResp.Data[i].toChore()
@@ -98,6 +103,9 @@ func (c *Client) ListChores(ctx context.Context, frameID string, opts ChoreListO
 			continue
 		}
 		if opts.UpForGrabs && !c.UpForGrabs {
+			continue
+		}
+		if searchLower != "" && !strings.Contains(strings.ToLower(c.Title), searchLower) && !strings.Contains(strings.ToLower(c.Description), searchLower) {
 			continue
 		}
 		chores = append(chores, c)
