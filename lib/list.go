@@ -173,6 +173,20 @@ func (c *Client) DeleteListItem(ctx context.Context, frameID, listID, itemID str
 	return nil
 }
 
+// DeleteListSection deletes a section from a list.
+func (c *Client) DeleteListSection(ctx context.Context, frameID, listID, sectionID string) error {
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/lists/%s/sections/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID), pathSeg(sectionID)))
+	if err != nil {
+		return fmt.Errorf("failed to create delete list section request: %w", err)
+	}
+
+	if err := c.doDelete(req); err != nil {
+		return fmt.Errorf("failed to delete list section: %w", err)
+	}
+
+	return nil
+}
+
 // ClearCompletedListItems deletes all completed items from a list.
 func (c *Client) ClearCompletedListItems(ctx context.Context, frameID, listID string) (int, error) {
 	list, err := c.GetList(ctx, frameID, listID)
