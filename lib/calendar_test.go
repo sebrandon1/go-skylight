@@ -427,6 +427,80 @@ func TestListSourceCalendars(t *testing.T) {
 	}
 }
 
+func TestUpdateSourceCalendar(t *testing.T) {
+	tests := []struct {
+		name     string
+		sourceID string
+		enabled  bool
+		status   int
+		wantErr  bool
+	}{
+		{
+			name:     "enables source calendar",
+			sourceID: "sc1",
+			enabled:  true,
+			status:   http.StatusOK,
+		},
+		{
+			name:     "disables source calendar",
+			sourceID: "sc1",
+			enabled:  false,
+			status:   http.StatusNoContent,
+		},
+		{
+			name:     "server error returns error",
+			sourceID: "sc1",
+			enabled:  true,
+			status:   http.StatusInternalServerError,
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var capturedMethod string
+			var capturedPath string
+			var capturedBody map[string]any
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				capturedMethod = r.Method
+				capturedPath = r.URL.Path
+				_ = json.NewDecoder(r.Body).Decode(&capturedBody)
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.UpdateSourceCalendar(context.Background(), "frame1", tc.sourceID, tc.enabled)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if capturedMethod != "PATCH" {
+				t.Errorf("method: want PATCH got %s", capturedMethod)
+			}
+			wantPath := "/api/frames/frame1/source_calendars/" + tc.sourceID
+			if capturedPath != wantPath {
+				t.Errorf("path: want %q got %q", wantPath, capturedPath)
+			}
+			sc, ok := capturedBody["source_calendar"].(map[string]any)
+			if !ok {
+				t.Fatalf("request body missing source_calendar wrapper")
+			}
+			gotEnabled, _ := sc["enabled"].(bool)
+			if gotEnabled != tc.enabled {
+				t.Errorf("enabled: want %v got %v", tc.enabled, gotEnabled)
+			}
+		})
+	}
+}
+
 func TestGetCalendarEvent(t *testing.T) {
 	tests := []struct {
 		name      string

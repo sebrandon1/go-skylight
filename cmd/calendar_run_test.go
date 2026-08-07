@@ -12,8 +12,10 @@ func calendarMockHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/source_calendars"):
+		case strings.HasSuffix(r.URL.Path, "/source_calendars") && r.Method == http.MethodGet:
 			fmt.Fprint(w, `{"data":[{"id":"sc1","attributes":{"label":"Family","kind":"google"}}]}`)
+		case strings.Contains(r.URL.Path, "/source_calendars/") && r.Method == http.MethodPatch:
+			w.WriteHeader(http.StatusOK)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events") && r.Method == http.MethodGet:
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events") && r.Method == http.MethodPost:
@@ -292,4 +294,61 @@ func TestCalendarWeekCmd(t *testing.T) {
 
 func TestCalendarCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "calendar")
+}
+
+func TestCalendarSourceEnableCmd(t *testing.T) {
+	var capturedPath string
+	var capturedBody map[string]any
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "/source_calendars/") && r.Method == http.MethodPatch {
+			capturedPath = r.URL.Path
+			_ = json.NewDecoder(r.Body).Decode(&capturedBody)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+	})
+	newCmdTestClient(t, handler)
+
+	orig := calendarSourceID
+	calendarSourceID = "sc1"
+	t.Cleanup(func() { calendarSourceID = orig })
+
+	if err := calendarSourceEnableCmd.RunE(calendarSourceEnableCmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !strings.HasSuffix(capturedPath, "/source_calendars/sc1") {
+		t.Errorf("path: want suffix /source_calendars/sc1, got %s", capturedPath)
+	}
+	if sc, ok := capturedBody["source_calendar"].(map[string]any); !ok || sc["enabled"] != true {
+		t.Errorf("body: want {source_calendar:{enabled:true}}, got %v", capturedBody)
+	}
+}
+
+func TestCalendarSourceDisableCmd(t *testing.T) {
+	var capturedBody map[string]any
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "/source_calendars/") && r.Method == http.MethodPatch {
+			_ = json.NewDecoder(r.Body).Decode(&capturedBody)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+	})
+	newCmdTestClient(t, handler)
+
+	orig := calendarSourceID
+	calendarSourceID = "sc1"
+	t.Cleanup(func() { calendarSourceID = orig })
+
+	if err := calendarSourceDisableCmd.RunE(calendarSourceDisableCmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if sc, ok := capturedBody["source_calendar"].(map[string]any); !ok || sc["enabled"] != false {
+		t.Errorf("body: want {source_calendar:{enabled:false}}, got %v", capturedBody)
+	}
 }

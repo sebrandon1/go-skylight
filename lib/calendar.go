@@ -100,6 +100,21 @@ func (c *Client) DeleteCalendarEvent(ctx context.Context, frameID, eventID strin
 	return nil
 }
 
+// UpdateSourceCalendar enables or disables a source calendar.
+func (c *Client) UpdateSourceCalendar(ctx context.Context, frameID, sourceID string, enabled bool) error {
+	body := struct {
+		SourceCalendar struct {
+			Enabled bool `json:"enabled"`
+		} `json:"source_calendar"`
+	}{}
+	body.SourceCalendar.Enabled = enabled
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/source_calendars/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sourceID)), body)
+	if err != nil {
+		return fmt.Errorf("failed to create update source calendar request: %w", err)
+	}
+	return c.patch(req, nil)
+}
+
 // ListSourceCalendars retrieves source calendars for a frame.
 func (c *Client) ListSourceCalendars(ctx context.Context, frameID string) ([]SourceCalendar, error) {
 	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/source_calendars", c.effectiveURL(), pathSeg(frameID)))
