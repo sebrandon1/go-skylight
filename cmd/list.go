@@ -16,6 +16,7 @@ var (
 	listItemCompleted bool
 	listItemPosition  int
 	listHideFromFrame bool
+	listSectionID     string
 )
 
 var listCmd = &cobra.Command{
@@ -290,6 +291,65 @@ var taskBoxItemCreateCmd = &cobra.Command{
 	},
 }
 
+var listReorderItemCmd = &cobra.Command{
+	Use:   "reorder-item",
+	Short: "Reorder a list item to a new position",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		data := lib.ListItemData{}
+		if cmd.Flags().Changed("position") {
+			data.Position = listItemPosition
+		}
+
+		item, err := client.UpdateListItem(cmd.Context(), frameID, listID, listItemID, data)
+		if err != nil {
+			return fmt.Errorf("reordering list item: %w", err)
+		}
+
+		printJSON(item)
+		return nil
+	},
+}
+
+var listDeleteSectionCmd = &cobra.Command{
+	Use:   "delete-section",
+	Short: "Delete a section from a list",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		if dryRun {
+			printDryRun("delete section %s from list %s", listSectionID, listID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete section %s from list %s?", listSectionID, listID)) {
+			return nil
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.DeleteListSection(cmd.Context(), frameID, listID, listSectionID); err != nil {
+			return fmt.Errorf("deleting list section: %w", err)
+		}
+
+		printSuccess("List section deleted successfully")
+		return nil
+	},
+}
+
 var listClearCompletedCmd = &cobra.Command{
 	Use:   "clear-completed",
 	Short: "Delete all completed items from a list",
@@ -325,6 +385,8 @@ func init() {
 	listCmd.AddCommand(listAddItemCmd)
 	listCmd.AddCommand(listUpdateItemCmd)
 	listCmd.AddCommand(listDeleteItemCmd)
+	listCmd.AddCommand(listReorderItemCmd)
+	listCmd.AddCommand(listDeleteSectionCmd)
 	listCmd.AddCommand(listClearCompletedCmd)
 	listCmd.AddCommand(taskBoxItemCreateCmd)
 
@@ -373,4 +435,18 @@ func init() {
 
 	listClearCompletedCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
 	markFlagRequired(listClearCompletedCmd, "list-id")
+
+	listReorderItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listReorderItemCmd.Flags().StringVar(&listItemID, "item-id", "", "Item ID to reorder")
+	listReorderItemCmd.Flags().IntVar(&listItemPosition, "position", 0, "New position in the list")
+	markFlagRequired(listReorderItemCmd, "list-id")
+	markFlagRequired(listReorderItemCmd, "item-id")
+	markFlagRequired(listReorderItemCmd, "position")
+
+	listDeleteSectionCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listDeleteSectionCmd.Flags().StringVar(&listSectionID, "section-id", "", "Section ID to delete")
+	listDeleteSectionCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	listDeleteSectionCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
+	markFlagRequired(listDeleteSectionCmd, "list-id")
+	markFlagRequired(listDeleteSectionCmd, "section-id")
 }

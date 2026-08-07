@@ -11,6 +11,8 @@ func listMockHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
+		case strings.Contains(r.URL.Path, "/sections/") && r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
 		case strings.HasSuffix(r.URL.Path, "/item1") && r.Method == http.MethodPut:
 			fmt.Fprint(w, `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated","status":"pending","position":0}}}`)
 		case strings.HasSuffix(r.URL.Path, "/item1") && r.Method == http.MethodDelete:
@@ -272,4 +274,52 @@ func TestListClearCompletedCmd(t *testing.T) {
 
 func TestListCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "list")
+}
+
+func TestListReorderItemCmd(t *testing.T) {
+	newCmdTestClient(t, listMockHandler())
+	origID, origItemID, origPos := listID, listItemID, listItemPosition
+	listID, listItemID, listItemPosition = "list1", "item1", 2
+	t.Cleanup(func() { listID, listItemID, listItemPosition = origID, origItemID, origPos })
+
+	out := captureStdout(func() {
+		if err := listReorderItemCmd.RunE(listReorderItemCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "item1") {
+		t.Errorf("expected item in output, got: %s", out)
+	}
+}
+
+func TestListDeleteSectionCmd(t *testing.T) {
+	newCmdTestClient(t, listMockHandler())
+	origID, origSectionID, origYes := listID, listSectionID, yes
+	listID, listSectionID, yes = "list1", "sec1", true
+	t.Cleanup(func() { listID, listSectionID, yes = origID, origSectionID, origYes })
+
+	out := captureStdout(func() {
+		if err := listDeleteSectionCmd.RunE(listDeleteSectionCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "deleted") {
+		t.Errorf("expected success message in output, got: %s", out)
+	}
+}
+
+func TestListDeleteSectionCmd_DryRun(t *testing.T) {
+	newCmdTestClient(t, listMockHandler())
+	origID, origSectionID, origDryRun := listID, listSectionID, dryRun
+	listID, listSectionID, dryRun = "list1", "sec1", true
+	t.Cleanup(func() { listID, listSectionID, dryRun = origID, origSectionID, origDryRun })
+
+	out := captureStdout(func() {
+		if err := listDeleteSectionCmd.RunE(listDeleteSectionCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry-run indicator in output, got: %s", out)
+	}
 }

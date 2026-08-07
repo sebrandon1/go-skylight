@@ -864,3 +864,62 @@ func TestCreateTaskBoxItem(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteListSection(t *testing.T) {
+	tests := []struct {
+		name      string
+		sectionID string
+		status    int
+		wantErr   bool
+	}{
+		{
+			name:      "deletes with 204",
+			sectionID: "sec1",
+			status:    http.StatusNoContent,
+		},
+		{
+			name:      "deletes with 200 OK",
+			sectionID: "sec1",
+			status:    http.StatusOK,
+		},
+		{
+			name:      "server error returns error",
+			sectionID: "sec1",
+			status:    http.StatusInternalServerError,
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var capturedMethod, capturedPath string
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				capturedMethod = r.Method
+				capturedPath = r.URL.Path
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.DeleteListSection(context.Background(), "frame1", "list1", tc.sectionID)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if capturedMethod != http.MethodDelete {
+				t.Errorf("method: want DELETE got %s", capturedMethod)
+			}
+			wantPath := "/api/frames/frame1/lists/list1/sections/" + tc.sectionID
+			if capturedPath != wantPath {
+				t.Errorf("path: want %q got %q", wantPath, capturedPath)
+			}
+		})
+	}
+}
