@@ -26,6 +26,7 @@ var (
 	choreRecurrenceDays []string
 	choreEndDate        string
 	choreRecurFrom      string
+	choreSearchQuery    string
 )
 
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
@@ -294,6 +295,33 @@ var choreUpdateCmd = &cobra.Command{
 	},
 }
 
+var choreSearchCmd = &cobra.Command{
+	Use:   "search",
+	Short: "Search chores by name or description",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		chores, err := client.ListChores(cmd.Context(), frameID, lib.ChoreListOptions{
+			Search:     choreSearchQuery,
+			AssigneeID: choreAssigneeID,
+			Status:     choreStatus,
+		})
+		if err != nil {
+			return fmt.Errorf("searching chores: %w", err)
+		}
+
+		printOutput(chores)
+		return nil
+	},
+}
+
 var choreSkipDeferUntil string
 
 var choreSkipCmd = &cobra.Command{
@@ -367,6 +395,8 @@ func init() {
 	choreCmd.AddCommand(choreCompleteCmd)
 	choreCmd.AddCommand(choreSkipCmd)
 	choreCmd.AddCommand(choreClaimCmd)
+	choreCmd.AddCommand(choreSearchCmd)
+
 	choreListCmd.Flags().StringVar(&choreDate, "date", "", "Date filter")
 	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter: pending, complete, skipped")
 	choreListCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
@@ -424,4 +454,10 @@ func init() {
 	choreClaimCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Family member ID claiming the chore")
 	markFlagRequired(choreClaimCmd, "chore-id")
 	markFlagRequired(choreClaimCmd, "assignee-id")
+
+	choreSearchCmd.Flags().StringVar(&choreSearchQuery, "query", "", "Search term to match against chore title or description")
+	choreSearchCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
+	choreSearchCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter: pending, complete, skipped")
+	markFlagRequired(choreSearchCmd, "query")
+	registerEnumFlagCompletion(choreSearchCmd, "status", choreStatuses...)
 }

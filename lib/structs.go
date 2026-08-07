@@ -454,6 +454,7 @@ type ChoreListOptions struct {
 	Before      string
 	IncludeLate bool
 	UpForGrabs  bool
+	Search      string
 }
 
 // RewardPointEntry represents a per-category point balance.

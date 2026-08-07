@@ -251,3 +251,19 @@ func TestChoreCreateCmd_Recurring(t *testing.T) {
 		t.Errorf("expected chore JSON in output, got: %s", out)
 	}
 }
+
+func TestChoreSearchCmd(t *testing.T) {
+	newCmdTestClient(t, choreMockHandler())
+	origQuery := choreSearchQuery
+	choreSearchQuery = "dishes"
+	t.Cleanup(func() { choreSearchQuery = origQuery })
+
+	out := captureStdout(func() {
+		if err := choreSearchCmd.RunE(choreSearchCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dishes") {
+		t.Errorf("expected search results in output, got: %s", out)
+	}
+}

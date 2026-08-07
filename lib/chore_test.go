@@ -697,3 +697,73 @@ func TestListChores_RecurrenceFields(t *testing.T) {
 		t.Errorf("RecurFrom: want %q got %q", "completed", c.RecurFrom)
 	}
 }
+
+func TestListChores_SearchParam(t *testing.T) {
+	tests := []struct {
+		name      string
+		search    string
+		response  string
+		wantQ     string
+		wantLen   int
+		wantTitle string
+	}{
+		{
+			name:      "forwards search as q param",
+			search:    "dishes",
+			response:  `{"data":[{"id":"1","attributes":{"summary":"Wash dishes","status":"pending"}}]}`,
+			wantQ:     "dishes",
+			wantLen:   1,
+			wantTitle: "Wash dishes",
+		},
+		{
+			name:     "client-side filter excludes non-matching chores",
+			search:   "vacuum",
+			response: `{"data":[{"id":"1","attributes":{"summary":"Wash dishes","status":"pending"}},{"id":"2","attributes":{"summary":"Vacuum floors","status":"pending"}}]}`,
+			wantLen:  1,
+		},
+		{
+			name:      "client-side filter is case-insensitive",
+			search:    "VACUUM",
+			response:  `{"data":[{"id":"1","attributes":{"summary":"Vacuum floors","status":"pending"}}]}`,
+			wantLen:   1,
+			wantTitle: "Vacuum floors",
+		},
+		{
+			name:      "client-side filter matches description",
+			search:    "thoroughly",
+			response:  `{"data":[{"id":"1","attributes":{"summary":"Clean room","description":"Clean thoroughly","status":"pending"}}]}`,
+			wantLen:   1,
+			wantTitle: "Clean room",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tc.wantQ != "" && r.URL.Query().Get("q") != tc.wantQ {
+					t.Errorf("q param: want %q got %q", tc.wantQ, r.URL.Query().Get("q"))
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(tc.response))
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			chores, err := client.ListChores(context.Background(), "frame1", ChoreListOptions{Search: tc.search})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(chores) != tc.wantLen {
+				t.Errorf("len: want %d got %d", tc.wantLen, len(chores))
+			}
+			if tc.wantTitle != "" && len(chores) > 0 && chores[0].Title != tc.wantTitle {
+				t.Errorf("Title: want %q got %q", tc.wantTitle, chores[0].Title)
+			}
+		})
+	}
+}
