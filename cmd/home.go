@@ -110,13 +110,13 @@ var homeCmd = &cobra.Command{
 
 		if outputFormat == outputJSON {
 			printJSON(map[string]any{
-				"week_start": monday.Format(lib.DateFormat),
-				"week_end":   sunday.Format(lib.DateFormat),
-				"events":     events,
-				"tasks":      chores,
-				"lists":      lists,
-				"meals":      meals,
-				"routines":   routines,
+				"week_start":          monday.Format(lib.DateFormat),
+				"week_end":            sunday.Format(lib.DateFormat),
+				"events":              events,
+				"tasks":               chores,
+				"lists":               lists,
+				"meals":               meals,
+				watchResourceRoutines: routines,
 			})
 			return nil
 		}

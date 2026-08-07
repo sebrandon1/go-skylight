@@ -24,7 +24,7 @@ var groceryCmd = &cobra.Command{
 }
 
 var groceryListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List grocery lists",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -54,7 +54,7 @@ var groceryListCmd = &cobra.Command{
 }
 
 var groceryCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a grocery list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -129,7 +129,7 @@ var groceryOrderCmd = &cobra.Command{
 }
 
 var groceryShowCmd = &cobra.Command{
-	Use:   "show",
+	Use:   subShow,
 	Short: "Display the current grocery list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -204,7 +204,7 @@ var groceryAddRecipeCmd = &cobra.Command{
 }
 
 var groceryDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete a grocery list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -235,7 +235,7 @@ var groceryDeleteCmd = &cobra.Command{
 }
 
 var groceryDeleteItemCmd = &cobra.Command{
-	Use:   "delete-item",
+	Use:   subDeleteItem,
 	Short: "Delete an item from a grocery list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -279,7 +279,7 @@ var groceryUpdateItemCmd = &cobra.Command{
 		}
 
 		data := lib.ListItemData{}
-		if cmd.Flags().Changed("title") {
+		if cmd.Flags().Changed(subTitle) {
 			data.Title = groceryItemTitle
 		}
 		if cmd.Flags().Changed("completed") {
@@ -337,8 +337,8 @@ func init() {
 	groceryCmd.AddCommand(groceryDeleteItemCmd)
 	groceryCmd.AddCommand(groceryUpdateItemCmd)
 
-	groceryCreateCmd.Flags().StringVar(&groceryTitle, "title", "", "Grocery list title")
-	markFlagRequired(groceryCreateCmd, "title")
+	groceryCreateCmd.Flags().StringVar(&groceryTitle, subTitle, "", "Grocery list title")
+	markFlagRequired(groceryCreateCmd, subTitle)
 
 	groceryShowCmd.Flags().StringVar(&groceryListID, "list-id", "", "List ID")
 	markFlagRequired(groceryShowCmd, "list-id")
@@ -375,7 +375,7 @@ func init() {
 
 	groceryUpdateItemCmd.Flags().StringVar(&groceryListID, "list-id", "", "Grocery list ID")
 	groceryUpdateItemCmd.Flags().StringVar(&groceryItemID, "item-id", "", "Item ID to update")
-	groceryUpdateItemCmd.Flags().StringVar(&groceryItemTitle, "title", "", "New item title")
+	groceryUpdateItemCmd.Flags().StringVar(&groceryItemTitle, subTitle, "", "New item title")
 	groceryUpdateItemCmd.Flags().BoolVar(&groceryCompleted, "completed", false, "Mark item completed")
 	markFlagRequired(groceryUpdateItemCmd, "list-id")
 	markFlagRequired(groceryUpdateItemCmd, "item-id")

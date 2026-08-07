@@ -32,7 +32,7 @@ var photoCmd = &cobra.Command{
 }
 
 var photoListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List photos on a frame",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -102,7 +102,7 @@ var photoUploadCmd = &cobra.Command{
 }
 
 var photoDeleteCmd = &cobra.Command{
-	Use:   "delete",
+	Use:   subDelete,
 	Short: "Delete one or more photos by photo ID",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {

@@ -11,19 +11,19 @@ import (
 )
 
 var knownConfigKeys = []string{
-	"SKYLIGHT_EMAIL",
-	"SKYLIGHT_PASSWORD",
-	"SKYLIGHT_TOKEN",
-	"SKYLIGHT_USER_ID",
-	"SKYLIGHT_FRAME_ID",
-	"SKYLIGHT_REFRESH_TOKEN",
-	"SKYLIGHT_DEVICE_FINGERPRINT",
+	cfgEmail,
+	cfgPassword,
+	cfgToken,
+	cfgUserID,
+	cfgFrameID,
+	cfgRefreshToken,
+	cfgDeviceFingerprint,
 }
 
 var sensitiveConfigKeys = map[string]bool{
-	"SKYLIGHT_PASSWORD":      true,
-	"SKYLIGHT_TOKEN":         true,
-	"SKYLIGHT_REFRESH_TOKEN": true,
+	cfgPassword:     true,
+	cfgToken:        true,
+	cfgRefreshToken: true,
 }
 
 const notSet = "(not set)"
@@ -33,13 +33,13 @@ const masked = "****"
 // Must stay in sync with the vars map in loadConfig().
 func configValues() map[string]*string {
 	return map[string]*string{
-		"SKYLIGHT_EMAIL":              &email,
-		"SKYLIGHT_PASSWORD":           &password,
-		"SKYLIGHT_TOKEN":              &token,
-		"SKYLIGHT_USER_ID":            &userID,
-		"SKYLIGHT_FRAME_ID":           &frameID,
-		"SKYLIGHT_REFRESH_TOKEN":      &refreshToken,
-		"SKYLIGHT_DEVICE_FINGERPRINT": &deviceFingerprint,
+		cfgEmail:             &email,
+		cfgPassword:          &password,
+		cfgToken:             &token,
+		cfgUserID:            &userID,
+		cfgFrameID:           &frameID,
+		cfgRefreshToken:      &refreshToken,
+		cfgDeviceFingerprint: &deviceFingerprint,
 	}
 }
 
@@ -57,12 +57,12 @@ func maskValue(key, value string) string {
 }
 
 var configCmd = &cobra.Command{
-	Use:   "config",
+	Use:   subConfig,
 	Short: "View and modify the local configuration file",
 }
 
 var configShowCmd = &cobra.Command{
-	Use:   "show",
+	Use:   subShow,
 	Short: "Display all current configuration values",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path := configPath

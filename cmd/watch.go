@@ -158,8 +158,8 @@ func printRedemptionEvent(e lib.RedemptionEvent) {
 	ts := e.ObservedAt.Format("15:04:05")
 	if outputFormat == outputJSON {
 		printJSON(map[string]any{
-			"type": "reward_redeemed", "id": e.RewardID, "title": e.RewardName,
-			"points": e.Points, "category_id": e.CategoryID, "child_name": e.ChildName, "ts": ts,
+			subType: "reward_redeemed", "id": e.RewardID, subTitle: e.RewardName,
+			subPoints: e.Points, "category_id": e.CategoryID, "child_name": e.ChildName, "ts": ts,
 		})
 	} else {
 		name := e.ChildName
@@ -255,8 +255,8 @@ func pollRewards(ctx context.Context, client *lib.Client, state *watchState, ts 
 		func(r lib.Reward) {
 			if outputFormat == outputJSON {
 				printJSON(map[string]any{
-					"type": "reward_redeemed", "id": r.ID, "title": r.Title,
-					"points": r.Points, "category_id": r.CategoryID, "ts": ts,
+					subType: "reward_redeemed", "id": r.ID, subTitle: r.Title,
+					subPoints: r.Points, "category_id": r.CategoryID, "ts": ts,
 				})
 			} else {
 				fmt.Printf("[%s] REWARD REDEEMED  %s (%d pts) — category %s\n",
@@ -274,7 +274,7 @@ func pollLists(ctx context.Context, client *lib.Client, state *watchState, ts st
 		nil,
 		func(l lib.List) {
 			if outputFormat == outputJSON {
-				printJSON(map[string]any{"type": "list_created", "id": l.ID, "title": l.Title, "ts": ts})
+				printJSON(map[string]any{subType: "list_created", "id": l.ID, subTitle: l.Title, "ts": ts})
 			} else {
 				fmt.Printf("[%s] LIST CREATED     %s\n", ts, l.Title)
 			}
@@ -290,7 +290,7 @@ func pollRoutines(ctx context.Context, client *lib.Client, state *watchState, ts
 		nil,
 		func(r lib.Routine) {
 			if outputFormat == outputJSON {
-				printJSON(map[string]any{"type": "routine_created", "id": r.ID, "title": r.Title, "ts": ts})
+				printJSON(map[string]any{subType: "routine_created", "id": r.ID, subTitle: r.Title, "ts": ts})
 			} else {
 				fmt.Printf("[%s] ROUTINE CREATED  %s\n", ts, r.Title)
 			}
@@ -311,7 +311,7 @@ func pollMealSittings(ctx context.Context, client *lib.Client, state *watchState
 		nil,
 		func(s lib.MealSitting) {
 			if outputFormat == outputJSON {
-				printJSON(map[string]any{"type": "meal_scheduled", "id": s.ID, "summary": s.Summary, "date": s.Date, "ts": ts})
+				printJSON(map[string]any{subType: "meal_scheduled", "id": s.ID, "summary": s.Summary, subDate: s.Date, "ts": ts})
 			} else {
 				fmt.Printf("[%s] MEAL SCHEDULED   %s on %s\n", ts, s.Summary, s.Date)
 			}
@@ -341,7 +341,7 @@ func pollPhotos(ctx context.Context, client *lib.Client, state *watchState, ts s
 		nil,
 		func(p lib.Photo) {
 			if outputFormat == outputJSON {
-				printJSON(map[string]any{"type": "photo_added", "id": p.ID, "asset_type": p.AssetType, "ts": ts})
+				printJSON(map[string]any{subType: "photo_added", "id": p.ID, "asset_type": p.AssetType, "ts": ts})
 			} else {
 				fmt.Printf("[%s] PHOTO ADDED      %s (%s)\n", ts, p.ID, p.AssetType)
 			}
@@ -361,7 +361,7 @@ func pollChores(ctx context.Context, client *lib.Client, state *watchState, now 
 		func(c lib.Chore) {
 			if outputFormat == outputJSON {
 				printJSON(map[string]any{
-					"type": "chore_completed", "id": c.ID, "title": c.Title,
+					subType: "chore_completed", "id": c.ID, subTitle: c.Title,
 					"assignee_id": c.AssigneeID, "ts": ts,
 				})
 			} else {
@@ -402,7 +402,7 @@ func pollCalendar(ctx context.Context, client *lib.Client, state *watchState, no
 		}
 		if outputFormat == outputJSON {
 			printJSON(map[string]any{
-				"type": "event_soon", "id": e.ID, "title": e.Title,
+				subType: "event_soon", "id": e.ID, subTitle: e.Title,
 				"start_at": e.StartAt, "minutes_until": int(diff.Minutes()), "ts": ts,
 			})
 		} else {

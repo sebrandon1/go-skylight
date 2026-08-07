@@ -48,7 +48,7 @@ var rewardRemoveStarsCmd = &cobra.Command{
 
 func init() {
 	rewardRemoveStarsCmd.Flags().IntVar(&removeStarsAssigneeID, "assignee-id", 0, "Profile/category ID to deduct from")
-	rewardRemoveStarsCmd.Flags().IntVar(&removeStarsPoints, "points", 0, "Number of stars to remove")
+	rewardRemoveStarsCmd.Flags().IntVar(&removeStarsPoints, subPoints, 0, "Number of stars to remove")
 	markFlagRequired(rewardRemoveStarsCmd, "assignee-id")
-	markFlagRequired(rewardRemoveStarsCmd, "points")
+	markFlagRequired(rewardRemoveStarsCmd, subPoints)
 }

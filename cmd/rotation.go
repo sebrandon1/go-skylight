@@ -22,7 +22,7 @@ var rotationCmd = &cobra.Command{
 }
 
 var rotationCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   subCreate,
 	Short: "Create a rotating chore schedule across family members",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
@@ -61,7 +61,7 @@ func init() {
 	rotationCreateCmd.Flags().StringSliceVar(&rotationAssigneeIDs, "assignee-ids", nil, "Assignee IDs (comma-separated)")
 	rotationCreateCmd.Flags().StringVar(&rotationStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
 	rotationCreateCmd.Flags().IntVar(&rotationWeeks, "weeks", 4, "Number of weeks")
-	rotationCreateCmd.Flags().IntVar(&rotationPoints, "points", 0, "Points per chore")
+	rotationCreateCmd.Flags().IntVar(&rotationPoints, subPoints, 0, "Points per chore")
 
 	markFlagRequired(rotationCreateCmd, "chores")
 	markFlagRequired(rotationCreateCmd, "assignee-ids")

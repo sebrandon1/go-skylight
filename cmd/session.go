@@ -11,7 +11,7 @@ import (
 var saveCredentials bool
 
 var loginCmd = &cobra.Command{
-	Use:   "login",
+	Use:   subLogin,
 	Short: "Authenticate with Skylight and save OAuth2 credentials",
 	Long: `Performs a headless OAuth2 login using email and password, then saves
 the refresh token and device fingerprint to the config file. Use --save to
@@ -41,11 +41,11 @@ persist the credentials so subsequent commands authenticate automatically.`,
 
 		if saveCredentials {
 			values := map[string]string{
-				"SKYLIGHT_REFRESH_TOKEN":      tok.RefreshToken,
-				"SKYLIGHT_DEVICE_FINGERPRINT": fingerprint,
+				cfgRefreshToken:      tok.RefreshToken,
+				cfgDeviceFingerprint: fingerprint,
 			}
 			if frameID != "" {
-				values["SKYLIGHT_FRAME_ID"] = frameID
+				values[cfgFrameID] = frameID
 			}
 			if err := saveConfig(values); err != nil {
 				fmt.Printf("Warning: could not save config: %v\n", err)

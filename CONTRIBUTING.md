@@ -31,7 +31,6 @@ Common types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`.
 Examples:
 - `feat(lib): add WithTimeout functional option`
 - `fix(poller): prevent duplicate events after restart`
-- `docs: update Alpaca integration section in README`
 
 ## Functional Options Convention
 
@@ -78,7 +77,6 @@ make test         # all packages, verbose, with race detector
 make lint         # golangci-lint
 make vet          # go vet
 make build        # CLI binary
-make build-trigger # alpaca-trigger binary
 ```
 
 ## Running Integration Tests

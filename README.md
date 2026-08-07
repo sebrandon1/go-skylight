@@ -21,7 +21,6 @@ Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.co
 - Weekly combined home view (events, tasks, lists, meals) and quick frame status
 - Grocery list management with Instacart ordering and recipe ingredient import
 - Go client library with retry, rate limiting, and typed errors
-- Alpaca Markets integration for reward-triggered stock purchases
 - Docker images for `linux/amd64` and `linux/arm64`
 
 ## Quick Start
@@ -69,7 +68,6 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | [Examples](docs/examples/) | Common scenarios: deleting profiles/labels, managing chores, scripting |
 | [CLI Reference](docs/cli-reference.md) | Full command listing for all resources |
 | [Library Usage](docs/library-usage.md) | Go client API, examples, typed errors, and coverage matrix |
-| [Alpaca Integration](docs/alpaca-trigger.md) | Reward-triggered stock purchases via Alpaca Markets |
 
 ## Commands
 
@@ -102,14 +100,12 @@ See [CLI Reference](docs/cli-reference.md) for full details.
 
 ```
 CLI (cmd/)  -->  lib.Client (lib/)  -->  Skylight REST API
-                                    -->  Alpaca v2 REST API (alpaca-trigger)
 ```
 
 ## Development
 
 ```bash
 make build          # build skylight CLI
-make build-trigger  # build alpaca-trigger
 make test           # go test ./... -v
 make lint           # golangci-lint run ./...
 make vet            # go vet ./...

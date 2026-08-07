@@ -13,7 +13,7 @@ var addonCmd = &cobra.Command{
 }
 
 var addonListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   subList,
 	Short: "List available add-ons and their enabled state",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
