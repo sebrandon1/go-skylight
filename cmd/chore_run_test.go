@@ -232,3 +232,22 @@ func TestChoreClaimCmd(t *testing.T) {
 func TestChoreCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "chore")
 }
+
+func TestChoreCreateCmd_Recurring(t *testing.T) {
+	newCmdTestClient(t, choreMockHandler())
+
+	origTitle, origRecurring, origUpForGrabs := choreTitle, choreRecurring, choreUpForGrabs
+	choreTitle, choreRecurring, choreUpForGrabs = "Daily walk", true, false
+	t.Cleanup(func() {
+		choreTitle, choreRecurring, choreUpForGrabs = origTitle, origRecurring, origUpForGrabs
+	})
+
+	out := captureStdout(func() {
+		if err := choreCreateCmd.RunE(choreCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, `"id"`) {
+		t.Errorf("expected chore JSON in output, got: %s", out)
+	}
+}

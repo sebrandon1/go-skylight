@@ -657,3 +657,43 @@ func TestDeleteChore(t *testing.T) {
 		})
 	}
 }
+
+func TestListChores_RecurrenceFields(t *testing.T) {
+	response := `{"data":[{"id":"1","attributes":{"summary":"Daily walk","status":"pending","frequency":"weekly","interval":2,"recurrence_days":["mon","wed"],"end_date":"2026-12-31","recur_from":"completed"}}]}`
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	chores, err := client.ListChores(context.Background(), "frame1", ChoreListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(chores) != 1 {
+		t.Fatalf("expected 1 chore got %d", len(chores))
+	}
+	c := chores[0]
+	if c.Frequency != "weekly" {
+		t.Errorf("Frequency: want %q got %q", "weekly", c.Frequency)
+	}
+	if c.Interval != 2 {
+		t.Errorf("Interval: want 2 got %d", c.Interval)
+	}
+	if len(c.RecurrenceDays) != 2 || c.RecurrenceDays[0] != "mon" || c.RecurrenceDays[1] != "wed" {
+		t.Errorf("RecurrenceDays: got %v", c.RecurrenceDays)
+	}
+	if c.EndDate != "2026-12-31" {
+		t.Errorf("EndDate: want %q got %q", "2026-12-31", c.EndDate)
+	}
+	if c.RecurFrom != "completed" {
+		t.Errorf("RecurFrom: want %q got %q", "completed", c.RecurFrom)
+	}
+}
