@@ -19,6 +19,7 @@ var (
 	calendarCategoryID    string
 	calendarWeekDate      string
 	calendarCountdownDate string
+	calendarSourceID      string
 )
 
 var calendarCmd = &cobra.Command{
@@ -260,6 +261,50 @@ var calendarCreateCountdownCmd = &cobra.Command{
 	},
 }
 
+var calendarSourceEnableCmd = &cobra.Command{
+	Use:   "source-enable",
+	Short: "Enable a source calendar",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.UpdateSourceCalendar(cmd.Context(), frameID, calendarSourceID, true); err != nil {
+			return fmt.Errorf("enabling source calendar: %w", err)
+		}
+
+		printSuccess("Source calendar enabled successfully")
+		return nil
+	},
+}
+
+var calendarSourceDisableCmd = &cobra.Command{
+	Use:   "source-disable",
+	Short: "Disable a source calendar",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		if err := client.UpdateSourceCalendar(cmd.Context(), frameID, calendarSourceID, false); err != nil {
+			return fmt.Errorf("disabling source calendar: %w", err)
+		}
+
+		printSuccess("Source calendar disabled successfully")
+		return nil
+	},
+}
+
 var calendarWeekCmd = &cobra.Command{
 	Use:   "week",
 	Short: "Show a 7-day Mon-Sun view of calendar events",
@@ -316,6 +361,8 @@ func init() {
 	calendarCmd.AddCommand(calendarUpdateCmd)
 	calendarCmd.AddCommand(calendarDeleteCmd)
 	calendarCmd.AddCommand(sourceCalendarsCmd)
+	calendarCmd.AddCommand(calendarSourceEnableCmd)
+	calendarCmd.AddCommand(calendarSourceDisableCmd)
 	calendarCmd.AddCommand(calendarWeekCmd)
 
 	calendarGetCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to get")
@@ -353,4 +400,10 @@ func init() {
 	markFlagRequired(calendarCreateCountdownCmd, "date")
 
 	calendarWeekCmd.Flags().StringVar(&calendarWeekDate, "date", "", "Week containing this date (YYYY-MM-DD, default current week)")
+
+	calendarSourceEnableCmd.Flags().StringVar(&calendarSourceID, "source-id", "", "Source calendar ID")
+	markFlagRequired(calendarSourceEnableCmd, "source-id")
+
+	calendarSourceDisableCmd.Flags().StringVar(&calendarSourceID, "source-id", "", "Source calendar ID")
+	markFlagRequired(calendarSourceDisableCmd, "source-id")
 }
