@@ -163,6 +163,8 @@ type Chore struct {
 	RecurFrom      string   `json:"recur_from,omitempty"`
 	AssigneeID     string   `json:"assignee_id,omitempty"`
 	UpForGrabs     bool     `json:"up_for_grabs,omitempty"`
+	Routine        bool     `json:"routine,omitempty"`
+	RecurrenceSet  []string `json:"recurrence_set,omitempty"`
 }
 
 // choreAPIResponse wraps the JSON-API envelope for chore list responses.
@@ -183,6 +185,8 @@ type choreAPIAttributes struct {
 	EndDate        string   `json:"end_date"`
 	RecurFrom      string   `json:"recur_from"`
 	UpForGrabs     bool     `json:"up_for_grabs"`
+	Routine        bool     `json:"routine"`
+	RecurrenceSet  []string `json:"recurrence_set"`
 }
 
 // choreAPIEntry represents a single chore in JSON-API format.
@@ -217,6 +221,8 @@ func (e *choreAPIEntry) toChore() Chore {
 		EndDate:        e.Attributes.EndDate,
 		RecurFrom:      e.Attributes.RecurFrom,
 		UpForGrabs:     e.Attributes.UpForGrabs,
+		Routine:        e.Attributes.Routine,
+		RecurrenceSet:  e.Attributes.RecurrenceSet,
 	}
 	if e.Relationships.Category.Data != nil {
 		c.AssigneeID = e.Relationships.Category.Data.ID
@@ -240,6 +246,9 @@ type ChoreData struct {
 	EndDate        string   `json:"end_date,omitempty"`
 	RecurFrom      string   `json:"recur_from,omitempty"`
 	UpForGrabs     bool     `json:"up_for_grabs,omitempty"`
+	CategoryIDs    []string `json:"category_ids,omitempty"`
+	RecurrenceSet  []string `json:"recurrence_set,omitempty"`
+	Routine        bool     `json:"routine,omitempty"`
 }
 
 // List represents a list (e.g., grocery list, todo list).

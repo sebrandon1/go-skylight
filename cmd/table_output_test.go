@@ -23,18 +23,18 @@ func TestPrintCalendarTable_AllDay(t *testing.T) {
 
 func TestPrintRoutinesTable(t *testing.T) {
 	routines := []lib.Routine{
-		{ID: "1", Title: "Morning", AssigneeID: "a1", Steps: []lib.RoutineStep{{}, {}}},
+		{ID: "1", Title: "Morning", TimeOfDay: "morning", AssigneeID: "a1"},
 	}
 	out := captureStdout(func() { printRoutinesTable(routines) })
 
 	if !strings.Contains(out, "Morning") {
 		t.Errorf("expected routine title in output, got: %s", out)
 	}
-	if !strings.Contains(out, "ID") || !strings.Contains(out, "STEPS") {
+	if !strings.Contains(out, "ID") || !strings.Contains(out, "TIME OF DAY") {
 		t.Errorf("expected table headers in output, got: %s", out)
 	}
-	if !strings.Contains(out, "2") {
-		t.Errorf("expected step count in output, got: %s", out)
+	if !strings.Contains(out, "morning") {
+		t.Errorf("expected time-of-day in output, got: %s", out)
 	}
 }
 

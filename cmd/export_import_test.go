@@ -229,8 +229,15 @@ func exportMockHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
+		// A routine is a chore, so both ListChores (exported as "chores")
+		// and ListRoutines (exported as "routines") hit this same endpoint;
+		// the mock returns one plain chore and one routine chore, and each
+		// caller filters/dedupes it differently.
 		case strings.HasSuffix(r.URL.Path, "/chores"):
-			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes"}}]}`)
+			fmt.Fprint(w, `{"data":[
+				{"id":"c1","attributes":{"summary":"Dishes"}},
+				{"id":"rt1","attributes":{"summary":"Morning Routine","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}
+			]}`)
 		case strings.HasSuffix(r.URL.Path, "/rewards"):
 			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"Ice cream","point_value":5}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/lists"):
@@ -241,8 +248,6 @@ func exportMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
-		case strings.HasSuffix(r.URL.Path, "/routines"):
-			fmt.Fprint(w, `{"data":[{"id":"rt1","type":"routine","attributes":{"title":"Morning Routine","assignee_id":"","steps":[]}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/categories"):
 			fmt.Fprint(w, `{"data":[{"id":"cat1","type":"category","attributes":{"label":"Alice","color":"blue"}}]}`)
 		default:
@@ -275,8 +280,10 @@ func TestExportCmd_AllResourcesToStdout(t *testing.T) {
 	if data.FrameID != "test-frame" {
 		t.Errorf("expected frame_id test-frame, got %q", data.FrameID)
 	}
-	if len(data.Chores) != 1 || len(data.Rewards) != 1 || len(data.Lists) != 1 || len(data.Recipes) != 1 || len(data.CalendarEvents) != 1 {
-		t.Errorf("expected one of each legacy resource, got: %+v", data)
+	// data.Chores includes 2: a routine is a chore, so the plain chore list
+	// and the routine list overlap on the routine chore by design.
+	if len(data.Chores) != 2 || len(data.Rewards) != 1 || len(data.Lists) != 1 || len(data.Recipes) != 1 || len(data.CalendarEvents) != 1 {
+		t.Errorf("expected one of each legacy resource (chores=2), got: %+v", data)
 	}
 	if len(data.Routines) != 1 {
 		t.Errorf("expected 1 routine, got %d", len(data.Routines))
@@ -307,7 +314,7 @@ func TestExportCmd_ResourceFilter(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &data); err != nil {
 		t.Fatalf("expected valid JSON on stdout, got error %v for: %s", err, out)
 	}
-	if len(data.Chores) != 1 {
+	if len(data.Chores) != 2 {
 		t.Errorf("expected chores included, got: %+v", data.Chores)
 	}
 	if len(data.Rewards) != 0 || len(data.Lists) != 0 {
@@ -346,7 +353,7 @@ func TestExportCmd_WritesToFile(t *testing.T) {
 	if err := json.Unmarshal(raw, &data); err != nil {
 		t.Fatalf("expected valid JSON in file, got error %v", err)
 	}
-	if len(data.Chores) != 1 {
+	if len(data.Chores) != 2 {
 		t.Errorf("expected chores in exported file, got: %+v", data.Chores)
 	}
 }

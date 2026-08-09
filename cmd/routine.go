@@ -7,17 +7,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var routineTimeOfDays = []string{"morning", "afternoon", "evening"}
+
 var (
-	routineID       string
-	routineTitle    string
-	routineAssignee string
-	routineSteps    []string
-	routineIDs      []string
+	routineID          string
+	routineTitle       string
+	routineTimeOfDay   string
+	routineCategoryIDs []string
+	routineStartDate   string
 )
 
 var routineCmd = &cobra.Command{
 	Use:   "routine",
 	Short: "Routine management commands",
+	Long: `Create, list, and delete routines on a Skylight frame.
+
+A routine is a recurring chore with a fixed time-of-day slot (morning,
+afternoon, or evening). There is no separate routines resource on the
+Skylight API -- routines are chores with routine:true.`,
 }
 
 var routineListCmd = &cobra.Command{
@@ -52,6 +59,9 @@ var routineCreateCmd = &cobra.Command{
 		if err := requireFrameID(); err != nil {
 			return err
 		}
+		if err := validateEnum(routineTimeOfDay, routineTimeOfDays); err != nil {
+			return err
+		}
 
 		client, err := getClient()
 		if err != nil {
@@ -59,46 +69,13 @@ var routineCreateCmd = &cobra.Command{
 		}
 
 		routine, err := client.CreateRoutine(cmd.Context(), frameID, lib.RoutineData{
-			Title:      routineTitle,
-			AssigneeID: routineAssignee,
-			Steps:      filterEmptyStrings(routineSteps),
+			Title:       routineTitle,
+			TimeOfDay:   routineTimeOfDay,
+			CategoryIDs: routineCategoryIDs,
+			StartDate:   routineStartDate,
 		})
 		if err != nil {
 			return fmt.Errorf("creating routine: %w", err)
-		}
-
-		printJSON(routine)
-		return nil
-	},
-}
-
-var routineUpdateCmd = &cobra.Command{
-	Use:   subUpdate,
-	Short: "Update a routine",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireFrameID(); err != nil {
-			return err
-		}
-
-		client, err := getClient()
-		if err != nil {
-			return err
-		}
-
-		data := lib.RoutineData{}
-		if cmd.Flags().Changed(subTitle) {
-			data.Title = routineTitle
-		}
-		if cmd.Flags().Changed("assignee-id") {
-			data.AssigneeID = routineAssignee
-		}
-		if cmd.Flags().Changed("steps") {
-			data.Steps = filterEmptyStrings(routineSteps)
-		}
-
-		routine, err := client.UpdateRoutine(cmd.Context(), frameID, routineID, data)
-		if err != nil {
-			return fmt.Errorf("updating routine: %w", err)
 		}
 
 		printJSON(routine)
@@ -137,53 +114,24 @@ var routineDeleteCmd = &cobra.Command{
 	},
 }
 
-var routineReorderCmd = &cobra.Command{
-	Use:   "reorder",
-	Short: "Set the display order of routines",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := requireFrameID(); err != nil {
-			return err
-		}
-
-		client, err := getClient()
-		if err != nil {
-			return err
-		}
-
-		if err := client.ReorderRoutines(cmd.Context(), frameID, routineIDs); err != nil {
-			return fmt.Errorf("reordering routines: %w", err)
-		}
-
-		printSuccess("Routines reordered successfully")
-		return nil
-	},
-}
-
 func init() {
 	rootCmd.AddCommand(routineCmd)
 
 	routineCmd.AddCommand(routineListCmd)
 	routineCmd.AddCommand(routineCreateCmd)
-	routineCmd.AddCommand(routineUpdateCmd)
 	routineCmd.AddCommand(routineDeleteCmd)
-	routineCmd.AddCommand(routineReorderCmd)
 
 	routineCreateCmd.Flags().StringVar(&routineTitle, subTitle, "", "Routine title")
-	routineCreateCmd.Flags().StringVar(&routineAssignee, "assignee-id", "", "Assignee ID")
-	routineCreateCmd.Flags().StringSliceVar(&routineSteps, "steps", nil, "Step titles (comma-separated)")
+	routineCreateCmd.Flags().StringVar(&routineTimeOfDay, "time-of-day", "", "Time of day: morning, afternoon, or evening")
+	routineCreateCmd.Flags().StringSliceVar(&routineCategoryIDs, "category-ids", nil, "Assignee category IDs (comma-separated)")
+	routineCreateCmd.Flags().StringVar(&routineStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
 	markFlagRequired(routineCreateCmd, subTitle)
-
-	routineUpdateCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
-	routineUpdateCmd.Flags().StringVar(&routineTitle, subTitle, "", "Routine title")
-	routineUpdateCmd.Flags().StringVar(&routineAssignee, "assignee-id", "", "Assignee ID")
-	routineUpdateCmd.Flags().StringSliceVar(&routineSteps, "steps", nil, "Step titles (comma-separated)")
-	markFlagRequired(routineUpdateCmd, "routine-id")
+	markFlagRequired(routineCreateCmd, "time-of-day")
+	markFlagRequired(routineCreateCmd, "category-ids")
+	markFlagRequired(routineCreateCmd, "start-date")
 
 	routineDeleteCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
 	routineDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	routineDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(routineDeleteCmd, "routine-id")
-
-	routineReorderCmd.Flags().StringSliceVar(&routineIDs, "routine-ids", nil, "Routine IDs in desired order (comma-separated)")
-	markFlagRequired(routineReorderCmd, "routine-ids")
 }

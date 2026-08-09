@@ -225,11 +225,11 @@ func importCalendarEvents(ctx context.Context, client *lib.Client, events []lib.
 
 func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Routine) (total, failed int) {
 	return parallelImport(routines, func(r lib.Routine) (int, int) {
-		steps := make([]string, len(r.Steps))
-		for i, s := range r.Steps {
-			steps[i] = s.Title
+		data := lib.RoutineData{Title: r.Title, TimeOfDay: r.TimeOfDay, StartDate: r.StartDate}
+		if r.AssigneeID != "" {
+			data.CategoryIDs = []string{r.AssigneeID}
 		}
-		if _, err := client.CreateRoutine(ctx, frameID, lib.RoutineData{Title: r.Title, Steps: steps}); err != nil {
+		if _, err := client.CreateRoutine(ctx, frameID, data); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating routine %q: %v\n", r.Title, err)
 			return 1, 1
 		}

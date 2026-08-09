@@ -3,139 +3,155 @@ package lib
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"time"
 )
 
-// Routine represents a Skylight routine (ordered recurring task list).
+// routineLookaheadDays bounds how far ahead ListRoutines looks for
+// not-yet-started routines. The chores endpoint requires a date range and
+// expands each recurring chore into one row per day, so there's no way to
+// ask for "all routines" directly -- a routine starting further out than
+// this won't appear until it's within the window.
+const routineLookaheadDays = 30
+
+// Routine represents a Skylight routine: a recurring chore with a fixed
+// time-of-day slot, assigned to one family member.
 type Routine struct {
-	ID         string        `json:"id,omitempty"`
-	Title      string        `json:"title,omitempty"`
-	AssigneeID string        `json:"assignee_id,omitempty"`
-	Steps      []RoutineStep `json:"steps,omitempty"`
-	CreatedAt  string        `json:"created_at,omitempty"`
-	UpdatedAt  string        `json:"updated_at,omitempty"`
+	ID         string `json:"id,omitempty"`
+	Title      string `json:"title,omitempty"`
+	TimeOfDay  string `json:"time_of_day,omitempty"`
+	AssigneeID string `json:"assignee_id,omitempty"`
+	StartDate  string `json:"start_date,omitempty"`
 }
 
-// RoutineStep represents a single step within a routine.
-type RoutineStep struct {
-	ID       string `json:"id,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Position int    `json:"position,omitempty"`
-}
-
-// RoutineData holds the fields for create/update routine requests.
+// RoutineData holds the fields for creating a routine.
 type RoutineData struct {
-	Title      string   `json:"title,omitempty"`
-	AssigneeID string   `json:"assignee_id,omitempty"`
-	Steps      []string `json:"steps,omitempty"`
+	Title       string   `json:"title,omitempty"`
+	TimeOfDay   string   `json:"time_of_day,omitempty"`
+	CategoryIDs []string `json:"category_ids,omitempty"`
+	StartDate   string   `json:"start_date,omitempty"`
 }
 
-type reorderRoutinesRequest struct {
-	IDs []string `json:"ids"`
+// routineByHour maps the CLI/API's time-of-day vocabulary to the BYHOUR
+// value the Skylight API requires in a routine's recurrence rule. The API
+// rejects any other hour: {"errors":{"recurrence_set":["must have exactly
+// one BYHOUR, set to 6, 14, or 20"]}}.
+var routineByHour = map[string]int{
+	"morning":   6,
+	"afternoon": 14,
+	"evening":   20,
 }
 
-type routineAPIResponse struct {
-	Data []routineAPIEntry `json:"data"`
+var routineTimeOfDay = map[string]string{
+	"6":  "morning",
+	"14": "afternoon",
+	"20": "evening",
 }
 
-type routineAPISingleResponse struct {
-	Data routineAPIEntry `json:"data"`
-}
+var byHourRe = regexp.MustCompile(`BYHOUR=(\d+)`)
 
-type routineAPIEntry struct {
-	ID         string `json:"id"`
-	Attributes struct {
-		Title      string        `json:"title"`
-		AssigneeID string        `json:"assignee_id"`
-		Steps      []RoutineStep `json:"steps"`
-		CreatedAt  string        `json:"created_at"`
-		UpdatedAt  string        `json:"updated_at"`
-	} `json:"attributes"`
-}
-
-func (e *routineAPIEntry) toRoutine() Routine {
-	return Routine{
-		ID:         e.ID,
-		Title:      e.Attributes.Title,
-		AssigneeID: e.Attributes.AssigneeID,
-		Steps:      e.Attributes.Steps,
-		CreatedAt:  e.Attributes.CreatedAt,
-		UpdatedAt:  e.Attributes.UpdatedAt,
+// timeOfDayFromRecurrence extracts the time-of-day slot from a routine's
+// recurrence rules by reading its BYHOUR value.
+func timeOfDayFromRecurrence(rules []string) string {
+	for _, rule := range rules {
+		if m := byHourRe.FindStringSubmatch(rule); m != nil {
+			if tod, ok := routineTimeOfDay[m[1]]; ok {
+				return tod
+			}
+		}
 	}
+	return ""
 }
 
-func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, error) {
-	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/routines", c.effectiveURL(), pathSeg(frameID)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create list routines request: %w", err)
-	}
-
-	var apiResp routineAPIResponse
-	if err := c.get(req, &apiResp); err != nil {
-		return nil, fmt.Errorf("failed to list routines: %w", err)
-	}
-
-	routines := make([]Routine, len(apiResp.Data))
-	for i := range apiResp.Data {
-		routines[i] = apiResp.Data[i].toRoutine()
-	}
-	return routines, nil
-}
-
+// CreateRoutine creates a routine as a chore via create_multiple, with
+// routine:true and the time-of-day slot carried in the recurrence rule's
+// BYHOUR. There is no dedicated /routines resource on the Skylight API.
 func (c *Client) CreateRoutine(ctx context.Context, frameID string, data RoutineData) (*Routine, error) {
-	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/routines", c.effectiveURL(), pathSeg(frameID)), data)
+	hour, ok := routineByHour[data.TimeOfDay]
+	if !ok {
+		return nil, fmt.Errorf("invalid time-of-day %q: must be morning, afternoon, or evening", data.TimeOfDay)
+	}
+
+	chore := ChoreData{
+		Title:         data.Title,
+		DueDate:       data.StartDate,
+		CategoryIDs:   data.CategoryIDs,
+		RecurrenceSet: []string{fmt.Sprintf("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=%d", hour)},
+		Routine:       true,
+	}
+
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/chores/create_multiple", c.effectiveURL(), pathSeg(frameID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routine request: %w", err)
 	}
 
-	var apiResp routineAPISingleResponse
+	var apiResp choreAPIResponse
 	if err := c.post(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to create routine: %w", err)
 	}
+	if len(apiResp.Data) == 0 {
+		return nil, fmt.Errorf("no chore returned from create_multiple")
+	}
 
-	result := apiResp.Data.toRoutine()
-	return &result, nil
+	ch := apiResp.Data[0].toChore()
+	return &Routine{
+		ID:         ch.ID,
+		Title:      ch.Title,
+		TimeOfDay:  data.TimeOfDay,
+		AssigneeID: ch.AssigneeID,
+		StartDate:  ch.DueDate,
+	}, nil
 }
 
-func (c *Client) UpdateRoutine(ctx context.Context, frameID, routineID string, data RoutineData) (*Routine, error) {
-	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/routines/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)), data)
+// ListRoutines lists routines active or starting within the next
+// routineLookaheadDays. Routines are chores with routine:true; the chores
+// endpoint requires a date range and returns one row per day for a
+// recurring chore.
+func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, error) {
+	now := time.Now()
+	today := now.Format(DateFormat)
+	until := now.AddDate(0, 0, routineLookaheadDays).Format(DateFormat)
+
+	chores, err := c.ListChores(ctx, frameID, ChoreListOptions{After: today, Before: until})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create update routine request: %w", err)
+		return nil, fmt.Errorf("failed to list routines: %w", err)
 	}
 
-	var apiResp routineAPISingleResponse
-	if err := c.put(req, &apiResp); err != nil {
-		return nil, fmt.Errorf("failed to update routine: %w", err)
-	}
+	seen := make(map[string]bool)
+	routines := make([]Routine, 0, len(chores))
+	for _, ch := range chores {
+		if !ch.Routine {
+			continue
+		}
+		baseID, _ := parseChoreID(ch.ID)
+		if seen[baseID] {
+			continue
+		}
+		seen[baseID] = true
 
-	result := apiResp.Data.toRoutine()
-	return &result, nil
+		routines = append(routines, Routine{
+			ID:         baseID,
+			Title:      ch.Title,
+			TimeOfDay:  timeOfDayFromRecurrence(ch.RecurrenceSet),
+			AssigneeID: ch.AssigneeID,
+			StartDate:  ch.DueDate,
+		})
+	}
+	return routines, nil
 }
 
+// DeleteRoutine deletes a routine. apply_to=all is required by the API for
+// any recurring chore -- without it, the request 400s with "you must have a
+// valid value for apply_to".
 func (c *Client) DeleteRoutine(ctx context.Context, frameID, routineID string) error {
-	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/routines/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)))
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete routine request: %w", err)
 	}
+	addQueryParams(req, map[string]string{"apply_to": "all"})
 
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete routine: %w", err)
 	}
-
-	return nil
-}
-
-func (c *Client) ReorderRoutines(ctx context.Context, frameID string, routineIDs []string) error {
-	body := reorderRoutinesRequest{IDs: routineIDs}
-
-	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/routines/reorder", c.effectiveURL(), pathSeg(frameID)), body)
-	if err != nil {
-		return fmt.Errorf("failed to create reorder routines request: %w", err)
-	}
-
-	var result any
-	if err := c.patch(req, &result); err != nil {
-		return fmt.Errorf("failed to reorder routines: %w", err)
-	}
-
 	return nil
 }

@@ -11,16 +11,14 @@ func routineMockHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/reorder"):
-			fmt.Fprint(w, `{}`)
-		case strings.HasSuffix(r.URL.Path, "/routine1") && r.Method == http.MethodPut:
-			fmt.Fprint(w, `{"data":{"id":"routine1","attributes":{"title":"Updated","assignee_id":"a1","steps":[]}}}`)
-		case strings.HasSuffix(r.URL.Path, "/routine1") && r.Method == http.MethodDelete:
+		case strings.HasSuffix(r.URL.Path, "/create_multiple") && r.Method == http.MethodPost:
+			fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/chores/routine1") && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusOK)
-		case strings.HasSuffix(r.URL.Path, "/routines") && r.Method == http.MethodPost:
-			fmt.Fprint(w, `{"data":{"id":"routine1","attributes":{"title":"Morning","assignee_id":"a1","steps":[]}}}`)
+		case strings.HasSuffix(r.URL.Path, "/chores"):
+			fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}]}`)
 		default:
-			fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"title":"Morning","assignee_id":"a1","steps":[]}}]}`)
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}
 }
@@ -40,9 +38,11 @@ func TestRoutineListCmd(t *testing.T) {
 
 func TestRoutineCreateCmd(t *testing.T) {
 	newCmdTestClient(t, routineMockHandler())
-	origTitle, origSteps := routineTitle, routineSteps
-	routineTitle, routineSteps = "Morning", []string{"Brush teeth", ""}
-	t.Cleanup(func() { routineTitle, routineSteps = origTitle, origSteps })
+	origTitle, origTimeOfDay, origCategoryIDs, origStartDate := routineTitle, routineTimeOfDay, routineCategoryIDs, routineStartDate
+	routineTitle, routineTimeOfDay, routineCategoryIDs, routineStartDate = "Morning", "morning", []string{"a1"}, "2026-08-10"
+	t.Cleanup(func() {
+		routineTitle, routineTimeOfDay, routineCategoryIDs, routineStartDate = origTitle, origTimeOfDay, origCategoryIDs, origStartDate
+	})
 
 	out := captureStdout(func() {
 		if err := routineCreateCmd.RunE(routineCreateCmd, nil); err != nil {
@@ -54,25 +54,14 @@ func TestRoutineCreateCmd(t *testing.T) {
 	}
 }
 
-func TestRoutineUpdateCmd(t *testing.T) {
+func TestRoutineCreateCmd_InvalidTimeOfDay(t *testing.T) {
 	newCmdTestClient(t, routineMockHandler())
-	origID, origTitle := routineID, routineTitle
-	routineID, routineTitle = "routine1", "Updated"
-	t.Cleanup(func() { routineID, routineTitle = origID, origTitle })
+	origTitle, origTimeOfDay := routineTitle, routineTimeOfDay
+	routineTitle, routineTimeOfDay = "Morning", "noon"
+	t.Cleanup(func() { routineTitle, routineTimeOfDay = origTitle, origTimeOfDay })
 
-	// pflag.Set() marks the flag as permanently "changed" on the shared
-	// command singleton (no unset API), so this only runs once per process.
-	if err := routineUpdateCmd.Flags().Set("title", "Updated"); err != nil {
-		t.Fatalf("setting title flag: %v", err)
-	}
-
-	out := captureStdout(func() {
-		if err := routineUpdateCmd.RunE(routineUpdateCmd, nil); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-	if !strings.Contains(out, "Updated") {
-		t.Errorf("expected updated routine in output, got: %s", out)
+	if err := routineCreateCmd.RunE(routineCreateCmd, nil); err == nil {
+		t.Error("expected error for invalid --time-of-day, got nil")
 	}
 }
 
@@ -132,22 +121,6 @@ func TestRoutineDeleteCmd_ConfirmationDeclined(t *testing.T) {
 	}
 }
 
-func TestRoutineReorderCmd(t *testing.T) {
-	newCmdTestClient(t, routineMockHandler())
-	origIDs := routineIDs
-	routineIDs = []string{"routine1", "routine2"}
-	t.Cleanup(func() { routineIDs = origIDs })
-
-	out := captureStdout(func() {
-		if err := routineReorderCmd.RunE(routineReorderCmd, nil); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-	if !strings.Contains(out, "reordered successfully") {
-		t.Errorf("expected reorder confirmation, got: %s", out)
-	}
-}
-
 func TestRoutineListCmd_TableMode(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -155,7 +128,7 @@ func TestRoutineListCmd_TableMode(t *testing.T) {
 			fmt.Fprint(w, `{"data":[{"id":"a1","attributes":{"label":"Bob","color":"#00FF00"}}]}`)
 			return
 		}
-		fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"title":"Morning","assignee_id":"a1","steps":[]}}]}`)
+		fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}]}`)
 	})
 
 	origFmt := outputFormat
@@ -177,4 +150,14 @@ func TestRoutineListCmd_TableMode(t *testing.T) {
 
 func TestRoutineCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "routine")
+}
+
+func TestRoutineCmd_UpdateAndReorderRemoved(t *testing.T) {
+	for _, use := range []string{"update", "reorder"} {
+		for _, sub := range routineCmd.Commands() {
+			if sub.Use == use || strings.HasPrefix(sub.Use, use+" ") {
+				t.Errorf("expected %q subcommand to be removed from routine, but it's still registered", use)
+			}
+		}
+	}
 }
