@@ -148,6 +148,52 @@ func TestCreateRoutine_EmptyResponseData(t *testing.T) {
 	}
 }
 
+func TestCreateRoutine_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateRoutine(context.Background(), "frame1", RoutineData{
+		Title:      "Make bed",
+		TimeOfDay:  "morning",
+		CategoryID: "9740544",
+		StartDate:  "2026-08-10",
+	})
+	if err == nil {
+		t.Fatal("expected error for server error response, got nil")
+	}
+}
+
+func TestCreateRoutine_InvalidJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateRoutine(context.Background(), "frame1", RoutineData{
+		Title:      "Make bed",
+		TimeOfDay:  "morning",
+		CategoryID: "9740544",
+		StartDate:  "2026-08-10",
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid JSON response, got nil")
+	}
+}
+
 func TestListRoutines_FiltersToRoutinesOnly(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/frames/frame1/chores" {
@@ -307,6 +353,40 @@ func TestListRoutines_MapsBYHOURToTimeOfDay(t *testing.T) {
 	}
 }
 
+func TestListRoutines_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.ListRoutines(context.Background(), "frame1"); err == nil {
+		t.Fatal("expected error for server error response, got nil")
+	}
+}
+
+func TestListRoutines_InvalidJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`not valid json`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.ListRoutines(context.Background(), "frame1"); err == nil {
+		t.Fatal("expected error for invalid JSON response, got nil")
+	}
+}
+
 func TestDeleteRoutine_SendsApplyToAll(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
@@ -329,5 +409,21 @@ func TestDeleteRoutine_SendsApplyToAll(t *testing.T) {
 	client, _ := NewClientWithToken("u", "t")
 	if err := client.DeleteRoutine(context.Background(), "frame1", "97874955"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteRoutine_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if err := client.DeleteRoutine(context.Background(), "frame1", "97874955"); err == nil {
+		t.Fatal("expected error for server error response, got nil")
 	}
 }
