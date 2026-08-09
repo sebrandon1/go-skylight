@@ -38,10 +38,10 @@ func TestRoutineListCmd(t *testing.T) {
 
 func TestRoutineCreateCmd(t *testing.T) {
 	newCmdTestClient(t, routineMockHandler())
-	origTitle, origTimeOfDay, origCategoryIDs, origStartDate := routineTitle, routineTimeOfDay, routineCategoryIDs, routineStartDate
-	routineTitle, routineTimeOfDay, routineCategoryIDs, routineStartDate = "Morning", "morning", []string{"a1"}, "2026-08-10"
+	origTitle, origTimeOfDay, origCategoryID, origStartDate := routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate
+	routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate = "Morning", "morning", "a1", "2026-08-10"
 	t.Cleanup(func() {
-		routineTitle, routineTimeOfDay, routineCategoryIDs, routineStartDate = origTitle, origTimeOfDay, origCategoryIDs, origStartDate
+		routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate = origTitle, origTimeOfDay, origCategoryID, origStartDate
 	})
 
 	out := captureStdout(func() {

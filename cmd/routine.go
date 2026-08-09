@@ -10,11 +10,11 @@ import (
 var routineTimeOfDays = []string{"morning", "afternoon", "evening"}
 
 var (
-	routineID          string
-	routineTitle       string
-	routineTimeOfDay   string
-	routineCategoryIDs []string
-	routineStartDate   string
+	routineID         string
+	routineTitle      string
+	routineTimeOfDay  string
+	routineCategoryID string
+	routineStartDate  string
 )
 
 var routineCmd = &cobra.Command{
@@ -62,6 +62,9 @@ var routineCreateCmd = &cobra.Command{
 		if err := validateEnum(routineTimeOfDay, routineTimeOfDays); err != nil {
 			return err
 		}
+		if err := validateDate(routineStartDate); err != nil {
+			return err
+		}
 
 		client, err := getClient()
 		if err != nil {
@@ -69,10 +72,10 @@ var routineCreateCmd = &cobra.Command{
 		}
 
 		routine, err := client.CreateRoutine(cmd.Context(), frameID, lib.RoutineData{
-			Title:       routineTitle,
-			TimeOfDay:   routineTimeOfDay,
-			CategoryIDs: routineCategoryIDs,
-			StartDate:   routineStartDate,
+			Title:      routineTitle,
+			TimeOfDay:  routineTimeOfDay,
+			CategoryID: routineCategoryID,
+			StartDate:  routineStartDate,
 		})
 		if err != nil {
 			return fmt.Errorf("creating routine: %w", err)
@@ -123,11 +126,11 @@ func init() {
 
 	routineCreateCmd.Flags().StringVar(&routineTitle, subTitle, "", "Routine title")
 	routineCreateCmd.Flags().StringVar(&routineTimeOfDay, "time-of-day", "", "Time of day: morning, afternoon, or evening")
-	routineCreateCmd.Flags().StringSliceVar(&routineCategoryIDs, "category-ids", nil, "Assignee category IDs (comma-separated)")
+	routineCreateCmd.Flags().StringVar(&routineCategoryID, "category-id", "", "Assignee category ID")
 	routineCreateCmd.Flags().StringVar(&routineStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
 	markFlagRequired(routineCreateCmd, subTitle)
 	markFlagRequired(routineCreateCmd, "time-of-day")
-	markFlagRequired(routineCreateCmd, "category-ids")
+	markFlagRequired(routineCreateCmd, "category-id")
 	markFlagRequired(routineCreateCmd, "start-date")
 
 	routineDeleteCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")

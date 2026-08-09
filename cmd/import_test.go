@@ -105,6 +105,35 @@ func TestImportChores(t *testing.T) {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
 	})
+
+	// A routine is a chore, so ListChores and ListRoutines both return it at
+	// export time -- importChores must skip routine chores so importRoutines
+	// (which handles them separately) doesn't end up creating each routine
+	// twice: once as a plain chore, once as a proper routine.
+	t.Run("skips routine chores", func(t *testing.T) {
+		client := newImportTestClient(t, nil)
+		total, failed := importChores(context.Background(), client, []lib.Chore{
+			{Title: "Walk dog"},
+			{Title: "Make bed", Routine: true},
+		})
+		if total != 1 || failed != 0 {
+			t.Errorf("got total=%d failed=%d, want total=1 failed=0 (routine chore skipped)", total, failed)
+		}
+	})
+
+	// A skipped routine chore is invisible in total/failed by design (it's
+	// not this function's job to import it), but that means it can vanish
+	// silently if the caller didn't also request the "routines" resource --
+	// warn on stderr so the skip is at least visible.
+	t.Run("warns on stderr when skipping a routine chore", func(t *testing.T) {
+		client := newImportTestClient(t, nil)
+		stderr := captureStderr(func() {
+			importChores(context.Background(), client, []lib.Chore{{Title: "Make bed", Routine: true}})
+		})
+		if !strings.Contains(stderr, "Make bed") {
+			t.Errorf("expected warning naming the skipped routine chore, got: %s", stderr)
+		}
+	})
 }
 
 func TestImportLists(t *testing.T) {

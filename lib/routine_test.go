@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestCreateRoutine(t *testing.T) {
@@ -34,10 +35,10 @@ func TestCreateRoutine(t *testing.T) {
 
 	client, _ := NewClientWithToken("u", "t")
 	routine, err := client.CreateRoutine(context.Background(), "frame1", RoutineData{
-		Title:       "Make bed",
-		TimeOfDay:   "morning",
-		CategoryIDs: []string{"9740544"},
-		StartDate:   "2026-08-10",
+		Title:      "Make bed",
+		TimeOfDay:  "morning",
+		CategoryID: "9740544",
+		StartDate:  "2026-08-10",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -55,8 +56,8 @@ func TestCreateRoutine(t *testing.T) {
 	if routine.AssigneeID != "9740544" {
 		t.Errorf("AssigneeID: want %q got %q", "9740544", routine.AssigneeID)
 	}
-	if routine.StartDate != "2026-08-10" {
-		t.Errorf("StartDate: want %q got %q", "2026-08-10", routine.StartDate)
+	if routine.NextOccurrenceDate != "2026-08-10" {
+		t.Errorf("NextOccurrenceDate: want %q got %q", "2026-08-10", routine.NextOccurrenceDate)
 	}
 
 	if capturedBody["routine"] != true {
@@ -97,6 +98,56 @@ func TestCreateRoutine_InvalidTimeOfDay(t *testing.T) {
 	}
 }
 
+func TestCreateRoutine_EmptyCategoryID(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateRoutine(context.Background(), "frame1", RoutineData{
+		Title:     "Make bed",
+		TimeOfDay: "morning",
+		StartDate: "2026-08-10",
+	})
+	if err == nil {
+		t.Fatal("expected error for empty category ID, got nil")
+	}
+	if called {
+		t.Error("expected no HTTP call for an empty category ID")
+	}
+}
+
+func TestCreateRoutine_EmptyResponseData(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.CreateRoutine(context.Background(), "frame1", RoutineData{
+		Title:      "Make bed",
+		TimeOfDay:  "morning",
+		CategoryID: "9740544",
+		StartDate:  "2026-08-10",
+	})
+	if err == nil {
+		t.Fatal("expected error when create_multiple returns no chores, got nil")
+	}
+}
+
 func TestListRoutines_FiltersToRoutinesOnly(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/frames/frame1/chores" {
@@ -125,6 +176,67 @@ func TestListRoutines_FiltersToRoutinesOnly(t *testing.T) {
 	}
 	if routines[0].Title != "Make bed" {
 		t.Errorf("Title: want %q got %q", "Make bed", routines[0].Title)
+	}
+}
+
+func TestListRoutines_QueriesTodayThroughLookaheadWindow(t *testing.T) {
+	wantAfter := time.Now().Format(DateFormat)
+	wantBefore := time.Now().AddDate(0, 0, routineLookaheadDays).Format(DateFormat)
+
+	var gotAfter, gotBefore string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAfter = r.URL.Query().Get("after")
+		gotBefore = r.URL.Query().Get("before")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.ListRoutines(context.Background(), "frame1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotAfter != wantAfter {
+		t.Errorf("after: want %q got %q", wantAfter, gotAfter)
+	}
+	if gotBefore != wantBefore {
+		t.Errorf("before: want %q got %q", wantBefore, gotBefore)
+	}
+}
+
+func TestListRoutines_DoesNotGroupDifferentBaseIDs(t *testing.T) {
+	// create_multiple's sibling records (one per assignee) share no
+	// server-provided correlation key -- verified live, group/series are
+	// each self-referential to their own record id, not shared across
+	// siblings. ListRoutines must not invent a client-side heuristic that
+	// merges unrelated base IDs just because they share a title/date/rule.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"111","attributes":{"summary":"Make bed","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}}}},
+			{"id":"222","attributes":{"summary":"Make bed","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c2","type":"category"}}}}
+		]}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	routines, err := client.ListRoutines(context.Background(), "frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(routines) != 2 {
+		t.Fatalf("expected 2 separate routine entries (different base IDs, no grouping), got %d: %+v", len(routines), routines)
 	}
 }
 

@@ -71,7 +71,7 @@ var statusCmd = &cobra.Command{
 		incompleteItems, listErrors := countIncompleteListItems(ctx, client, frameID, lists)
 
 		routines, err := client.ListRoutines(ctx, frameID)
-		if err != nil && !lib.IsNotFound(err) {
+		if err != nil {
 			return fmt.Errorf("listing routines: %w", err)
 		}
 

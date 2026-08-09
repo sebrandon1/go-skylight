@@ -150,6 +150,41 @@ func TestRunImportDryRun_PrintsCounts(t *testing.T) {
 	}
 }
 
+// TestRunImportDryRun_ExcludesRoutineChoresFromCount ensures the dry-run
+// preview matches what a real import actually does: importChores skips
+// Routine==true chores (they're imported separately via importRoutines), so
+// the chores count in the preview must exclude them too, or the preview
+// would overstate how many plain chores will be created.
+func TestRunImportDryRun_ExcludesRoutineChoresFromCount(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	origFrameID := frameID
+	frameID = "test-frame"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	data := ExportData{
+		Chores: []lib.Chore{{ID: "1"}, {ID: "2", Routine: true}, {ID: "3", Routine: true}},
+	}
+	want := map[string]bool{exportResourceChores: true}
+	runImportDryRun(data, want)
+
+	w.Close()
+	os.Stdout = old
+
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	out := string(buf[:n])
+
+	if !strings.Contains(out, "1 items") {
+		t.Errorf("expected chores count of 1 (routine chores excluded), got: %s", out)
+	}
+	if strings.Contains(out, "3 items") {
+		t.Errorf("expected routine chores excluded from count, got: %s", out)
+	}
+}
+
 func TestRunImportDryRun_ExcludesCategories(t *testing.T) {
 	old := os.Stdout
 	r, w, _ := os.Pipe()

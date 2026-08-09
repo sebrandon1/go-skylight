@@ -16,20 +16,31 @@ const routineLookaheadDays = 30
 
 // Routine represents a Skylight routine: a recurring chore with a fixed
 // time-of-day slot, assigned to one family member.
+//
+// NextOccurrenceDate is the date of the nearest active occurrence found
+// within ListRoutines's lookahead window (in practice, almost always
+// today) -- it is NOT the routine's original creation/start date. The
+// chores API has no field that reports that: recur_from is never populated
+// for routine (RRULE-based) chores, and each occurrence's own start/due
+// date just reflects its own calendar date, not a fixed series anchor.
 type Routine struct {
-	ID         string `json:"id,omitempty"`
-	Title      string `json:"title,omitempty"`
-	TimeOfDay  string `json:"time_of_day,omitempty"`
-	AssigneeID string `json:"assignee_id,omitempty"`
-	StartDate  string `json:"start_date,omitempty"`
+	ID                 string `json:"id,omitempty"`
+	Title              string `json:"title,omitempty"`
+	TimeOfDay          string `json:"time_of_day,omitempty"`
+	AssigneeID         string `json:"assignee_id,omitempty"`
+	NextOccurrenceDate string `json:"next_occurrence_date,omitempty"`
 }
 
-// RoutineData holds the fields for creating a routine.
+// RoutineData holds the fields for creating a routine. CategoryID is a
+// single assignee: create_multiple fans out one chore record per category
+// ID with no server-provided key correlating the resulting siblings back
+// together, so multi-assignee routines aren't supported yet -- the type
+// only allows one.
 type RoutineData struct {
-	Title       string   `json:"title,omitempty"`
-	TimeOfDay   string   `json:"time_of_day,omitempty"`
-	CategoryIDs []string `json:"category_ids,omitempty"`
-	StartDate   string   `json:"start_date,omitempty"`
+	Title      string `json:"title,omitempty"`
+	TimeOfDay  string `json:"time_of_day,omitempty"`
+	CategoryID string `json:"category_id,omitempty"`
+	StartDate  string `json:"start_date,omitempty"`
 }
 
 // routineByHour maps the CLI/API's time-of-day vocabulary to the BYHOUR
@@ -71,11 +82,14 @@ func (c *Client) CreateRoutine(ctx context.Context, frameID string, data Routine
 	if !ok {
 		return nil, fmt.Errorf("invalid time-of-day %q: must be morning, afternoon, or evening", data.TimeOfDay)
 	}
+	if data.CategoryID == "" {
+		return nil, fmt.Errorf("category ID is required")
+	}
 
 	chore := ChoreData{
 		Title:         data.Title,
 		DueDate:       data.StartDate,
-		CategoryIDs:   data.CategoryIDs,
+		CategoryIDs:   []string{data.CategoryID},
 		RecurrenceSet: []string{fmt.Sprintf("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=%d", hour)},
 		Routine:       true,
 	}
@@ -95,11 +109,11 @@ func (c *Client) CreateRoutine(ctx context.Context, frameID string, data Routine
 
 	ch := apiResp.Data[0].toChore()
 	return &Routine{
-		ID:         ch.ID,
-		Title:      ch.Title,
-		TimeOfDay:  data.TimeOfDay,
-		AssigneeID: ch.AssigneeID,
-		StartDate:  ch.DueDate,
+		ID:                 ch.ID,
+		Title:              ch.Title,
+		TimeOfDay:          data.TimeOfDay,
+		AssigneeID:         ch.AssigneeID,
+		NextOccurrenceDate: ch.DueDate,
 	}, nil
 }
 
@@ -130,11 +144,11 @@ func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, e
 		seen[baseID] = true
 
 		routines = append(routines, Routine{
-			ID:         baseID,
-			Title:      ch.Title,
-			TimeOfDay:  timeOfDayFromRecurrence(ch.RecurrenceSet),
-			AssigneeID: ch.AssigneeID,
-			StartDate:  ch.DueDate,
+			ID:                 baseID,
+			Title:              ch.Title,
+			TimeOfDay:          timeOfDayFromRecurrence(ch.RecurrenceSet),
+			AssigneeID:         ch.AssigneeID,
+			NextOccurrenceDate: ch.DueDate,
 		})
 	}
 	return routines, nil

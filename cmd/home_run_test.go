@@ -149,6 +149,12 @@ func TestHomeCmd_NoRoutines(t *testing.T) {
 	}
 }
 
+// TestHomeCmd_RoutinesNotFound documents a deliberate behavior change: a 404
+// on the routines call used to be swallowed as "zero routines" because it
+// hit its own dedicated (fictional) /routines endpoint. Now ListRoutines
+// shares the plain /chores endpoint, so a 404 there is a generic listing
+// failure -- same as it already is for the plain chore list in this same
+// command -- and should surface as an error instead of being hidden.
 func TestHomeCmd_RoutinesNotFound(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -162,13 +168,12 @@ func TestHomeCmd_RoutinesNotFound(t *testing.T) {
 	homeNoRoutines = false
 	t.Cleanup(func() { homeNoRoutines = origNoRoutines })
 
-	out := captureStdout(func() {
-		if err := homeCmd.RunE(homeCmd, nil); err != nil {
-			t.Errorf("expected 404 on routines to be swallowed, got error: %v", err)
-		}
-	})
-	if strings.Contains(out, "=== ROUTINES ===") {
-		t.Errorf("expected no routines section when API returns 404, got: %s", out)
+	err := homeCmd.RunE(homeCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when routines API returns 404, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing routines") {
+		t.Errorf("expected 'listing routines' in error, got: %v", err)
 	}
 }
 

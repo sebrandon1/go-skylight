@@ -48,7 +48,7 @@ cmd/                           # Cobra command definitions
   meal.go                      # meal categories, recipes (create, update, delete), sittings, grocery list
   category.go                  # list family member categories
   photo.go                     # photo list, upload, delete, download
-  routine.go                   # routine list, create, update, delete, reorder
+  routine.go                   # routine list, create, delete
   grocery.go                   # grocery list, create, show, add, add-recipe, clear, organize, order
   bounty.go                    # bounty (chore + reward pair) create/list/update/delete
   rotation.go                  # chore rotation — generate rotating assignments across members
@@ -82,7 +82,7 @@ lib/                           # API client library
   bounty.go                    # Bounty (chore + reward pair) create and list
   rotation.go                  # Chore rotation generator (rotating assignments across members)
   photo.go                     # Photo list, upload, delete, download
-  routine.go                   # Routine CRUD, reorder
+  routine.go                   # Routine create/list/delete (a routine is a chore with routine:true and a BYHOUR-encoded time slot)
   *_test.go                    # Unit tests using httptest mock servers
   integration_test.go          # Integration tests (build tag: integration)
   integration_crud_test.go     # CRUD integration tests (build tag: integration)
@@ -155,7 +155,7 @@ SKYLIGHT_DEVICE_FINGERPRINT=00000000-0000-4000-8000-000000000001
 - `category` -- List family member categories
 - `frame info|devices|avatars|colors` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
-- `routine list|create|update|delete|reorder` -- Routine (ordered recurring task list) management
+- `routine list|create|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
 - `grocery list|create|show|add|add-recipe|clear|organize|order` -- Grocery list management (Instacart ordering)
 - `addon list` -- Frame add-ons and enabled state
 
@@ -173,7 +173,6 @@ All update commands use `cmd.Flags().Changed()` to only send fields that were ex
 - `list update-item --list-id ID --item-id ID [--title] [--completed]`
 - `reward update --reward-id ID [--title] [--points] [--emoji-icon]`
 - `meal update-recipe --recipe-id ID [--title] [--description] [--ingredients] [--url]`
-- `routine update --routine-id ID [--title] [--assignee-id] [--steps]`
 
 ### Delete/Mutate Commands
 

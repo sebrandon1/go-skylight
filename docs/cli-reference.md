@@ -157,7 +157,7 @@ A routine is a recurring chore with a fixed time-of-day slot (morning, afternoon
 
 ```bash
 skylight routine list
-skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-ids 1,2 --start-date DATE
+skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-id ID --start-date DATE
 skylight routine delete --routine-id ID
 ```
 
