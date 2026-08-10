@@ -146,7 +146,7 @@ func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, e
 		if !ch.Routine {
 			continue
 		}
-		baseID, _ := parseChoreID(ch.ID)
+		baseID, _, _ := parseChoreID(ch.ID)
 		if seen[baseID] {
 			continue
 		}

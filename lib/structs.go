@@ -451,6 +451,7 @@ type removeStarsRequest struct {
 type ChoreCompletionData struct {
 	Status       string `json:"status"`
 	InstanceDate string `json:"instance_date,omitempty"`
+	InstanceTime string `json:"instance_time,omitempty"`
 	DeferUntil   string `json:"defer_until,omitempty"`
 }
 

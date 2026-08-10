@@ -298,6 +298,11 @@ func TestSkipChore(t *testing.T) {
 			status:  http.StatusOK,
 		},
 		{
+			name:    "skips routine occurrence with time suffix",
+			choreID: "97871502-2026-08-10-0600",
+			status:  http.StatusOK,
+		},
+		{
 			name:       "sends defer_until when provided",
 			choreID:    "18731133-2026-04-28",
 			deferUntil: "2026-05-05",
@@ -313,7 +318,7 @@ func TestSkipChore(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			baseID, instanceDate := parseChoreID(tc.choreID)
+			baseID, instanceDate, instanceTime := parseChoreID(tc.choreID)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPut {
 					t.Errorf("expected PUT, got %s", r.Method)
@@ -331,6 +336,9 @@ func TestSkipChore(t *testing.T) {
 				}
 				if instanceDate != "" && raw["instance_date"] != instanceDate {
 					t.Errorf("instance_date: want %q got %v", instanceDate, raw["instance_date"])
+				}
+				if instanceTime != "" && raw["instance_time"] != instanceTime {
+					t.Errorf("instance_time: want %q got %v", instanceTime, raw["instance_time"])
 				}
 				if tc.deferUntil != "" {
 					if raw["defer_until"] != tc.deferUntil {
@@ -539,19 +547,24 @@ func TestParseChoreID(t *testing.T) {
 		input        string
 		wantBase     string
 		wantInstance string
+		wantTime     string
 	}{
-		{"18731133-2026-04-28", "18731133", "2026-04-28"},
-		{"70190003-2026-04-28-0600", "70190003", "2026-04-28"},
-		{"12345", "12345", ""},
-		{"abc", "abc", ""},
+		{"18731133-2026-04-28", "18731133", "2026-04-28", ""},
+		{"70190003-2026-04-28-0600", "70190003", "2026-04-28", "0600"},
+		{"55819571-2026-08-10-2000", "55819571", "2026-08-10", "2000"},
+		{"12345", "12345", "", ""},
+		{"abc", "abc", "", ""},
 	}
 	for _, tc := range tests {
-		base, inst := parseChoreID(tc.input)
+		base, inst, tod := parseChoreID(tc.input)
 		if base != tc.wantBase {
 			t.Errorf("parseChoreID(%q) base=%q, want %q", tc.input, base, tc.wantBase)
 		}
 		if inst != tc.wantInstance {
 			t.Errorf("parseChoreID(%q) instance=%q, want %q", tc.input, inst, tc.wantInstance)
+		}
+		if tod != tc.wantTime {
+			t.Errorf("parseChoreID(%q) time=%q, want %q", tc.input, tod, tc.wantTime)
 		}
 	}
 }
@@ -574,6 +587,11 @@ func TestCompleteChore(t *testing.T) {
 			status:  http.StatusOK,
 		},
 		{
+			name:    "completes routine occurrence with time suffix",
+			choreID: "55819571-2026-08-10-2000",
+			status:  http.StatusOK,
+		},
+		{
 			name:    "server error returns error",
 			choreID: "18731133-2026-04-28",
 			status:  http.StatusInternalServerError,
@@ -583,7 +601,7 @@ func TestCompleteChore(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			baseID, instanceDate := parseChoreID(tc.choreID)
+			baseID, instanceDate, instanceTime := parseChoreID(tc.choreID)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPut {
 					t.Errorf("expected PUT, got %s", r.Method)
@@ -601,6 +619,9 @@ func TestCompleteChore(t *testing.T) {
 				}
 				if instanceDate != "" && raw["instance_date"] != instanceDate {
 					t.Errorf("instance_date: want %q got %v", instanceDate, raw["instance_date"])
+				}
+				if instanceTime != "" && raw["instance_time"] != instanceTime {
+					t.Errorf("instance_time: want %q got %v", instanceTime, raw["instance_time"])
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
