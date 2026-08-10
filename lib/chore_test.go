@@ -641,6 +641,9 @@ func TestDeleteChore(t *testing.T) {
 				if r.Method != http.MethodDelete {
 					t.Errorf("expected DELETE, got %s", r.Method)
 				}
+				if got := r.URL.Query().Get("apply_to"); got != "all" {
+					t.Errorf("apply_to: want %q got %q", "all", got)
+				}
 				w.WriteHeader(tc.status)
 			}))
 			defer srv.Close()
