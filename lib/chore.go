@@ -19,22 +19,30 @@ const (
 )
 
 // choreIDRe matches composite chore IDs like "18731133-2026-04-28" or "70190003-2026-04-28-0600".
-var choreIDRe = regexp.MustCompile(`^(\d+)-(\d{4}-\d{2}-\d{2})`)
+// The trailing HHMM group is present for routine (time-of-day) occurrences.
+var choreIDRe = regexp.MustCompile(`^(\d+)-(\d{4}-\d{2}-\d{2})(?:-(\d{4}))?`)
 
-// parseChoreID splits a composite chore ID into its base numeric ID and instance date.
-// For non-recurring chores with plain numeric IDs, instanceDate is empty.
-func parseChoreID(choreID string) (baseID, instanceDate string) {
+// parseChoreID splits a composite chore ID into its base numeric ID, instance date,
+// and optional instance time in HH:MM format (e.g. "06:00"). The ID encodes time
+// as HHMM (e.g. "0600"); we convert to HH:MM because that is what the completions
+// endpoint requires. For plain numeric IDs, all but baseID are empty.
+func parseChoreID(choreID string) (baseID, instanceDate, instanceTime string) {
 	if m := choreIDRe.FindStringSubmatch(choreID); m != nil {
-		return m[1], m[2]
+		hhmm := m[3]
+		if len(hhmm) == 4 {
+			hhmm = hhmm[:2] + ":" + hhmm[2:]
+		}
+		return m[1], m[2], hhmm
 	}
-	return choreID, ""
+	return choreID, "", ""
 }
 
 // setCompletion calls the chore completions endpoint with the given data.
-// It fills in InstanceDate from the choreID before sending.
+// It fills in InstanceDate and InstanceTime from the choreID before sending.
 func (c *Client) setCompletion(ctx context.Context, frameID, choreID string, data ChoreCompletionData) error {
-	baseID, instanceDate := parseChoreID(choreID)
+	baseID, instanceDate, instanceTime := parseChoreID(choreID)
 	data.InstanceDate = instanceDate
+	data.InstanceTime = instanceTime
 	req, err := newRequestWithBody(ctx, "PUT",
 		fmt.Sprintf("%s/frames/%s/chores/%s/completions", c.effectiveURL(), pathSeg(frameID), pathSeg(baseID)), data)
 	if err != nil {
