@@ -23,11 +23,16 @@ const (
 var choreIDRe = regexp.MustCompile(`^(\d+)-(\d{4}-\d{2}-\d{2})(?:-(\d{4}))?`)
 
 // parseChoreID splits a composite chore ID into its base numeric ID, instance date,
-// and optional instance time (HHMM, e.g. "0600"). For plain numeric IDs, all but
-// baseID are empty.
+// and optional instance time in HH:MM format (e.g. "06:00"). The ID encodes time
+// as HHMM (e.g. "0600"); we convert to HH:MM because that is what the completions
+// endpoint requires. For plain numeric IDs, all but baseID are empty.
 func parseChoreID(choreID string) (baseID, instanceDate, instanceTime string) {
 	if m := choreIDRe.FindStringSubmatch(choreID); m != nil {
-		return m[1], m[2], m[3]
+		hhmm := m[3]
+		if len(hhmm) == 4 {
+			hhmm = hhmm[:2] + ":" + hhmm[2:]
+		}
+		return m[1], m[2], hhmm
 	}
 	return choreID, "", ""
 }
