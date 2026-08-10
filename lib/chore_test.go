@@ -566,6 +566,10 @@ func TestParseChoreID(t *testing.T) {
 		if tod != tc.wantTime {
 			t.Errorf("parseChoreID(%q) time=%q, want %q", tc.input, tod, tc.wantTime)
 		}
+		// instance_time must be HH:MM, never the raw HHMM from the chore ID
+		if len(tod) == 4 {
+			t.Errorf("parseChoreID(%q) time=%q looks like raw HHMM; want HH:MM format", tc.input, tod)
+		}
 	}
 }
 
