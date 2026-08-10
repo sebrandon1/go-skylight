@@ -319,7 +319,7 @@ func TestPollLists_ListError(t *testing.T) {
 func TestPollRoutines(t *testing.T) {
 	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine"}}]}`)
+		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"summary":"Morning Routine","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}]}`)
 	})
 
 	state := &watchState{seenRoutineIDs: make(map[string]struct{})}
@@ -345,7 +345,7 @@ func TestPollRoutines_JSONOutput(t *testing.T) {
 
 	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine"}}]}`)
+		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"summary":"Morning Routine","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}]}`)
 	})
 
 	state := &watchState{seenRoutineIDs: make(map[string]struct{})}

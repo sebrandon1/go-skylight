@@ -7,20 +7,23 @@ import (
 	"testing"
 )
 
+// homeMockHandler backs both the plain chore list and ListRoutines, which
+// both call GET /chores -- the plain chore list always sets status=pending,
+// ListRoutines never does, so that's used to distinguish them below.
 func homeMockHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/chores"):
+		case strings.HasSuffix(r.URL.Path, "/chores") && r.URL.Query().Get("status") == "pending":
 			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/chores"):
+			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"summary":"Morning Routine","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/lists"):
 			fmt.Fprint(w, `{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
 			fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"}}]}`)
-		case strings.HasSuffix(r.URL.Path, "/routines"):
-			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine","assignee_id":"","steps":[]}}]}`)
 		default:
 			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
 		}
@@ -122,8 +125,8 @@ func TestHomeCmd_NoMeals(t *testing.T) {
 func TestHomeCmd_NoRoutines(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if strings.HasSuffix(r.URL.Path, "/routines") {
-			t.Error("routines endpoint should not be called with --no-routines")
+		if strings.HasSuffix(r.URL.Path, "/chores") && r.URL.Query().Get("status") != "pending" {
+			t.Error("routines call (chores without status filter) should not happen with --no-routines")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -146,10 +149,16 @@ func TestHomeCmd_NoRoutines(t *testing.T) {
 	}
 }
 
+// TestHomeCmd_RoutinesNotFound documents a deliberate behavior change: a 404
+// on the routines call used to be swallowed as "zero routines" because it
+// hit its own dedicated (fictional) /routines endpoint. Now ListRoutines
+// shares the plain /chores endpoint, so a 404 there is a generic listing
+// failure -- same as it already is for the plain chore list in this same
+// command -- and should surface as an error instead of being hidden.
 func TestHomeCmd_RoutinesNotFound(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if strings.HasSuffix(r.URL.Path, "/routines") {
+		if strings.HasSuffix(r.URL.Path, "/chores") && r.URL.Query().Get("status") != "pending" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -159,20 +168,19 @@ func TestHomeCmd_RoutinesNotFound(t *testing.T) {
 	homeNoRoutines = false
 	t.Cleanup(func() { homeNoRoutines = origNoRoutines })
 
-	out := captureStdout(func() {
-		if err := homeCmd.RunE(homeCmd, nil); err != nil {
-			t.Errorf("expected 404 on routines to be swallowed, got error: %v", err)
-		}
-	})
-	if strings.Contains(out, "=== ROUTINES ===") {
-		t.Errorf("expected no routines section when API returns 404, got: %s", out)
+	err := homeCmd.RunE(homeCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when routines API returns 404, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing routines") {
+		t.Errorf("expected 'listing routines' in error, got: %v", err)
 	}
 }
 
 func TestHomeCmd_RoutinesFetchError(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if strings.HasSuffix(r.URL.Path, "/routines") {
+		if strings.HasSuffix(r.URL.Path, "/chores") && r.URL.Query().Get("status") != "pending" {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

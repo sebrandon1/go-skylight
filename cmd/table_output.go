@@ -231,9 +231,9 @@ func printPhotosTable(photos []lib.Photo) {
 
 func printRoutinesTable(routines []lib.Routine) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tTITLE\tASSIGNEE\tSTEPS")
+	fmt.Fprintln(w, "ID\tTITLE\tTIME OF DAY\tASSIGNEE")
 	for _, r := range routines {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\n", r.ID, r.Title, resolveCatName(r.AssigneeID), len(r.Steps))
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.ID, r.Title, r.TimeOfDay, resolveCatName(r.AssigneeID))
 	}
 	w.Flush()
 }

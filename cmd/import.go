@@ -92,9 +92,22 @@ types. Use --dry-run to preview what would be created without making API calls.`
 	},
 }
 
+// nonRoutineChoreCount excludes Routine==true chores, matching importChores'
+// behavior: those are imported separately via importRoutines, so counting
+// them here would overstate how many plain chores will actually be created.
+func nonRoutineChoreCount(chores []lib.Chore) int {
+	n := 0
+	for _, c := range chores {
+		if !c.Routine {
+			n++
+		}
+	}
+	return n
+}
+
 func runImportDryRun(data ExportData, want map[string]bool) {
 	counts := map[string]int{
-		exportResourceChores:     len(data.Chores),
+		exportResourceChores:     nonRoutineChoreCount(data.Chores),
 		exportResourceRewards:    len(data.Rewards),
 		exportResourceLists:      len(data.Lists),
 		exportResourceRecipes:    len(data.Recipes),
@@ -160,8 +173,17 @@ func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward
 	})
 }
 
+// importChores skips chores with Routine == true: a routine is a chore, so
+// it appears in both the plain chore export and the routine export, and
+// importRoutines already handles it separately. Without this, a round-trip
+// export/import would create each routine twice -- once as a plain
+// non-recurring chore, once as the correct routine.
 func importChores(ctx context.Context, client *lib.Client, chores []lib.Chore) (total, failed int) {
 	return parallelImport(chores, func(c lib.Chore) (int, int) {
+		if c.Routine {
+			fmt.Fprintf(os.Stderr, "Skipping routine chore %q (import routines separately with --resources routines)\n", c.Title)
+			return 0, 0
+		}
 		if _, err := client.CreateChore(ctx, frameID, lib.ChoreData{Title: c.Title, DueDate: c.DueDate, Points: c.Points, AssigneeID: c.AssigneeID}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating chore %q: %v\n", c.Title, err)
 			return 1, 1
@@ -225,11 +247,8 @@ func importCalendarEvents(ctx context.Context, client *lib.Client, events []lib.
 
 func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Routine) (total, failed int) {
 	return parallelImport(routines, func(r lib.Routine) (int, int) {
-		steps := make([]string, len(r.Steps))
-		for i, s := range r.Steps {
-			steps[i] = s.Title
-		}
-		if _, err := client.CreateRoutine(ctx, frameID, lib.RoutineData{Title: r.Title, Steps: steps}); err != nil {
+		data := lib.RoutineData{Title: r.Title, TimeOfDay: r.TimeOfDay, CategoryID: r.AssigneeID, StartDate: r.NextOccurrenceDate}
+		if _, err := client.CreateRoutine(ctx, frameID, data); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating routine %q: %v\n", r.Title, err)
 			return 1, 1
 		}

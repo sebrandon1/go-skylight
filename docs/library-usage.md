@@ -73,6 +73,6 @@ if errors.As(err, &authErr) {
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
 | Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |
 | Rotations | — | ✓ | — | — | rotating chore assignments |
-| Routines | ✓ | ✓ | ✓ | ✓ | reorder |
+| Routines | ✓ | ✓ | — | ✓ | modeled as a chore with a time-of-day slot; no update/reorder |
 | Grocery | ✓ | ✓ | — | — | organize, order (Instacart), clear completed |
 | Status / Home / Analytics / Watch | — | — | — | — | dashboards, stats, and live polling |

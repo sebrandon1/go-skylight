@@ -97,7 +97,7 @@ var homeCmd = &cobra.Command{
 			fns = append(fns, func() error {
 				var err error
 				routines, err = client.ListRoutines(ctx, frameID)
-				if err != nil && !lib.IsNotFound(err) {
+				if err != nil {
 					return fmt.Errorf("listing routines: %w", err)
 				}
 				return nil

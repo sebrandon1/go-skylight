@@ -16,13 +16,14 @@ func statusMockHandler() http.HandlerFunc {
 		case strings.HasSuffix(r.URL.Path, "/reward_points"):
 			fmt.Fprint(w, `[{"category_id":1,"current_point_balance":42}]`)
 		case strings.HasSuffix(r.URL.Path, "/chores"):
-			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}}]}`)
+			fmt.Fprint(w, `{"data":[
+				{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}},
+				{"id":"r1","attributes":{"summary":"Morning Routine","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}
+			]}`)
 		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
 			fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"}}]}`)
-		case strings.HasSuffix(r.URL.Path, "/routines"):
-			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"title":"Morning Routine","assignee_id":"","steps":[]}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/lists/l1"):
 			fmt.Fprint(w, `{"data":{"id":"l1","attributes":{"label":"Groceries"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"pending"}},{"id":"i2","type":"list_item","attributes":{"label":"Eggs","status":"completed"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/lists"):
@@ -168,11 +169,20 @@ func TestStatusCmd_ListErrorsSurfaced(t *testing.T) {
 	}
 }
 
+// TestStatusCmd_RoutinesNotFound documents a deliberate behavior change: a
+// 404 on the routines call used to be swallowed as "zero routines" because
+// it hit its own dedicated (fictional) /routines endpoint. Now ListRoutines
+// shares the plain /chores endpoint, so a 404 there is a generic listing
+// failure -- same as it already is for the plain chore list in this same
+// command -- and should surface as an error instead of being hidden.
 func TestStatusCmd_RoutinesNotFound(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(r.URL.Path, "/routines"):
+		// ListRoutines calls the same /chores endpoint as the plain chore
+		// list, but without a status= filter -- use that to simulate the
+		// routines call failing while the plain chore list still succeeds.
+		case strings.HasSuffix(r.URL.Path, "/chores") && r.URL.Query().Get("status") == "":
 			w.WriteHeader(http.StatusNotFound)
 		case strings.HasSuffix(r.URL.Path, "/categories"):
 			fmt.Fprint(w, `{"data":[]}`)
@@ -193,13 +203,12 @@ func TestStatusCmd_RoutinesNotFound(t *testing.T) {
 	t.Cleanup(func() { outputFormat = "" })
 	outputFormat = ""
 
-	out := captureStdout(func() {
-		if err := statusCmd.RunE(statusCmd, nil); err != nil {
-			t.Errorf("expected 404 on routines to be swallowed, got error: %v", err)
-		}
-	})
-	if !strings.Contains(out, "Routines: 0") {
-		t.Errorf("expected 'Routines: 0' when API returns 404, got: %s", out)
+	err := statusCmd.RunE(statusCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when routines API returns 404, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing routines") {
+		t.Errorf("expected 'listing routines' in error, got: %v", err)
 	}
 }
 

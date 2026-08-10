@@ -153,12 +153,12 @@ skylight rotation create --chores "Dishes,Vacuum" --assignee-ids "id1,id2" \
 
 ## Routines
 
+A routine is a recurring chore with a fixed time-of-day slot (morning, afternoon, or evening) rather than a separate resource. `routine list` shows routines active or starting in the next 30 days.
+
 ```bash
 skylight routine list
-skylight routine create --title TITLE [--assignee-id ID] [--steps "Step 1,Step 2"]
-skylight routine update --routine-id ID [--title T] [--assignee-id ID] [--steps "..."]
+skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-id ID --start-date DATE
 skylight routine delete --routine-id ID
-skylight routine reorder --routine-ids "id1,id2,id3"
 ```
 
 ## Grocery

@@ -12,7 +12,7 @@ Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.co
 
 ## Key Features
 
-- Full CRUD for calendar events, chores, rewards, lists, recipes, categories, photos, routines, and grocery lists
+- Full CRUD for calendar events, chores, rewards, lists, recipes, categories, photos, and grocery lists, plus create/list/delete for routines
 - OAuth2 login with automatic token rotation and config file persistence
 - Table and JSON output formats (`--output json|table`), quiet mode (`--quiet`)
 - Family activity analytics and chore completion streaks
@@ -85,7 +85,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `list` | List and list item CRUD |
 | `meal` | Recipe CRUD, meal sittings, meal categories |
 | `photo` | Photo/video list, upload, download, delete |
-| `routine` | Routine CRUD with step management and reordering |
+| `routine` | Routine create/list/delete (a routine is a recurring chore with a morning/afternoon/evening slot) |
 | `grocery` | Grocery list management, Instacart ordering, recipe import |
 | `category` | List family member categories |
 | `frame` | Frame info, devices, avatars, colors |
