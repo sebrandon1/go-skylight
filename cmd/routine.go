@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var routineTimeOfDays = []string{"morning", "afternoon", "evening"}
+var routineTimeOfDays = []string{lib.RoutineTODMorning, lib.RoutineTODAfternoon, lib.RoutineTODEvening}
 
 var (
 	routineID         string

@@ -12,7 +12,16 @@ import (
 // expands each recurring chore into one row per day, so there's no way to
 // ask for "all routines" directly -- a routine starting further out than
 // this won't appear until it's within the window.
-const routineLookaheadDays = 30
+const (
+	routineLookaheadDays = 30
+
+	// RoutineTODMorning, RoutineTODAfternoon, RoutineTODEvening are the valid
+	// TimeOfDay values for RoutineData and Routine. They map to BYHOUR 6, 14, 20
+	// respectively in the Skylight API's recurrence rule format.
+	RoutineTODMorning   = "morning"
+	RoutineTODAfternoon = "afternoon"
+	RoutineTODEvening   = "evening"
+)
 
 // Routine represents a Skylight routine: a recurring chore with a fixed
 // time-of-day slot, assigned to one family member.
@@ -48,15 +57,15 @@ type RoutineData struct {
 // rejects any other hour: {"errors":{"recurrence_set":["must have exactly
 // one BYHOUR, set to 6, 14, or 20"]}}.
 var routineByHour = map[string]int{
-	"morning":   6,
-	"afternoon": 14,
-	"evening":   20,
+	RoutineTODMorning:   6,
+	RoutineTODAfternoon: 14,
+	RoutineTODEvening:   20,
 }
 
 var routineTimeOfDay = map[string]string{
-	"6":  "morning",
-	"14": "afternoon",
-	"20": "evening",
+	"6":  RoutineTODMorning,
+	"14": RoutineTODAfternoon,
+	"20": RoutineTODEvening,
 }
 
 var byHourRe = regexp.MustCompile(`BYHOUR=(\d+)`)
@@ -162,7 +171,7 @@ func (c *Client) DeleteRoutine(ctx context.Context, frameID, routineID string) e
 	if err != nil {
 		return fmt.Errorf("failed to create delete routine request: %w", err)
 	}
-	addQueryParams(req, map[string]string{"apply_to": "all"})
+	addQueryParams(req, map[string]string{"apply_to": applyToAll})
 
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete routine: %w", err)

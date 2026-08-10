@@ -15,6 +15,7 @@ const (
 
 	choreStatusPending = ChoreStatusPending
 	paramTrue          = "true"
+	applyToAll         = "all"
 )
 
 // choreIDRe matches composite chore IDs like "18731133-2026-04-28" or "70190003-2026-04-28-0600".
@@ -183,12 +184,16 @@ func (c *Client) ClaimChore(ctx context.Context, frameID, choreID, assigneeID st
 	return c.UpdateChore(ctx, frameID, choreID, ChoreData{AssigneeID: assigneeID})
 }
 
-// DeleteChore deletes a chore.
+// DeleteChore deletes a chore. apply_to=all is sent unconditionally because
+// the Skylight API requires it for recurring chores (400 otherwise) and ignores
+// it for non-recurring ones.
 func (c *Client) DeleteChore(ctx context.Context, frameID, choreID string) error {
 	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}
+
+	addQueryParams(req, map[string]string{"apply_to": applyToAll})
 
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete chore: %w", err)
