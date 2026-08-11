@@ -60,7 +60,7 @@ var bountyCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating bounty: %w", err)
 		}
 
-		printJSON(bounty)
+		printOutput(bounty)
 		return nil
 	},
 }
@@ -160,7 +160,7 @@ var bountyUpdateCmd = &cobra.Command{
 			return fmt.Errorf("updating bounty: %w", err)
 		}
 
-		printJSON(bounty)
+		printOutput(bounty)
 		return nil
 	},
 }
