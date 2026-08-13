@@ -24,7 +24,11 @@ var routineCmd = &cobra.Command{
 
 A routine is a recurring chore with a fixed time-of-day slot (morning,
 afternoon, or evening). There is no separate routines resource on the
-Skylight API -- routines are chores with routine:true.`,
+Skylight API -- routines are chores with routine:true.
+
+  # Create a morning routine for a family member, then list all routines
+  skylight routine create --title "Brush teeth" --time-of-day morning --category-id 12345678 --start-date 2026-01-01
+  skylight routine list`,
 }
 
 var routineListCmd = &cobra.Command{

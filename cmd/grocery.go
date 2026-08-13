@@ -21,6 +21,16 @@ var (
 var groceryCmd = &cobra.Command{
 	Use:   "grocery",
 	Short: "Grocery list management commands",
+	Long: `Manage grocery lists and items on a Skylight frame.
+
+Use "grocery create" to start a new list, "grocery add" to append items,
+and "grocery organize" to group items by aisle. "grocery order" places an
+Instacart order from a list. Lists can also be seeded from a meal recipe
+with "grocery add-recipe".
+
+  # Create a grocery list, then add items to it
+  skylight grocery create --title "Weekly shop"
+  skylight grocery add --list-id 12345678 --items "Milk,Eggs,Bread"`,
 }
 
 var groceryListCmd = &cobra.Command{

@@ -29,6 +29,15 @@ var (
 var photoCmd = &cobra.Command{
 	Use:   "photo",
 	Short: "Photo management commands",
+	Long: `Upload, list, download, and delete photos and videos on a Skylight frame.
+
+Photos uploaded here are queued for display on the frame. Use --page-token
+to paginate through large libraries. Use "photo download --all" to
+bulk-export the entire library.
+
+  # Upload a photo, then list the first page of photos
+  skylight photo upload --file ~/Pictures/vacation.jpg --caption "Beach day"
+  skylight photo list --output table`,
 }
 
 var photoListCmd = &cobra.Command{
