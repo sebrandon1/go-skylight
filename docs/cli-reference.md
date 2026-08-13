@@ -109,8 +109,8 @@ skylight meal plan --recipes ID,ID --start-date DATE [--categories ID,ID]
 ```bash
 skylight photo list [--page-token TOKEN]
 skylight photo upload --file PATH [--caption TEXT]
-skylight photo delete --message-id ID [--message-id ID ...]
-skylight photo download [--message-id ID ...] [--all] [--output-dir DIR]
+skylight photo delete --photo-id ID [--photo-id ID ...]
+skylight photo download [--photo-id ID ...] [--all] [--output-dir DIR]
 ```
 
 ## Categories (Profiles & Labels)
@@ -183,9 +183,37 @@ skylight analytics [--days N]       # family activity statistics over a time per
 skylight watch [--interval SECONDS] [--resources rewards,chores,calendar,lists,routines] [--persist]
 ```
 
+## Templates
+
+Templates are stored locally in `~/.skylight/templates/` as JSON files. Use `template save` to capture the current frame's chores and rewards, then `template apply` to recreate them on any frame.
+
+```bash
+skylight template save  --name NAME [--resources chores,rewards]
+skylight template apply --name NAME [--start-date DATE] [--resources chores,rewards] [--dry-run]
+skylight template list
+skylight template delete --name NAME
+```
+
 ## Export & Import
 
 ```bash
 skylight export [--output-file PATH] [--resources chores,rewards,lists,recipes,sittings,calendar] [--days N]
 skylight import --file PATH [--dry-run] [--resources all]
 ```
+
+## Shell Completion
+
+Cobra auto-generates shell completion scripts for bash, zsh, and fish. Enable completion once by adding the appropriate line to your shell profile:
+
+```bash
+# bash (~/.bashrc or ~/.bash_profile)
+source <(skylight completion bash)
+
+# zsh (~/.zshrc) — also enable compinit if not already done
+source <(skylight completion zsh)
+
+# fish (~/.config/fish/config.fish)
+skylight completion fish | source
+```
+
+After sourcing, tab-complete commands, subcommands, and enum flags like `--output` and `--status`.

@@ -25,10 +25,10 @@ client, err := lib.NewClientWithToken("user-id", "api-token",
 
 ```go
 // List chores
-chores, err := client.ListChores("frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
+chores, err := client.ListChores(ctx, "frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
 
 // Create a bounty (chore + matched reward)
-bounty, err := client.CreateBounty("frame-id", lib.BountyData{
+bounty, err := client.CreateBounty(ctx, "frame-id", lib.BountyData{
     Title:       "Clean the kitchen",
     Points:      10,
     RewardTitle: "Ice cream night",
