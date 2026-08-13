@@ -102,7 +102,7 @@ var calendarCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating calendar event: %w", err)
 		}
 
-		printJSON(event)
+		printOutput([]lib.CalendarEvent{*event})
 		return nil
 	},
 }
@@ -223,7 +223,7 @@ var calendarUpdateCmd = &cobra.Command{
 			return fmt.Errorf("updating calendar event: %w", err)
 		}
 
-		printJSON(event)
+		printOutput([]lib.CalendarEvent{*event})
 		return nil
 	},
 }
@@ -256,7 +256,7 @@ var calendarCreateCountdownCmd = &cobra.Command{
 			return fmt.Errorf("creating countdown event: %w", err)
 		}
 
-		printJSON(event)
+		printOutput([]lib.CalendarEvent{*event})
 		return nil
 	},
 }

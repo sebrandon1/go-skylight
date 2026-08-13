@@ -469,3 +469,22 @@ func TestRewardListCmd_FilterByStatusAndPointsNoMatch(t *testing.T) {
 func TestRewardCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "reward")
 }
+
+func TestRewardCreateCmd_TableOutput(t *testing.T) {
+	newCmdTestClient(t, rewardMockHandler())
+	origFmt := outputFormat
+	outputFormat = outputTable
+	t.Cleanup(func() { outputFormat = origFmt })
+
+	out := captureStdout(func() {
+		if err := rewardCreateCmd.RunE(rewardCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "TITLE") {
+		t.Errorf("expected table header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Ice cream") {
+		t.Errorf("expected reward title in table, got: %s", out)
+	}
+}

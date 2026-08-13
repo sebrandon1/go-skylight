@@ -118,12 +118,14 @@ var rewardCreateCmd = &cobra.Command{
 		if len(rewardCategoryIDs) > 0 {
 			data.CategoryIDs = rewardCategoryIDs
 		}
-		reward, err := client.CreateReward(cmd.Context(), frameID, data)
+		ctx := cmd.Context()
+		reward, err := client.CreateReward(ctx, frameID, data)
 		if err != nil {
 			return fmt.Errorf("creating reward: %w", err)
 		}
 
-		printJSON(reward)
+		maybeLoadCatNames(ctx, client)
+		printOutput([]lib.Reward{*reward})
 		return nil
 	},
 }
@@ -282,12 +284,14 @@ var rewardUpdateCmd = &cobra.Command{
 			data.CategoryIDs = rewardCategoryIDs
 		}
 
-		reward, err := client.UpdateReward(cmd.Context(), frameID, rewardID, data)
+		ctx := cmd.Context()
+		reward, err := client.UpdateReward(ctx, frameID, rewardID, data)
 		if err != nil {
 			return fmt.Errorf("updating reward: %w", err)
 		}
 
-		printJSON(reward)
+		maybeLoadCatNames(ctx, client)
+		printOutput([]lib.Reward{*reward})
 		return nil
 	},
 }

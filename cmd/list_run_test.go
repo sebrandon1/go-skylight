@@ -323,3 +323,22 @@ func TestListDeleteSectionCmd_DryRun(t *testing.T) {
 		t.Errorf("expected dry-run indicator in output, got: %s", out)
 	}
 }
+
+func TestListCreateCmd_TableOutput(t *testing.T) {
+	newCmdTestClient(t, listMockHandler())
+	origFmt, origTitle := outputFormat, listTitle
+	outputFormat = outputTable
+	t.Cleanup(func() { outputFormat, listTitle = origFmt, origTitle })
+
+	out := captureStdout(func() {
+		if err := listCreateCmd.RunE(listCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "TITLE") {
+		t.Errorf("expected table header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Groceries") {
+		t.Errorf("expected list title in table, got: %s", out)
+	}
+}
