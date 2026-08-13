@@ -27,6 +27,15 @@ var rewardRemoveStarsCmd = &cobra.Command{
 			return fmt.Errorf("--points must be a positive integer")
 		}
 
+		if dryRun {
+			printDryRun("remove %d stars from assignee %d", removeStarsPoints, removeStarsAssigneeID)
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Remove %d stars from assignee %d?", removeStarsPoints, removeStarsAssigneeID)) {
+			return nil
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -41,7 +50,13 @@ var rewardRemoveStarsCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("fetching updated reward points: %w", err)
 		}
-		printJSON(points)
+
+		categories, err := client.ListCategories(ctx, frameID)
+		if err != nil {
+			return fmt.Errorf("listing categories: %w", err)
+		}
+
+		printOutput(resolveRewardPointNames(points, categories))
 		return nil
 	},
 }
@@ -49,6 +64,8 @@ var rewardRemoveStarsCmd = &cobra.Command{
 func init() {
 	rewardRemoveStarsCmd.Flags().IntVar(&removeStarsAssigneeID, "assignee-id", 0, "Profile/category ID to deduct from")
 	rewardRemoveStarsCmd.Flags().IntVar(&removeStarsPoints, subPoints, 0, "Number of stars to remove")
+	rewardRemoveStarsCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	rewardRemoveStarsCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(rewardRemoveStarsCmd, "assignee-id")
 	markFlagRequired(rewardRemoveStarsCmd, subPoints)
 }
