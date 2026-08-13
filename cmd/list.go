@@ -104,7 +104,7 @@ var listCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating list: %w", err)
 		}
 
-		printJSON(list)
+		printOutput([]lib.List{*list})
 		return nil
 	},
 }
@@ -226,7 +226,7 @@ var listUpdateCmd = &cobra.Command{
 			return fmt.Errorf("updating list: %w", err)
 		}
 
-		printJSON(list)
+		printOutput([]lib.List{*list})
 		return nil
 	},
 }

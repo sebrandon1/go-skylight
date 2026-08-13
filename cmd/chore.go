@@ -167,7 +167,8 @@ var choreCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating chore: %w", err)
 		}
 
-		printJSON(chore)
+		maybeLoadCatNames(ctx, client)
+		printOutput([]lib.Chore{*chore})
 		return nil
 	},
 }
@@ -285,12 +286,14 @@ var choreUpdateCmd = &cobra.Command{
 			data.RecurFrom = choreRecurFrom
 		}
 
-		chore, err := client.UpdateChore(cmd.Context(), frameID, choreID, data)
+		ctx := cmd.Context()
+		chore, err := client.UpdateChore(ctx, frameID, choreID, data)
 		if err != nil {
 			return fmt.Errorf("updating chore: %w", err)
 		}
 
-		printJSON(chore)
+		maybeLoadCatNames(ctx, client)
+		printOutput([]lib.Chore{*chore})
 		return nil
 	},
 }
@@ -377,12 +380,14 @@ var choreClaimCmd = &cobra.Command{
 			return err
 		}
 
-		chore, err := client.ClaimChore(cmd.Context(), frameID, choreID, choreAssigneeID)
+		ctx := cmd.Context()
+		chore, err := client.ClaimChore(ctx, frameID, choreID, choreAssigneeID)
 		if err != nil {
 			return fmt.Errorf("claiming chore: %w", err)
 		}
 
-		printJSON(chore)
+		maybeLoadCatNames(ctx, client)
+		printOutput([]lib.Chore{*chore})
 		return nil
 	},
 }

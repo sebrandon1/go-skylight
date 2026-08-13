@@ -267,3 +267,22 @@ func TestChoreSearchCmd(t *testing.T) {
 		t.Errorf("expected search results in output, got: %s", out)
 	}
 }
+
+func TestChoreCreateCmd_TableOutput(t *testing.T) {
+	newCmdTestClient(t, choreMockHandler())
+	origTitle, origUpForGrabs, origFmt := choreTitle, choreUpForGrabs, outputFormat
+	choreTitle, choreUpForGrabs, outputFormat = "Dishes", false, outputTable
+	t.Cleanup(func() { choreTitle, choreUpForGrabs, outputFormat = origTitle, origUpForGrabs, origFmt })
+
+	out := captureStdout(func() {
+		if err := choreCreateCmd.RunE(choreCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "TITLE") {
+		t.Errorf("expected table header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Dishes") {
+		t.Errorf("expected chore title in table, got: %s", out)
+	}
+}

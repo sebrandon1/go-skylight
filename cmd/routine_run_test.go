@@ -161,3 +161,27 @@ func TestRoutineCmd_UpdateAndReorderRemoved(t *testing.T) {
 		}
 	}
 }
+
+func TestRoutineCreateCmd_TableOutput(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"summary":"Brush Teeth","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}]}`)
+	})
+	origTitle, origTimeOfDay, origCategoryID, origStartDate, origFmt := routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate, outputFormat
+	routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate, outputFormat = "Brush Teeth", "morning", "a1", "2026-08-10", outputTable
+	t.Cleanup(func() {
+		routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate, outputFormat = origTitle, origTimeOfDay, origCategoryID, origStartDate, origFmt
+	})
+
+	out := captureStdout(func() {
+		if err := routineCreateCmd.RunE(routineCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "TITLE") {
+		t.Errorf("expected table header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Brush Teeth") {
+		t.Errorf("expected routine title in table, got: %s", out)
+	}
+}

@@ -75,7 +75,8 @@ var routineCreateCmd = &cobra.Command{
 			return err
 		}
 
-		routine, err := client.CreateRoutine(cmd.Context(), frameID, lib.RoutineData{
+		ctx := cmd.Context()
+		routine, err := client.CreateRoutine(ctx, frameID, lib.RoutineData{
 			Title:      routineTitle,
 			TimeOfDay:  routineTimeOfDay,
 			CategoryID: routineCategoryID,
@@ -85,7 +86,8 @@ var routineCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating routine: %w", err)
 		}
 
-		printJSON(routine)
+		maybeLoadCatNames(ctx, client)
+		printOutput([]lib.Routine{*routine})
 		return nil
 	},
 }

@@ -352,3 +352,24 @@ func TestCalendarSourceDisableCmd(t *testing.T) {
 		t.Errorf("body: want {source_calendar:{enabled:false}}, got %v", capturedBody)
 	}
 }
+
+func TestCalendarCreateCmd_TableOutput(t *testing.T) {
+	newCmdTestClient(t, calendarMockHandler())
+	origTitle, origStart, origEnd, origFmt := calendarTitle, calendarStartAt, calendarEndAt, outputFormat
+	calendarTitle, calendarStartAt, calendarEndAt, outputFormat = "New Event", "2026-01-01T09:00:00Z", "2026-01-01T10:00:00Z", outputTable
+	t.Cleanup(func() {
+		calendarTitle, calendarStartAt, calendarEndAt, outputFormat = origTitle, origStart, origEnd, origFmt
+	})
+
+	out := captureStdout(func() {
+		if err := calendarCreateCmd.RunE(calendarCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "TITLE") {
+		t.Errorf("expected table header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "New Event") {
+		t.Errorf("expected event title in table, got: %s", out)
+	}
+}
