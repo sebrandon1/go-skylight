@@ -34,18 +34,89 @@ func TestPhotoListCmd_PrintsNextPageToken(t *testing.T) {
 		fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"next123"}}`)
 	})
 
-	// Table mode still prints token on stderr for humans
+	// Table mode prints token on stdout so scripts can parse it
 	orig := outputFormat
 	outputFormat = outputTable
 	t.Cleanup(func() { outputFormat = orig })
 
-	stderr := captureStderr(func() {
+	out := captureStdout(func() {
 		if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
-	if !strings.Contains(stderr, "next123") {
-		t.Errorf("expected next page token on stderr, got: %s", stderr)
+	if !strings.Contains(out, "next123") {
+		t.Errorf("expected next page token on stdout, got: %s", out)
+	}
+}
+
+func TestPhotoListCmd_LimitTruncates(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{}},{"id":"p2","attributes":{}},{"id":"p3","attributes":{}}],"meta":{"next_page_token":"CURSOR-XYZ"}}`)
+	})
+
+	origLimit := photoLimit
+	photoLimit = 2
+	t.Cleanup(func() { photoLimit = origLimit })
+
+	out := captureStdout(func() {
+		if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	// token must be suppressed when --limit truncates
+	if strings.Contains(out, "CURSOR-XYZ") {
+		t.Errorf("expected next_page_token suppressed after --limit truncation, got: %s", out)
+	}
+	if strings.Contains(out, "p3") {
+		t.Errorf("expected only 2 photos, but p3 appeared in output: %s", out)
+	}
+	if !strings.Contains(out, "p1") {
+		t.Errorf("expected p1 in output, got: %s", out)
+	}
+}
+
+func TestPhotoListCmd_LimitTruncatesTableMode(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{}},{"id":"p2","attributes":{}},{"id":"p3","attributes":{}}],"meta":{"next_page_token":"CURSOR-XYZ"}}`)
+	})
+
+	origLimit, origFmt := photoLimit, outputFormat
+	photoLimit = 2
+	outputFormat = outputTable
+	t.Cleanup(func() { photoLimit, outputFormat = origLimit, origFmt })
+
+	out := captureStdout(func() {
+		if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	// token must be suppressed in table mode too when --limit truncates
+	if strings.Contains(out, "CURSOR-XYZ") {
+		t.Errorf("expected next_page_token suppressed in table mode after --limit truncation, got: %s", out)
+	}
+}
+
+func TestPhotoListCmd_LimitNoTruncate(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{}}],"meta":{"next_page_token":"CURSOR-XYZ"}}`)
+	})
+
+	origLimit, origFmt := photoLimit, outputFormat
+	photoLimit = 5
+	outputFormat = outputTable
+	t.Cleanup(func() { photoLimit, outputFormat = origLimit, origFmt })
+
+	out := captureStdout(func() {
+		if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	// token must still appear when --limit is not reached
+	if !strings.Contains(out, "CURSOR-XYZ") {
+		t.Errorf("expected next_page_token in output when limit not reached, got: %s", out)
 	}
 }
 
