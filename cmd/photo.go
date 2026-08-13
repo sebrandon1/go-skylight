@@ -19,6 +19,7 @@ const (
 
 var (
 	photoPageToken   string
+	photoLimit       int
 	photoFile        string
 	photoCaption     string
 	photoID          []string
@@ -60,6 +61,11 @@ var photoListCmd = &cobra.Command{
 			return fmt.Errorf("listing photos: %w", err)
 		}
 
+		if photoLimit > 0 && len(photos) > photoLimit {
+			photos = photos[:photoLimit]
+			nextToken = ""
+		}
+
 		// include next_page_token in JSON so scripts can paginate without parsing stderr
 		if outputFormat != outputTable {
 			printJSON(map[string]any{
@@ -71,7 +77,7 @@ var photoListCmd = &cobra.Command{
 
 		printOutput(photos)
 		if nextToken != "" {
-			fmt.Fprintf(os.Stderr, "Next page token: %s\n", nextToken)
+			fmt.Printf("next_page_token: %s\n", nextToken)
 		}
 		return nil
 	},
@@ -238,6 +244,7 @@ func init() {
 	photoCmd.AddCommand(photoDownloadCmd)
 
 	photoListCmd.Flags().StringVar(&photoPageToken, "page-token", "", "Pagination token (omit to start from beginning)")
+	photoListCmd.Flags().IntVar(&photoLimit, "limit", 0, "Maximum number of photos to return (0 = server default)")
 
 	photoUploadCmd.Flags().StringVar(&photoFile, "file", "", "Path to image file to upload")
 	photoUploadCmd.Flags().StringVar(&photoCaption, "caption", "", "Optional caption for the photo")
