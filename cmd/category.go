@@ -16,6 +16,15 @@ var (
 var categoryCmd = &cobra.Command{
 	Use:   subCategory,
 	Short: "Category (profile/label) management commands",
+	Long: `Manage family member categories (profiles/labels) on a Skylight frame.
+
+Categories identify family members and are used as assignee IDs on chores,
+rewards, and routines. Use "category list" to find the ID to pass to
+--assignee-id or --category-id on other commands.
+
+  # List all categories, then create a new one
+  skylight category list --output table
+  skylight category create --name "Alex" --color "#4A90D9"`,
 }
 
 var categoryListCmd = &cobra.Command{
