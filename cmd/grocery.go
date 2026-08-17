@@ -301,7 +301,7 @@ var groceryUpdateItemCmd = &cobra.Command{
 			return fmt.Errorf("updating grocery list item: %w", err)
 		}
 
-		printJSON(item)
+		printOutput([]lib.ListItem{*item})
 		return nil
 	},
 }

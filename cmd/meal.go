@@ -88,7 +88,7 @@ var mealCreateCategoryCmd = &cobra.Command{
 			return fmt.Errorf("creating meal category: %w", err)
 		}
 
-		printJSON(category)
+		printOutput([]lib.MealCategory{*category})
 		return nil
 	},
 }
@@ -119,7 +119,7 @@ var mealUpdateCategoryCmd = &cobra.Command{
 			return fmt.Errorf("updating meal category: %w", err)
 		}
 
-		printJSON(category)
+		printOutput([]lib.MealCategory{*category})
 		return nil
 	},
 }
@@ -196,7 +196,7 @@ var mealRecipeInfoCmd = &cobra.Command{
 			return fmt.Errorf("getting recipe: %w", err)
 		}
 
-		printJSON(recipe)
+		printOutput([]lib.Recipe{*recipe})
 		return nil
 	},
 }
@@ -225,7 +225,7 @@ var mealCreateRecipeCmd = &cobra.Command{
 			return fmt.Errorf("creating recipe: %w", err)
 		}
 
-		printJSON(recipe)
+		printOutput([]lib.Recipe{*recipe})
 		return nil
 	},
 }
@@ -325,7 +325,7 @@ var mealCreateSittingCmd = &cobra.Command{
 			return fmt.Errorf("creating meal sitting: %w", err)
 		}
 
-		printJSON(sitting)
+		printOutput([]lib.MealSitting{*sitting})
 		return nil
 	},
 }
@@ -365,7 +365,7 @@ var mealUpdateSittingCmd = &cobra.Command{
 			return fmt.Errorf("updating meal sitting: %w", err)
 		}
 
-		printJSON(sitting)
+		printOutput([]lib.MealSitting{*sitting})
 		return nil
 	},
 }
@@ -445,7 +445,7 @@ var mealGetSittingCmd = &cobra.Command{
 			return fmt.Errorf("getting meal sitting: %w", err)
 		}
 
-		printJSON(sitting)
+		printOutput([]lib.MealSitting{*sitting})
 		return nil
 	},
 }
@@ -545,7 +545,7 @@ var mealUpdateRecipeCmd = &cobra.Command{
 			return fmt.Errorf("updating recipe: %w", err)
 		}
 
-		printJSON(recipe)
+		printOutput([]lib.Recipe{*recipe})
 		return nil
 	},
 }
