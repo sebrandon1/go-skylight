@@ -209,8 +209,6 @@ func printTableOutput(data any) bool {
 		printCalendarWeekTable(v)
 	case []lib.Bounty:
 		printBountiesTable(v)
-	case lib.Bounty:
-		printBountiesTable([]lib.Bounty{v})
 	default:
 		return printTableOutputMore(data)
 	}
