@@ -92,9 +92,25 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `addon` | Frame add-ons and enabled state |
 | `bounty` | Chore + reward pair management |
 | `rotation` | Rotating chore assignments |
+| `template` | Save/apply named chore+reward templates (stored in `~/.skylight/templates/`) |
 | `config` | View and modify configuration (show/get/set/unset/edit) |
 
 See [CLI Reference](docs/cli-reference.md) for full details.
+
+## Shell Completion
+
+```bash
+# bash
+source <(skylight completion bash)
+
+# zsh
+source <(skylight completion zsh)
+
+# fish
+skylight completion fish | source
+```
+
+Add the appropriate line to your shell profile (`~/.bashrc`, `~/.zshrc`, or `~/.config/fish/config.fish`) for persistent completion. Tab-completes commands, subcommands, and enum flags like `--output` and `--status`.
 
 ## Architecture
 
