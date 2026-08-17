@@ -20,14 +20,29 @@ func TestRunConcurrent_AllPass(t *testing.T) {
 	}
 }
 
-func TestRunConcurrent_FirstErrorReturned(t *testing.T) {
-	sentinel := errors.New("first error")
+func TestRunConcurrent_AllErrorsJoined(t *testing.T) {
+	first := errors.New("first error")
+	second := errors.New("second error")
+	err := runConcurrent(
+		func() error { return first },
+		func() error { return second },
+	)
+	if !errors.Is(err, first) {
+		t.Errorf("expected first error in joined result, got: %v", err)
+	}
+	if !errors.Is(err, second) {
+		t.Errorf("expected second error in joined result, got: %v", err)
+	}
+}
+
+func TestRunConcurrent_OnlyOneErrors(t *testing.T) {
+	sentinel := errors.New("only error")
 	err := runConcurrent(
 		func() error { return sentinel },
-		func() error { return errors.New("second error") },
+		func() error { return nil },
 	)
 	if !errors.Is(err, sentinel) {
-		t.Errorf("expected first error returned, got: %v", err)
+		t.Errorf("expected sentinel error, got: %v", err)
 	}
 }
 
