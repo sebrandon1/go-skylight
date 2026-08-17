@@ -75,7 +75,7 @@ var categoryCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating category: %w", err)
 		}
 
-		printJSON(category)
+		printOutput([]lib.Category{*category})
 		return nil
 	},
 }
@@ -137,7 +137,7 @@ var categoryUpdateCmd = &cobra.Command{
 			return fmt.Errorf("updating category: %w", err)
 		}
 
-		printJSON(category)
+		printOutput([]lib.Category{*category})
 		return nil
 	},
 }

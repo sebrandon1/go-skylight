@@ -239,6 +239,10 @@ func printTableOutputMore(data any) bool {
 		printRoutinesTable(v)
 	case []pointEntry:
 		printPointsTable(v)
+	case []lib.ListItem:
+		printListItemsTable(v)
+	case map[string]lib.FeatureState:
+		printFeatureBundleTable(v)
 	default:
 		return false
 	}

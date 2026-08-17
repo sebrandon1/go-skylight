@@ -246,3 +246,29 @@ func printPointsTable(entries []pointEntry) {
 	}
 	w.Flush()
 }
+
+func printListItemsTable(items []lib.ListItem) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "ID\tTITLE\tCOMPLETED\tSTATUS\tPOSITION")
+	for _, i := range items {
+		completed := boolNo
+		if i.Completed {
+			completed = boolYes
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\n", i.ID, i.Title, completed, i.Status, i.Position)
+	}
+	w.Flush()
+}
+
+func printFeatureBundleTable(bundle map[string]lib.FeatureState) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "FEATURE\tENABLED")
+	for name, state := range bundle {
+		enabled := boolNo
+		if state.Enabled {
+			enabled = boolYes
+		}
+		fmt.Fprintf(w, "%s\t%s\n", name, enabled)
+	}
+	w.Flush()
+}
