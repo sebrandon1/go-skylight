@@ -3,7 +3,13 @@
 Import the `lib` package to use go-skylight as a Go library.
 
 ```go
-import "github.com/sebrandon1/go-skylight/lib"
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/sebrandon1/go-skylight/lib"
+)
 ```
 
 ## Creating a Client
@@ -24,6 +30,8 @@ client, err := lib.NewClientWithToken("user-id", "api-token",
 ## Examples
 
 ```go
+ctx := context.Background()
+
 // List chores
 chores, err := client.ListChores(ctx, "frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
 
