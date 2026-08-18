@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -44,6 +45,19 @@ func (e *RateLimitError) Error() string {
 	return "rate limited"
 }
 
+// ValidationError is returned when the API responds with 422 Unprocessable
+// Entity. Fields contains per-field error messages parsed from the JSON body
+// when the body is a map[string][]string; it is nil when parsing fails.
+type ValidationError struct {
+	StatusCode int
+	Body       string
+	Fields     map[string][]string
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("validation failed (%d): %s", e.StatusCode, e.Body)
+}
+
 // HTTPError is returned for unexpected HTTP status codes (e.g. 4xx not handled
 // by a more specific type, or 5xx after retries are exhausted). It preserves
 // the status code so callers can distinguish responses without string-parsing.
@@ -70,6 +84,9 @@ func (e *NetworkError) Unwrap() error { return e.Cause }
 // IsNotFound reports whether err is (or wraps) a *NotFoundError.
 func IsNotFound(err error) bool { return errors.As(err, new(*NotFoundError)) }
 
+// IsValidation reports whether err is (or wraps) a *ValidationError.
+func IsValidation(err error) bool { return errors.As(err, new(*ValidationError)) }
+
 // IsHTTPError reports whether err is (or wraps) a *HTTPError.
 func IsHTTPError(err error) bool { return errors.As(err, new(*HTTPError)) }
 
@@ -86,9 +103,23 @@ func checkStatus(resp *http.Response, body []byte) error {
 		return &NotFoundError{Resource: resource, ID: id}
 	case http.StatusTooManyRequests:
 		return &RateLimitError{RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
+	case http.StatusUnprocessableEntity:
+		return &ValidationError{StatusCode: resp.StatusCode, Body: string(body), Fields: parseValidationFields(body)}
 	default:
 		return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
+}
+
+// parseValidationFields best-effort: API body shape is not guaranteed; returns nil on parse failure.
+func parseValidationFields(body []byte) map[string][]string {
+	if len(body) == 0 {
+		return nil
+	}
+	var fields map[string][]string
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return nil
+	}
+	return fields
 }
 
 // parseNotFoundPath extracts a resource type and optional resource ID from a
