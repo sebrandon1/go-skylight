@@ -73,7 +73,7 @@ types. Use --dry-run to preview what would be created without making API calls.`
 			return fmt.Errorf("parsing export file: %w", err)
 		}
 
-		resources, err := parseResourceList(importResources, allExportResources)
+		resources, err := parseResourceFilter(importResources, allExportResources)
 		if err != nil {
 			return err
 		}

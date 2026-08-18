@@ -253,6 +253,35 @@ func newTableWriter() *tabwriter.Writer {
 	return tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 }
 
+// parseResourceFilter splits input on commas, warns on unknown values, and
+// returns the filtered list. Returns all valid resources when input is empty or
+// "all". Returns an error when no valid resources remain after filtering.
+func parseResourceFilter(input string, valid []string) ([]string, error) {
+	if input == "" || input == resourceAll {
+		return valid, nil
+	}
+	lookup := make(map[string]bool, len(valid))
+	for _, r := range valid {
+		lookup[r] = true
+	}
+	var out []string
+	for _, r := range strings.Split(input, ",") {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+		if !lookup[r] {
+			fmt.Fprintf(os.Stderr, "Warning: unknown resource %q (valid: %s)\n", r, strings.Join(valid, ", "))
+			continue
+		}
+		out = append(out, r)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no valid resources specified")
+	}
+	return out, nil
+}
+
 func filterEmptyStrings(ss []string) []string {
 	out := ss[:0:0]
 	for _, s := range ss {

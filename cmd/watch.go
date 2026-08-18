@@ -29,14 +29,6 @@ var (
 	watchPersist   bool
 
 	allWatchResources = []string{watchResourceRewards, watchResourceChores, watchResourceCalendar, watchResourceLists, watchResourceRoutines, watchResourceMeals, watchResourcePhotos}
-
-	validWatchResources = func() map[string]struct{} {
-		m := make(map[string]struct{}, len(allWatchResources))
-		for _, r := range allWatchResources {
-			m[r] = struct{}{}
-		}
-		return m
-	}()
 )
 
 var watchCmd = &cobra.Command{
@@ -171,25 +163,7 @@ func printRedemptionEvent(e lib.RedemptionEvent) {
 }
 
 func parseWatchResources(s string) ([]string, error) {
-	if s == "" || s == resourceAll {
-		return allWatchResources, nil
-	}
-	var out []string
-	for _, r := range strings.Split(s, ",") {
-		r = strings.TrimSpace(r)
-		if r == "" {
-			continue
-		}
-		if _, ok := validWatchResources[r]; !ok {
-			fmt.Fprintf(os.Stderr, "Warning: unknown resource %q (valid: %s)\n", r, strings.Join(allWatchResources, ", "))
-			continue
-		}
-		out = append(out, r)
-	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("no valid resources specified")
-	}
-	return out, nil
+	return parseResourceFilter(s, allWatchResources)
 }
 
 func poll(ctx context.Context, client *lib.Client, state *watchState, resources []string) {
