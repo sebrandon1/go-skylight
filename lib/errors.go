@@ -81,8 +81,14 @@ func (e *NetworkError) Error() string {
 
 func (e *NetworkError) Unwrap() error { return e.Cause }
 
+// IsAuthError reports whether err is (or wraps) a *AuthError.
+func IsAuthError(err error) bool { return errors.As(err, new(*AuthError)) }
+
 // IsNotFound reports whether err is (or wraps) a *NotFoundError.
 func IsNotFound(err error) bool { return errors.As(err, new(*NotFoundError)) }
+
+// IsRateLimited reports whether err is (or wraps) a *RateLimitError.
+func IsRateLimited(err error) bool { return errors.As(err, new(*RateLimitError)) }
 
 // IsValidation reports whether err is (or wraps) a *ValidationError.
 func IsValidation(err error) bool { return errors.As(err, new(*ValidationError)) }
