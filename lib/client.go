@@ -204,13 +204,14 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
-func (c *Client) get(req *http.Request, v any) error {
-	resp, err := c.do(req)
-	if err != nil {
-		return err
-	}
+// handleResponse closes resp.Body, routes non-2xx statuses through checkStatus,
+// and unmarshals into v when v is non-nil. 204 No Content returns immediately
+// without reading the body.
+func handleResponse(resp *http.Response, v any) error {
 	defer resp.Body.Close()
-
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
@@ -218,7 +219,18 @@ func (c *Client) get(req *http.Request, v any) error {
 	if err := checkStatus(resp, body); err != nil {
 		return err
 	}
-	return json.Unmarshal(body, v)
+	if v != nil {
+		return json.Unmarshal(body, v)
+	}
+	return nil
+}
+
+func (c *Client) get(req *http.Request, v any) error {
+	resp, err := c.do(req)
+	if err != nil {
+		return err
+	}
+	return handleResponse(resp, v)
 }
 
 func (c *Client) post(req *http.Request, v any) error {
@@ -226,19 +238,7 @@ func (c *Client) post(req *http.Request, v any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return checkStatus(resp, body)
-	}
-	if v != nil {
-		return json.Unmarshal(body, v)
-	}
-	return nil
+	return handleResponse(resp, v)
 }
 
 func (c *Client) put(req *http.Request, v any) error {
@@ -246,23 +246,7 @@ func (c *Client) put(req *http.Request, v any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return checkStatus(resp, body)
-	}
-	if v != nil {
-		return json.Unmarshal(body, v)
-	}
-	return nil
+	return handleResponse(resp, v)
 }
 
 func (c *Client) patch(req *http.Request, v any) error {
@@ -270,23 +254,7 @@ func (c *Client) patch(req *http.Request, v any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return checkStatus(resp, body)
-	}
-	if v != nil {
-		return json.Unmarshal(body, v)
-	}
-	return nil
+	return handleResponse(resp, v)
 }
 
 func (c *Client) doDelete(req *http.Request) error {
@@ -294,16 +262,7 @@ func (c *Client) doDelete(req *http.Request) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusOK {
-		return nil
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-	return checkStatus(resp, body)
+	return handleResponse(resp, nil)
 }
 
 func addQueryParams(req *http.Request, params map[string]string) {
