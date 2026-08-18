@@ -25,6 +25,7 @@ func TestCheckStatus(t *testing.T) {
 		{"rate limit 429", http.StatusTooManyRequests, nil, true, "*lib.RateLimitError"},
 		{"server error 500", http.StatusInternalServerError, []byte("oops"), true, "*lib.HTTPError"},
 		{"forbidden 403", http.StatusForbidden, []byte("forbidden"), true, "*lib.HTTPError"},
+		{"unprocessable 422", http.StatusUnprocessableEntity, []byte(`{"name":["can't be blank"]}`), true, "*lib.ValidationError"},
 	}
 
 	for _, tc := range tests {
@@ -63,8 +64,84 @@ func TestCheckStatus(t *testing.T) {
 				if !errors.As(err, &se) {
 					t.Errorf("want *HTTPError, got %T", err)
 				}
+			case "*lib.ValidationError":
+				var ve *ValidationError
+				if !errors.As(err, &ve) {
+					t.Errorf("want *ValidationError, got %T", err)
+				}
 			}
 		})
+	}
+}
+
+func TestIsValidation(t *testing.T) {
+	ve := &ValidationError{StatusCode: 422, Body: "invalid"}
+	if !IsValidation(ve) {
+		t.Error("IsValidation should return true for *ValidationError")
+	}
+	if IsValidation(nil) {
+		t.Error("IsValidation should return false for nil")
+	}
+	if IsValidation(&AuthError{Message: "x"}) {
+		t.Error("IsValidation should return false for non-ValidationError")
+	}
+}
+
+func TestValidationErrorFields(t *testing.T) {
+	body := []byte(`{"name":["can't be blank"],"email":["is invalid"]}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+	resp := &http.Response{
+		StatusCode: http.StatusUnprocessableEntity,
+		Request:    req,
+		Header:     make(http.Header),
+	}
+	err := checkStatus(resp, body)
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *ValidationError, got %T", err)
+	}
+	if ve.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("StatusCode = %d, want 422", ve.StatusCode)
+	}
+	if len(ve.Fields) != 2 {
+		t.Errorf("Fields len = %d, want 2", len(ve.Fields))
+	}
+	if msgs := ve.Fields["name"]; len(msgs) == 0 || msgs[0] != "can't be blank" {
+		t.Errorf("Fields[name] = %v, want [\"can't be blank\"]", msgs)
+	}
+}
+
+func TestValidationErrorNonJSONBody(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+	resp := &http.Response{
+		StatusCode: http.StatusUnprocessableEntity,
+		Request:    req,
+		Header:     make(http.Header),
+	}
+	err := checkStatus(resp, []byte("not json"))
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *ValidationError, got %T", err)
+	}
+	if ve.Fields != nil {
+		t.Errorf("Fields should be nil for non-JSON body, got %v", ve.Fields)
+	}
+}
+
+func TestValidationErrorEmptyBody(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+	resp := &http.Response{
+		StatusCode: http.StatusUnprocessableEntity,
+		Request:    req,
+		Header:     make(http.Header),
+	}
+	err := checkStatus(resp, nil)
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("expected *ValidationError, got %T", err)
+	}
+	if ve.Fields != nil {
+		t.Errorf("Fields should be nil for empty body, got %v", ve.Fields)
 	}
 }
 
@@ -210,6 +287,15 @@ func TestErrorTypes(t *testing.T) {
 		err := &RateLimitError{}
 		if err.Error() == "" {
 			t.Error("empty error string")
+		}
+	})
+	t.Run("ValidationError", func(t *testing.T) {
+		err := &ValidationError{StatusCode: 422, Body: "invalid", Fields: map[string][]string{"name": {"can't be blank"}}}
+		if err.Error() == "" {
+			t.Error("empty error string")
+		}
+		if !strings.Contains(err.Error(), "422") {
+			t.Errorf("error string should contain status code, got %q", err.Error())
 		}
 	})
 	t.Run("HTTPError", func(t *testing.T) {
