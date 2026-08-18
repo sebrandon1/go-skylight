@@ -17,6 +17,8 @@ const (
 	photoExtMP4 = ".mp4"
 )
 
+var maxPhotoBytes int64 = 100 * 1024 * 1024 // 100 MB
+
 var (
 	photoPageToken   string
 	photoLimit       int
@@ -89,6 +91,14 @@ var photoUploadCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
 			return err
+		}
+
+		info, err := os.Stat(photoFile)
+		if err != nil {
+			return fmt.Errorf("accessing file: %w", err)
+		}
+		if info.Size() > maxPhotoBytes {
+			return fmt.Errorf("file too large (%d MB); maximum is %d MB", info.Size()>>20, maxPhotoBytes>>20)
 		}
 
 		data, err := os.ReadFile(photoFile)

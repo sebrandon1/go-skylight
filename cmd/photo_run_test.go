@@ -186,6 +186,43 @@ func TestPhotoUploadCmd(t *testing.T) {
 	}
 }
 
+func TestPhotoUploadCmd_FileTooLarge(t *testing.T) {
+	dir := t.TempDir()
+	imgPath := filepath.Join(dir, "big.jpg")
+	if err := os.WriteFile(imgPath, []byte("x"), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	origMax, origFile, origFrameID := maxPhotoBytes, photoFile, frameID
+	maxPhotoBytes = 0 // any file will exceed the limit
+	photoFile = imgPath
+	frameID = "f1"
+	t.Cleanup(func() { maxPhotoBytes, photoFile, frameID = origMax, origFile, origFrameID })
+
+	err := photoUploadCmd.RunE(photoUploadCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for oversized file, got nil")
+	}
+	if !strings.Contains(err.Error(), "file too large") {
+		t.Errorf("expected 'file too large' in error, got: %v", err)
+	}
+}
+
+func TestPhotoUploadCmd_FileNotFound(t *testing.T) {
+	origFile, origFrameID := photoFile, frameID
+	photoFile = filepath.Join(t.TempDir(), "does-not-exist.jpg")
+	frameID = "f1"
+	t.Cleanup(func() { photoFile, frameID = origFile, origFrameID })
+
+	err := photoUploadCmd.RunE(photoUploadCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for missing file, got nil")
+	}
+	if !strings.Contains(err.Error(), "accessing file") {
+		t.Errorf("expected 'accessing file' in error, got: %v", err)
+	}
+}
+
 func TestPhotoDeleteCmd(t *testing.T) {
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
