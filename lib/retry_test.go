@@ -89,6 +89,13 @@ func TestDoWithRetryExhausted(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error after exhausted retries")
 	}
+	var se *HTTPError
+	if !errors.As(err, &se) {
+		t.Errorf("expected *HTTPError after exhausted retries, got %T: %v", err, err)
+	}
+	if se != nil && se.StatusCode != http.StatusInternalServerError {
+		t.Errorf("StatusCode = %d, want %d", se.StatusCode, http.StatusInternalServerError)
+	}
 }
 
 func TestDoWithRetryRespects429RetryAfter(t *testing.T) {
@@ -155,8 +162,15 @@ func TestDrainAndErrorNon429(t *testing.T) {
 	if drainErr == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.Contains(drainErr.Error(), "server error body") {
-		t.Errorf("error should contain body, got %q", drainErr.Error())
+	var se *HTTPError
+	if !errors.As(drainErr, &se) {
+		t.Fatalf("expected *HTTPError, got %T: %v", drainErr, drainErr)
+	}
+	if se.StatusCode != http.StatusInternalServerError {
+		t.Errorf("StatusCode = %d, want %d", se.StatusCode, http.StatusInternalServerError)
+	}
+	if !strings.Contains(se.Body, "server error body") {
+		t.Errorf("Body should contain body text, got %q", se.Body)
 	}
 }
 

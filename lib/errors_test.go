@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,7 +23,8 @@ func TestCheckStatus(t *testing.T) {
 		{"auth 401", http.StatusUnauthorized, []byte("unauthorized"), true, "*lib.AuthError"},
 		{"not found 404", http.StatusNotFound, nil, true, "*lib.NotFoundError"},
 		{"rate limit 429", http.StatusTooManyRequests, nil, true, "*lib.RateLimitError"},
-		{"server error 500", http.StatusInternalServerError, []byte("oops"), true, ""},
+		{"server error 500", http.StatusInternalServerError, []byte("oops"), true, "*lib.HTTPError"},
+		{"forbidden 403", http.StatusForbidden, []byte("forbidden"), true, "*lib.HTTPError"},
 	}
 
 	for _, tc := range tests {
@@ -56,8 +58,26 @@ func TestCheckStatus(t *testing.T) {
 				if !errors.As(err, &rle) {
 					t.Errorf("want *RateLimitError, got %T", err)
 				}
+			case "*lib.HTTPError":
+				var se *HTTPError
+				if !errors.As(err, &se) {
+					t.Errorf("want *HTTPError, got %T", err)
+				}
 			}
 		})
+	}
+}
+
+func TestIsHTTPError(t *testing.T) {
+	se := &HTTPError{StatusCode: 502, Body: "bad gateway"}
+	if !IsHTTPError(se) {
+		t.Error("IsHTTPError should return true for *HTTPError")
+	}
+	if IsHTTPError(nil) {
+		t.Error("IsHTTPError should return false for nil")
+	}
+	if IsHTTPError(&AuthError{Message: "x"}) {
+		t.Error("IsHTTPError should return false for non-HTTPError")
 	}
 }
 
@@ -190,6 +210,15 @@ func TestErrorTypes(t *testing.T) {
 		err := &RateLimitError{}
 		if err.Error() == "" {
 			t.Error("empty error string")
+		}
+	})
+	t.Run("HTTPError", func(t *testing.T) {
+		err := &HTTPError{StatusCode: 503, Body: "service unavailable"}
+		if err.Error() == "" {
+			t.Error("empty error string")
+		}
+		if !strings.Contains(err.Error(), "503") {
+			t.Errorf("error string should contain status code, got %q", err.Error())
 		}
 	})
 	t.Run("NetworkError", func(t *testing.T) {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -95,7 +94,7 @@ func drainAndError(ctx context.Context, resp *http.Response) error {
 	resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusTooManyRequests {
-		return errors.New(string(body))
+		return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 
 	wait := parseRetryAfter(resp.Header.Get("Retry-After"))
