@@ -74,6 +74,32 @@ func TestCheckStatus(t *testing.T) {
 	}
 }
 
+func TestIsAuthError(t *testing.T) {
+	ae := &AuthError{Message: "bad creds"}
+	if !IsAuthError(ae) {
+		t.Error("IsAuthError should return true for *AuthError")
+	}
+	if IsAuthError(nil) {
+		t.Error("IsAuthError should return false for nil")
+	}
+	if IsAuthError(&NotFoundError{Resource: "chore"}) {
+		t.Error("IsAuthError should return false for non-AuthError")
+	}
+}
+
+func TestIsRateLimited(t *testing.T) {
+	rle := &RateLimitError{RetryAfter: 5 * time.Second}
+	if !IsRateLimited(rle) {
+		t.Error("IsRateLimited should return true for *RateLimitError")
+	}
+	if IsRateLimited(nil) {
+		t.Error("IsRateLimited should return false for nil")
+	}
+	if IsRateLimited(&AuthError{Message: "x"}) {
+		t.Error("IsRateLimited should return false for non-RateLimitError")
+	}
+}
+
 func TestIsValidation(t *testing.T) {
 	ve := &ValidationError{StatusCode: 422, Body: "invalid"}
 	if !IsValidation(ve) {
