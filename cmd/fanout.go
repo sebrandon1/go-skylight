@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
 )
 
 // runConcurrent runs each fn concurrently, waits for all to finish, and
-// returns the first non-nil error in the order they were passed.
+// returns all non-nil errors joined via errors.Join.
 func runConcurrent(fns ...func() error) error {
 	errs := make([]error, len(fns))
 	var wg sync.WaitGroup
@@ -19,12 +20,7 @@ func runConcurrent(fns ...func() error) error {
 		}(i, fn)
 	}
 	wg.Wait()
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // pollAndDiff fetches items, records their IDs in the returned seen set, and
