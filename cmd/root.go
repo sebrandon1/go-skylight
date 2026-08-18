@@ -114,18 +114,25 @@ func tryRefreshTokenAuth() (handled bool, err error) {
 	}
 
 	fingerprint := deviceFingerprint
-	if fingerprint == "" {
-		fingerprint = defaultFingerprint()
+	generated := fingerprint == ""
+	if generated {
+		fingerprint = newUUID()
 	}
 	c, err := lib.NewClientWithRefreshToken(refreshToken, fingerprint)
 	if err != nil {
 		return true, fmt.Errorf("auto-login failed: %w", err)
 	}
 	autoClient = c
-	// Persist the rotated refresh token back to config.
-	if c.RefreshToken != "" && c.RefreshToken != refreshToken {
-		persistRotatedToken(c.RefreshToken, fingerprint)
-		refreshToken = c.RefreshToken
+	tokenRotated := c.RefreshToken != "" && c.RefreshToken != refreshToken
+	if tokenRotated || generated {
+		toSave := map[string]string{cfgDeviceFingerprint: fingerprint}
+		if tokenRotated {
+			toSave[cfgRefreshToken] = c.RefreshToken
+			refreshToken = c.RefreshToken
+		}
+		if err := saveConfig(toSave); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to persist credentials: %v\n", err)
+		}
 	}
 	return true, nil
 }
@@ -161,39 +168,6 @@ func getClient() (*lib.Client, error) {
 		return nil, fmt.Errorf("creating client: %w", err)
 	}
 	return client, nil
-}
-
-// persistRotatedToken writes a newly rotated refresh token back to the config
-// file. Auth has already succeeded at this point, so failure is non-fatal.
-func persistRotatedToken(newToken, fingerprint string) {
-	if err := saveConfig(map[string]string{
-		cfgRefreshToken:      newToken,
-		cfgDeviceFingerprint: fingerprint,
-	}); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: refresh token rotated but failed to persist: %v\n", err)
-	}
-}
-
-// defaultFingerprint returns a stable UUID derived from the hostname,
-// or a fixed fallback if the hostname cannot be determined.
-func defaultFingerprint() string {
-	host, err := os.Hostname()
-	if err != nil || host == "" {
-		return "00000000-0000-0000-0000-000000000001"
-	}
-	// Derive a deterministic UUID from the hostname bytes (version 4 format,
-	// not cryptographically random, but stable across invocations).
-	h := fnv32(host)
-	return fmt.Sprintf("%08x-0000-4000-8000-%012x", h, h)
-}
-
-func fnv32(s string) uint64 {
-	var h uint64 = 14695981039346656037
-	for i := 0; i < len(s); i++ {
-		h ^= uint64(s[i])
-		h *= 1099511628211
-	}
-	return h
 }
 
 // Execute executes the root command.

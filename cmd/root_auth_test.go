@@ -101,7 +101,7 @@ func TestGetClient_ReturnsErrorWithNoCredentials(t *testing.T) {
 	}
 }
 
-func TestPersistRotatedToken_WritesConfig(t *testing.T) {
+func TestSaveConfig_WritesRefreshAndFingerprint(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config")
 
@@ -109,7 +109,12 @@ func TestPersistRotatedToken_WritesConfig(t *testing.T) {
 	configPath = path
 	t.Cleanup(func() { configPath = origConfigPath })
 
-	persistRotatedToken("new-refresh", "fp-123")
+	if err := saveConfig(map[string]string{
+		cfgRefreshToken:      "new-refresh",
+		cfgDeviceFingerprint: "fp-123",
+	}); err != nil {
+		t.Fatalf("saveConfig: %v", err)
+	}
 
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -122,21 +127,6 @@ func TestPersistRotatedToken_WritesConfig(t *testing.T) {
 	if !strings.Contains(content, "SKYLIGHT_DEVICE_FINGERPRINT=fp-123") {
 		t.Errorf("expected fingerprint in config, got: %s", content)
 	}
-}
-
-func TestPersistRotatedToken_SaveFailureIsNonFatal(t *testing.T) {
-	blocker := filepath.Join(t.TempDir(), "blocker")
-	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
-		t.Fatalf("setup: %v", err)
-	}
-
-	origConfigPath := configPath
-	configPath = filepath.Join(blocker, "subdir", "config")
-	t.Cleanup(func() { configPath = origConfigPath })
-
-	// blocker is a file, not a dir, so MkdirAll under it fails; this must
-	// not panic or exit, only warn on stderr.
-	persistRotatedToken("new-refresh", "fp-123")
 }
 
 func TestPersistentPreRunE_SkipsAutoLoginForLogin(t *testing.T) {
@@ -239,6 +229,11 @@ func TestPersistentPreRunE_RefreshTokenFlow_DefaultsFingerprint(t *testing.T) {
 	lib.OAuthURL = srv.URL
 	t.Cleanup(func() { lib.OAuthURL = origOAuthURL })
 
+	dir := t.TempDir()
+	origConfigPath := configPath
+	configPath = filepath.Join(dir, "config")
+	t.Cleanup(func() { configPath = origConfigPath })
+
 	autoClient = nil
 	refreshToken = "orig-refresh"
 	deviceFingerprint = ""
@@ -251,7 +246,52 @@ func TestPersistentPreRunE_RefreshTokenFlow_DefaultsFingerprint(t *testing.T) {
 	if autoClient == nil {
 		t.Fatal("expected autoClient to be set")
 	}
-	// Same refresh token returned -> no rotation, no persist call.
+
+	// No token rotation, but a fresh UUID fingerprint must be generated and persisted.
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("expected fingerprint to be persisted, config not written: %v", err)
+	}
+	if !strings.Contains(string(raw), "SKYLIGHT_DEVICE_FINGERPRINT=") {
+		t.Errorf("expected SKYLIGHT_DEVICE_FINGERPRINT in persisted config, got: %s", string(raw))
+	}
+}
+
+func TestPersistentPreRunE_RefreshTokenFlow_PersistFailureIsNonFatal(t *testing.T) {
+	resetAuthState(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"access_token":"newaccess","refresh_token":"orig-refresh","expires_in":3600}`)
+	}))
+	defer srv.Close()
+
+	origOAuthURL := lib.OAuthURL
+	lib.OAuthURL = srv.URL
+	t.Cleanup(func() { lib.OAuthURL = origOAuthURL })
+
+	// Point config at a path where MkdirAll will fail (file blocks the dir).
+	blocker := filepath.Join(t.TempDir(), "blocker")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	origConfigPath := configPath
+	configPath = filepath.Join(blocker, "subdir", "config")
+	t.Cleanup(func() { configPath = origConfigPath })
+
+	autoClient = nil
+	refreshToken = "orig-refresh"
+	deviceFingerprint = ""
+	email, password = "", ""
+
+	// A save failure must not propagate as an error — auth already succeeded.
+	cmd := &cobra.Command{Use: "frame"}
+	if err := rootCmd.PersistentPreRunE(cmd, nil); err != nil {
+		t.Errorf("expected non-fatal save failure, got error: %v", err)
+	}
+	if autoClient == nil {
+		t.Error("expected autoClient to be set even when persist fails")
+	}
 }
 
 func TestPersistentPreRunE_RefreshTokenFlow_Failure(t *testing.T) {

@@ -5,36 +5,19 @@ import (
 	"testing"
 )
 
-func TestDefaultFingerprint_NonEmpty(t *testing.T) {
-	fp := defaultFingerprint()
-	if fp == "" {
-		t.Error("expected non-empty fingerprint")
+func TestNewUUID_Version4Bits(t *testing.T) {
+	u := newUUID()
+	parts := strings.Split(u, "-")
+	if len(parts) != 5 {
+		t.Fatalf("expected 5 hyphen-separated groups, got %d: %s", len(parts), u)
 	}
-	if !strings.Contains(fp, "-") {
-		t.Errorf("expected fingerprint to look like a UUID, got %s", fp)
+	// version nibble: 3rd group must start with '4'
+	if parts[2][0] != '4' {
+		t.Errorf("expected version 4 UUID (3rd group starts with '4'), got %q", parts[2])
 	}
-}
-
-func TestDefaultFingerprint_Stable(t *testing.T) {
-	fp1 := defaultFingerprint()
-	fp2 := defaultFingerprint()
-	if fp1 != fp2 {
-		t.Errorf("fingerprint is not stable: %s vs %s", fp1, fp2)
-	}
-}
-
-func TestFnv32_Deterministic(t *testing.T) {
-	h1 := fnv32("hello")
-	h2 := fnv32("hello")
-	if h1 != h2 {
-		t.Errorf("fnv32 is not deterministic: %d vs %d", h1, h2)
-	}
-}
-
-func TestFnv32_Distinct(t *testing.T) {
-	h1 := fnv32("hello")
-	h2 := fnv32("world")
-	if h1 == h2 {
-		t.Errorf("fnv32 produced same hash for different inputs")
+	// variant bits: 4th group must start with '8', '9', 'a', or 'b'
+	c := parts[3][0]
+	if c != '8' && c != '9' && c != 'a' && c != 'b' {
+		t.Errorf("expected RFC 4122 variant bits (4th group starts with 8/9/a/b), got %q", parts[3])
 	}
 }
