@@ -78,7 +78,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 			return err
 		}
 
-		resources, err := parseResourceList(exportResources, allExportResources)
+		resources, err := parseResourceFilter(exportResources, allExportResources)
 		if err != nil {
 			return err
 		}
@@ -267,34 +267,7 @@ func toWantMap(resources []string) map[string]bool {
 }
 
 func parseExportResources(s string) ([]string, error) {
-	return parseResourceList(s, allExportResources)
-}
-
-func parseResourceList(s string, all []string) ([]string, error) {
-	if s == "" || s == resourceAll {
-		return all, nil
-	}
-	valid := make(map[string]bool, len(all))
-	for _, r := range all {
-		valid[r] = true
-	}
-	var out []string
-	for _, r := range strings.Split(s, ",") {
-		r = strings.TrimSpace(r)
-		if r == "" {
-			continue
-		}
-		// #266: warn on typos like export --resources bogus (match parseWatchResources)
-		if !valid[r] {
-			fmt.Fprintf(os.Stderr, "Warning: unknown resource %q (valid: %s)\n", r, strings.Join(all, ", "))
-			continue
-		}
-		out = append(out, r)
-	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("no valid resources specified")
-	}
-	return out, nil
+	return parseResourceFilter(s, allExportResources)
 }
 
 func init() {

@@ -823,6 +823,63 @@ func TestConfirmAction(t *testing.T) {
 	}
 }
 
+func TestParseResourceFilter(t *testing.T) {
+	// Use package-level resource constants to avoid goconst violations.
+	r1, r2, r3 := exportResourceChores, exportResourceRewards, exportResourceRecipes
+	valid := []string{r1, r2, r3}
+
+	// "" and "all" → all valid resources
+	for _, input := range []string{"", "all"} {
+		got, err := parseResourceFilter(input, valid)
+		if err != nil {
+			t.Errorf("parseResourceFilter(%q): unexpected error: %v", input, err)
+		}
+		if len(got) != len(valid) {
+			t.Errorf("parseResourceFilter(%q): got %v, want all %v", input, got, valid)
+		}
+	}
+
+	// specific subset
+	got, err := parseResourceFilter(r1+","+r2, valid)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 || got[0] != r1 || got[1] != r2 {
+		t.Errorf("unexpected result: %v", got)
+	}
+
+	// whitespace trimmed
+	got, err = parseResourceFilter(" "+r1+" , "+r2+" ", valid)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 2 || got[0] != r1 || got[1] != r2 {
+		t.Errorf("trimmed: unexpected result: %v", got)
+	}
+
+	// unknown values warned and dropped; valid ones kept
+	var kept []string
+	stderr := captureStderr(func() {
+		var e error
+		kept, e = parseResourceFilter(r1+",bogus,"+r2, valid)
+		if e != nil {
+			t.Errorf("unexpected error: %v", e)
+		}
+	})
+	if len(kept) != 2 || kept[0] != r1 || kept[1] != r2 {
+		t.Errorf("unknown-skipped: unexpected result: %v", kept)
+	}
+	if !strings.Contains(stderr, "bogus") {
+		t.Errorf("expected warning for unknown resource, got: %s", stderr)
+	}
+
+	// all unknown → error
+	_, err = parseResourceFilter("bogus,also-bogus", valid)
+	if err == nil {
+		t.Error("expected error when all resources are unknown, got nil")
+	}
+}
+
 func TestPrintDryRun(t *testing.T) {
 	t.Cleanup(func() { quiet = false })
 
