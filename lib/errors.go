@@ -44,6 +44,18 @@ func (e *RateLimitError) Error() string {
 	return "rate limited"
 }
 
+// HTTPError is returned for unexpected HTTP status codes (e.g. 4xx not handled
+// by a more specific type, or 5xx after retries are exhausted). It preserves
+// the status code so callers can distinguish responses without string-parsing.
+type HTTPError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("http error %d: %s", e.StatusCode, e.Body)
+}
+
 // NetworkError wraps a transport-level error (DNS, TCP, TLS).
 type NetworkError struct {
 	Cause error
@@ -57,6 +69,9 @@ func (e *NetworkError) Unwrap() error { return e.Cause }
 
 // IsNotFound reports whether err is (or wraps) a *NotFoundError.
 func IsNotFound(err error) bool { return errors.As(err, new(*NotFoundError)) }
+
+// IsHTTPError reports whether err is (or wraps) a *HTTPError.
+func IsHTTPError(err error) bool { return errors.As(err, new(*HTTPError)) }
 
 // checkStatus inspects resp.StatusCode and returns a typed error for non-2xx
 // responses. body should be the already-read response body (may be nil).
@@ -72,7 +87,7 @@ func checkStatus(resp *http.Response, body []byte) error {
 	case http.StatusTooManyRequests:
 		return &RateLimitError{RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"))}
 	default:
-		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+		return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 }
 
