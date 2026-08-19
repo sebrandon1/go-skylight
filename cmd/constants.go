@@ -9,6 +9,8 @@ const (
 	cfgFrameID           = "SKYLIGHT_FRAME_ID"
 	cfgRefreshToken      = "SKYLIGHT_REFRESH_TOKEN"
 	cfgDeviceFingerprint = "SKYLIGHT_DEVICE_FINGERPRINT"
+	cfgOutput            = "SKYLIGHT_OUTPUT"
+	cfgQuiet             = "SKYLIGHT_QUIET"
 
 	// Cobra Use strings / flag names shared across commands
 	subCreate     = "create"

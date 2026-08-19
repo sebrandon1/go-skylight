@@ -362,10 +362,15 @@ func TestEditorCommandSplitsArgs(t *testing.T) {
 // resetGlobals clears all config globals and resets them via t.Cleanup.
 func resetGlobals(t *testing.T) {
 	t.Helper()
-	prev := struct{ e, p, tok, uid, fid, rt, df, cp string }{
+	prev := struct {
+		e, p, tok, uid, fid, rt, df, cp, out, qcs string
+		q                                         bool
+	}{
 		email, password, token, userID, frameID, refreshToken, deviceFingerprint, configPath,
+		outputFormat, quietConfigStr, quiet,
 	}
 	email, password, token, userID, frameID, refreshToken, deviceFingerprint, configPath = "", "", "", "", "", "", "", ""
+	outputFormat, quietConfigStr, quiet = "", "", false
 	t.Cleanup(func() {
 		email = prev.e
 		password = prev.p
@@ -375,5 +380,8 @@ func resetGlobals(t *testing.T) {
 		refreshToken = prev.rt
 		deviceFingerprint = prev.df
 		configPath = prev.cp
+		outputFormat = prev.out
+		quietConfigStr = prev.qcs
+		quiet = prev.q
 	})
 }
