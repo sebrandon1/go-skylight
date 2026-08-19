@@ -285,6 +285,9 @@ var choreUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("recur-from") {
 			data.RecurFrom = choreRecurFrom
 		}
+		if cmd.Flags().Changed("up-for-grabs") {
+			data.UpForGrabs = choreUpForGrabs
+		}
 
 		ctx := cmd.Context()
 		chore, err := client.UpdateChore(ctx, frameID, choreID, data)
@@ -440,6 +443,7 @@ func init() {
 	choreUpdateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri)")
 	choreUpdateCmd.Flags().StringVar(&choreEndDate, "end-date", "", "End date for recurring chore (YYYY-MM-DD)")
 	choreUpdateCmd.Flags().StringVar(&choreRecurFrom, "recur-from", "", "When to anchor recurrence: scheduled or completed")
+	choreUpdateCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Make chore claimable by anyone")
 	registerEnumFlagCompletion(choreUpdateCmd, "status", choreStatuses...)
 	markFlagRequired(choreUpdateCmd, "chore-id")
 

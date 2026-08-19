@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -249,6 +250,41 @@ func TestChoreCreateCmd_Recurring(t *testing.T) {
 	})
 	if !strings.Contains(out, `"id"`) {
 		t.Errorf("expected chore JSON in output, got: %s", out)
+	}
+}
+
+func TestChoreUpdateCmd_UpForGrabs(t *testing.T) {
+	var gotUpForGrabs bool
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodPut {
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+				gotUpForGrabs, _ = body["up_for_grabs"].(bool)
+			}
+			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes","up_for_grabs":true}}}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}}]}`)
+	})
+	newCmdTestClient(t, handler)
+	origID, origUpForGrabs := choreID, choreUpForGrabs
+	choreID, choreUpForGrabs = "c1", true
+	t.Cleanup(func() { choreID, choreUpForGrabs = origID, origUpForGrabs })
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := choreUpdateCmd.Flags().Set("up-for-grabs", "true"); err != nil {
+		t.Fatalf("setting up-for-grabs flag: %v", err)
+	}
+
+	captureStdout(func() {
+		if err := choreUpdateCmd.RunE(choreUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !gotUpForGrabs {
+		t.Error("expected up_for_grabs=true in PATCH request body")
 	}
 }
 
