@@ -2,16 +2,31 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sebrandon1/go-skylight/lib"
 )
 
 func printChoresTable(chores []lib.Chore) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tDUE DATE\tPOINTS\tASSIGNEE")
+	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tDUE DATE\tPOINTS\tASSIGNEE\tFREQUENCY\tINTERVAL\tDAYS\tEND DATE")
 	for _, c := range chores {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\n",
-			c.ID, c.Title, c.Status, c.DueDate, c.Points, resolveCatName(c.AssigneeID))
+		freq, interval, days, endDate := "-", "-", "-", "-"
+		if c.Recurring {
+			freq = c.Frequency
+			if c.Interval > 0 {
+				interval = fmt.Sprintf("%d", c.Interval)
+			}
+			if len(c.RecurrenceDays) > 0 {
+				days = strings.Join(c.RecurrenceDays, ",")
+			}
+			if c.EndDate != "" {
+				endDate = c.EndDate
+			}
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+			c.ID, c.Title, c.Status, c.DueDate, c.Points, resolveCatName(c.AssigneeID),
+			freq, interval, days, endDate)
 	}
 	w.Flush()
 }
