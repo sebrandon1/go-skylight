@@ -36,7 +36,7 @@ cmd/                           # Cobra command definitions
   session.go                   # login command (with --save flag for config file)
   config.go                    # Config file loading/saving (~/.skylight/config)
   configcmd.go                 # config show|get|set|unset|edit subcommands
-  frame.go                     # frame info, devices, avatars, colors
+  frame.go                     # frame list, info, devices, avatars, colors, set-album
   calendar.go                  # calendar list, create, create-countdown, update, delete, sources, week
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
   chore.go                     # chore list (with --week), create, update, delete, complete, skip, claim
@@ -46,7 +46,8 @@ cmd/                           # Cobra command definitions
   reward_remove_stars.go       # reward remove-stars — deduct points from a user balance
   list.go                      # list all, info, create, update, delete, add-item, update-item, delete-item
   meal.go                      # meal categories, recipes (create, update, delete), sittings, grocery list
-  category.go                  # list family member categories
+  category.go                  # category list, create, update, delete
+  template.go                  # template save|apply|list|delete (stored in ~/.skylight/templates/)
   photo.go                     # photo list, upload, delete, download
   routine.go                   # routine list, create, delete
   grocery.go                   # grocery list, create, show, add, add-recipe, clear, organize, order
@@ -68,12 +69,12 @@ lib/                           # API client library
   session.go                   # Login (POST /api/sessions), OAuth2 refresh token flow
   structs.go                   # All API types and request/response structs
   options.go                   # ClientOption functional options (WithBaseURL, WithRetry, WithRateLimit, WithLogger)
-  errors.go                    # Typed errors: AuthError, NotFoundError, RateLimitError, NetworkError
+  errors.go                    # Typed errors: AuthError, NotFoundError, RateLimitError, NetworkError, ValidationError; IsAuthError/IsRateLimited/IsValidation helpers
   retry.go                     # Retry with exponential backoff, jitter, and rate limiting
   poller.go                    # RewardsPoller — background poll loop with persistent dedup state
   doc.go                       # Package-level godoc
   calendar.go                  # Calendar event CRUD, source calendars
-  category.go                  # List categories
+  category.go                  # Category CRUD (list, create, update, delete)
   chore.go                     # Chore CRUD (JSON-API format)
   frame.go                     # Frame info, devices, avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
@@ -143,6 +144,7 @@ SKYLIGHT_DEVICE_FINGERPRINT=00000000-0000-4000-8000-000000000001
 - `import` -- Restore frame data from export JSON file (with `--file`, `--dry-run`, `--resources`)
 - `bounty create|list` -- Chore + reward pairs
 - `rotation create` -- Rotating chore assignments
+- `template save|apply|list|delete` -- Named chore+reward templates (stored in `~/.skylight/templates/`)
 - `config show|get|set|unset|edit` -- View and modify the local configuration file
 
 ### Resource Commands
@@ -152,8 +154,8 @@ SKYLIGHT_DEVICE_FINGERPRINT=00000000-0000-4000-8000-000000000001
 - `reward list|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
 - `list all|info|create|update|delete|add-item|update-item|delete-item` -- List management
 - `meal categories|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|create-sitting|add-to-grocery` -- Meal planning
-- `category` -- List family member categories
-- `frame info|devices|avatars|colors` -- Frame info and settings
+- `category list|create|update|delete` -- Family member category management
+- `frame list|info|devices|avatars|colors|set-album` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|create|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
 - `grocery list|create|show|add|add-recipe|clear|organize|order` -- Grocery list management (Instacart ordering)

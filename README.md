@@ -6,7 +6,7 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sebrandon1/go-skylight)](https://go.dev/)
 [![License](https://img.shields.io/github/license/sebrandon1/go-skylight)](LICENSE)
 
-Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.com) API. Manage frames, calendars, chores, rewards, lists, meals, and family member categories from the terminal or from Go code.
+Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.com) API. Manage frames, calendars, chores, rewards, lists, meals, and family member categories from the terminal or from Go code.
 
 > **Disclaimer:** This is an unofficial, community-built tool and is not affiliated with or endorsed by Skylight. It interacts with Skylight's undocumented API — behavior may change without notice. Use at your own risk.
 
@@ -29,8 +29,11 @@ Go CLI and client library for the [Skylight Calendar](https://app.ourskylight.co
 # Install
 go install github.com/sebrandon1/go-skylight@latest
 
-# Login (saves credentials to ~/.skylight/config)
-skylight login --email user@example.com --password yourpassword --save
+# Login with OAuth2 refresh token (recommended)
+skylight login --refresh-token YOUR_REFRESH_TOKEN --save
+
+# Or with email/password (deprecated)
+# skylight login --email user@example.com --password yourpassword --save
 
 # Use any command
 skylight chore list --frame-id FRAME_ID
