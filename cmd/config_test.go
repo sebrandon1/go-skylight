@@ -177,6 +177,79 @@ func TestLoadConfigMissingFile(t *testing.T) {
 	configPath = ""
 }
 
+func TestLoadConfig_OutputFormat(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_OUTPUT=table\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loadConfig()
+	if outputFormat != outputTable {
+		t.Errorf("outputFormat = %q, want %q", outputFormat, outputTable)
+	}
+}
+
+func TestLoadConfig_OutputFormatFlagTakesPrecedence(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_OUTPUT=json\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outputFormat = outputTable // simulate --output table flag already set
+	loadConfig()
+	if outputFormat != outputTable {
+		t.Errorf("outputFormat = %q, want CLI value %q", outputFormat, outputTable)
+	}
+}
+
+func TestLoadConfig_QuietTrue(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_QUIET=true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loadConfig()
+	if !quiet {
+		t.Error("quiet should be true after loading SKYLIGHT_QUIET=true")
+	}
+	if quietConfigStr != "true" {
+		t.Errorf("quietConfigStr = %q, want %q", quietConfigStr, "true")
+	}
+}
+
+func TestLoadConfig_QuietFalse(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_QUIET=false\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loadConfig()
+	if quiet {
+		t.Error("quiet should remain false after loading SKYLIGHT_QUIET=false")
+	}
+	if quietConfigStr != "false" {
+		t.Errorf("quietConfigStr = %q, want %q", quietConfigStr, "false")
+	}
+}
+
+func TestLoadConfig_QuietFlagTakesPrecedence(t *testing.T) {
+	resetGlobals(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_QUIET=true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	quiet = true // simulate --quiet flag already set
+	loadConfig()
+	if !quiet {
+		t.Error("quiet should remain true when CLI flag was set")
+	}
+}
+
 func TestSaveConfigMkdirAllError(t *testing.T) {
 	// Create a file where a directory should be
 	dir := t.TempDir()

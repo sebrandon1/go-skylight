@@ -18,6 +18,8 @@ var knownConfigKeys = []string{
 	cfgFrameID,
 	cfgRefreshToken,
 	cfgDeviceFingerprint,
+	cfgOutput,
+	cfgQuiet,
 }
 
 var sensitiveConfigKeys = map[string]bool{
@@ -40,6 +42,8 @@ func configValues() map[string]*string {
 		cfgFrameID:           &frameID,
 		cfgRefreshToken:      &refreshToken,
 		cfgDeviceFingerprint: &deviceFingerprint,
+		cfgOutput:            &outputFormat,
+		cfgQuiet:             &quietConfigStr,
 	}
 }
 

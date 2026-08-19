@@ -9,7 +9,10 @@ import (
 	"strings"
 )
 
-var configPath string
+var (
+	configPath     string
+	quietConfigStr string // config-file value of SKYLIGHT_QUIET, for config show/get
+)
 
 func defaultConfigPath() string {
 	home, err := os.UserHomeDir()
@@ -63,24 +66,18 @@ func loadConfig() {
 		}
 	}
 
-	vars := map[string]*string{
-		cfgEmail:             &email,
-		cfgPassword:          &password,
-		cfgToken:             &token,
-		cfgUserID:            &userID,
-		cfgFrameID:           &frameID,
-		cfgRefreshToken:      &refreshToken,
-		cfgDeviceFingerprint: &deviceFingerprint,
-	}
-
 	values, _, err := parseConfigFile(f)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: error reading config file: %v\n", err)
 	}
 	for key, value := range values {
-		if ptr, exists := vars[key]; exists && *ptr == "" {
+		if ptr, exists := configValues()[key]; exists && *ptr == "" {
 			*ptr = value
 		}
+	}
+	// cfgQuiet is stored as a string in the config file but drives a bool at runtime.
+	if v, ok := values[cfgQuiet]; ok && !quiet && strings.EqualFold(v, "true") {
+		quiet = true
 	}
 }
 
