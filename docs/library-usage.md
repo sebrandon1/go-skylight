@@ -59,12 +59,23 @@ var authErr *lib.AuthError
 var notFound *lib.NotFoundError
 var rateLimit *lib.RateLimitError
 var netErr *lib.NetworkError
+var valErr *lib.ValidationError
 
 if errors.As(err, &authErr) {
     // re-authenticate
 } else if errors.As(err, &rateLimit) {
     time.Sleep(rateLimit.RetryAfter)
+} else if errors.As(err, &valErr) {
+    fmt.Println("validation failed:", valErr.Fields)
 }
+```
+
+Helper predicates are available when you don't need the typed value:
+
+```go
+if lib.IsAuthError(err) { /* re-authenticate */ }
+if lib.IsRateLimited(err) { /* back off */ }
+if lib.IsValidation(err) { /* bad request */ }
 ```
 
 ## API Coverage
