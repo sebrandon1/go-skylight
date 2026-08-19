@@ -38,6 +38,43 @@ func TestPrintRoutinesTable(t *testing.T) {
 	}
 }
 
+func TestPrintChoresTable_NonRecurringShowsDashes(t *testing.T) {
+	chores := []lib.Chore{{ID: "c1", Title: "Dishes", Recurring: false}}
+	out := captureStdout(func() { printChoresTable(chores) })
+	if !strings.Contains(out, "FREQUENCY") {
+		t.Errorf("expected FREQUENCY column header, got: %s", out)
+	}
+	// Non-recurring chores show "-" for all four recurrence fields.
+	if strings.Count(out, "-") < 4 {
+		t.Errorf("expected at least 4 dashes for non-recurring recurrence fields, got: %s", out)
+	}
+}
+
+func TestPrintChoresTable_RecurringShowsFields(t *testing.T) {
+	chores := []lib.Chore{{
+		ID:             "c1",
+		Title:          "Exercise",
+		Recurring:      true,
+		Frequency:      "weekly",
+		Interval:       2,
+		RecurrenceDays: []string{"mon", "wed"},
+		EndDate:        "2026-12-31",
+	}}
+	out := captureStdout(func() { printChoresTable(chores) })
+	if !strings.Contains(out, "weekly") {
+		t.Errorf("expected frequency in output, got: %s", out)
+	}
+	if !strings.Contains(out, "2") {
+		t.Errorf("expected interval in output, got: %s", out)
+	}
+	if !strings.Contains(out, "mon,wed") {
+		t.Errorf("expected recurrence days in output, got: %s", out)
+	}
+	if !strings.Contains(out, "2026-12-31") {
+		t.Errorf("expected end date in output, got: %s", out)
+	}
+}
+
 func TestPrintChoresTable_ResolvesCatName(t *testing.T) {
 	orig := activeCatNames
 	activeCatNames = map[string]string{"cat1": "Alice"}
