@@ -49,7 +49,7 @@ var rotationCreateCmd = &cobra.Command{
 			return fmt.Errorf("creating rotation: %w", err)
 		}
 
-		printJSON(result)
+		printOutput(result.Chores)
 		return nil
 	},
 }
