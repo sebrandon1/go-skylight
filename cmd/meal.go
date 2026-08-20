@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ import (
 var (
 	recipeID          string
 	recipeTitle       string
+	recipeFilterTitle string
 	recipeDescription string
 	recipeIngredients []string
 	recipeURL         string
@@ -171,6 +173,17 @@ var mealRecipesCmd = &cobra.Command{
 		recipes, err := client.ListRecipes(cmd.Context(), frameID)
 		if err != nil {
 			return fmt.Errorf("listing recipes: %w", err)
+		}
+
+		if recipeFilterTitle != "" {
+			filtered := recipes[:0]
+			needle := strings.ToLower(recipeFilterTitle)
+			for _, r := range recipes {
+				if strings.Contains(strings.ToLower(r.Title), needle) {
+					filtered = append(filtered, r)
+				}
+			}
+			recipes = filtered
 		}
 
 		printOutput(recipes)
@@ -556,6 +569,7 @@ func init() {
 	mealCmd.AddCommand(mealUpdateCategoryCmd)
 	mealCmd.AddCommand(mealDeleteCategoryCmd)
 	mealCmd.AddCommand(mealRecipesCmd)
+	mealRecipesCmd.Flags().StringVar(&recipeFilterTitle, "title", "", "Filter recipes by title substring (case-insensitive)")
 	mealCmd.AddCommand(mealRecipeInfoCmd)
 	mealCmd.AddCommand(mealCreateRecipeCmd)
 	mealCmd.AddCommand(mealUpdateRecipeCmd)
