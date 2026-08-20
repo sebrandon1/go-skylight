@@ -148,6 +148,38 @@ func TestRoutineListCmd_TableMode(t *testing.T) {
 	}
 }
 
+func TestRoutineListCmd_AssigneeIDFilter(t *testing.T) {
+	newCmdTestClient(t, routineMockHandler())
+	orig := routineListAssigneeID
+	routineListAssigneeID = "a1"
+	t.Cleanup(func() { routineListAssigneeID = orig })
+
+	out := captureStdout(func() {
+		if err := routineListCmd.RunE(routineListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Morning") {
+		t.Errorf("expected matching routine in output, got: %s", out)
+	}
+}
+
+func TestRoutineListCmd_AssigneeIDFilter_NoMatch(t *testing.T) {
+	newCmdTestClient(t, routineMockHandler())
+	orig := routineListAssigneeID
+	routineListAssigneeID = "nonexistent"
+	t.Cleanup(func() { routineListAssigneeID = orig })
+
+	out := captureStdout(func() {
+		if err := routineListCmd.RunE(routineListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "Morning") {
+		t.Errorf("expected routine filtered out, got: %s", out)
+	}
+}
+
 func TestRoutineCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "routine")
 }

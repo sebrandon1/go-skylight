@@ -408,6 +408,38 @@ func TestMealUpdateSittingCmd(t *testing.T) {
 	}
 }
 
+func TestMealRecipesCmd_TitleFilter(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	orig := recipeFilterTitle
+	recipeFilterTitle = "taco"
+	t.Cleanup(func() { recipeFilterTitle = orig })
+
+	out := captureStdout(func() {
+		if err := mealRecipesCmd.RunE(mealRecipesCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Tacos") {
+		t.Errorf("expected matching recipe in output, got: %s", out)
+	}
+}
+
+func TestMealRecipesCmd_TitleFilter_NoMatch(t *testing.T) {
+	newCmdTestClient(t, mealMockHandler())
+	orig := recipeFilterTitle
+	recipeFilterTitle = "pizza"
+	t.Cleanup(func() { recipeFilterTitle = orig })
+
+	out := captureStdout(func() {
+		if err := mealRecipesCmd.RunE(mealRecipesCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "Tacos") {
+		t.Errorf("expected Tacos filtered out, got: %s", out)
+	}
+}
+
 func TestMealCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "meal")
 }

@@ -10,11 +10,12 @@ import (
 var routineTimeOfDays = []string{lib.RoutineTODMorning, lib.RoutineTODAfternoon, lib.RoutineTODEvening}
 
 var (
-	routineID         string
-	routineTitle      string
-	routineTimeOfDay  string
-	routineCategoryID string
-	routineStartDate  string
+	routineID             string
+	routineTitle          string
+	routineTimeOfDay      string
+	routineCategoryID     string
+	routineStartDate      string
+	routineListAssigneeID string
 )
 
 var routineCmd = &cobra.Command{
@@ -48,6 +49,16 @@ var routineListCmd = &cobra.Command{
 		routines, err := client.ListRoutines(ctx, frameID)
 		if err != nil {
 			return fmt.Errorf("listing routines: %w", err)
+		}
+
+		if routineListAssigneeID != "" {
+			filtered := routines[:0]
+			for _, r := range routines {
+				if r.AssigneeID == routineListAssigneeID {
+					filtered = append(filtered, r)
+				}
+			}
+			routines = filtered
 		}
 
 		maybeLoadCatNames(ctx, client)
@@ -127,6 +138,7 @@ func init() {
 	rootCmd.AddCommand(routineCmd)
 
 	routineCmd.AddCommand(routineListCmd)
+	routineListCmd.Flags().StringVar(&routineListAssigneeID, "assignee-id", "", "Filter routines by assignee ID")
 	routineCmd.AddCommand(routineCreateCmd)
 	routineCmd.AddCommand(routineDeleteCmd)
 
