@@ -130,6 +130,29 @@ var rewardCreateCmd = &cobra.Command{
 	},
 }
 
+var rewardGetCmd = &cobra.Command{
+	Use:   subGet,
+	Short: "Get a reward by ID",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		reward, err := client.GetReward(cmd.Context(), frameID, rewardID)
+		if err != nil {
+			return fmt.Errorf("getting reward: %w", err)
+		}
+
+		printOutput([]lib.Reward{*reward})
+		return nil
+	},
+}
+
 var rewardDeleteCmd = &cobra.Command{
 	Use:   subDelete,
 	Short: "Delete a reward",
@@ -298,6 +321,7 @@ var rewardUpdateCmd = &cobra.Command{
 
 func init() {
 	rewardCmd.AddCommand(rewardListCmd)
+	rewardCmd.AddCommand(rewardGetCmd)
 	rewardCmd.AddCommand(rewardCreateCmd)
 	rewardCmd.AddCommand(rewardUpdateCmd)
 	rewardCmd.AddCommand(rewardDeleteCmd)
@@ -327,6 +351,9 @@ func init() {
 	rewardUpdateCmd.Flags().BoolVar(&rewardNoRespawn, "no-respawn", false, "Disable respawn on redemption")
 	rewardUpdateCmd.Flags().IntSliceVar(&rewardCategoryIDs, "category-ids", nil, "Category IDs to assign reward to")
 	markFlagRequired(rewardUpdateCmd, "reward-id")
+
+	rewardGetCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID to retrieve")
+	markFlagRequired(rewardGetCmd, "reward-id")
 
 	rewardDeleteCmd.Flags().StringVar(&rewardID, "reward-id", "", "Reward ID")
 	rewardDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")

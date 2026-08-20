@@ -69,6 +69,30 @@ var routineListCmd = &cobra.Command{
 	},
 }
 
+var routineGetCmd = &cobra.Command{
+	Use:   subGet,
+	Short: "Get a single routine by ID",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		routine, err := client.GetRoutine(cmd.Context(), frameID, routineID)
+		if err != nil {
+			return fmt.Errorf("getting routine: %w", err)
+		}
+
+		maybeLoadCatNames(cmd.Context(), client)
+		printOutput([]lib.Routine{*routine})
+		return nil
+	},
+}
+
 var routineCreateCmd = &cobra.Command{
 	Use:   subCreate,
 	Short: "Create a routine",
@@ -176,6 +200,7 @@ func init() {
 
 	routineCmd.AddCommand(routineListCmd)
 	routineListCmd.Flags().StringVar(&routineListAssigneeID, "assignee-id", "", "Filter routines by assignee ID")
+	routineCmd.AddCommand(routineGetCmd)
 	routineCmd.AddCommand(routineCreateCmd)
 	routineCmd.AddCommand(routineUpdateCmd)
 	routineCmd.AddCommand(routineDeleteCmd)
@@ -188,6 +213,9 @@ func init() {
 	markFlagRequired(routineCreateCmd, "time-of-day")
 	markFlagRequired(routineCreateCmd, "category-id")
 	markFlagRequired(routineCreateCmd, "start-date")
+
+	routineGetCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID to fetch")
+	markFlagRequired(routineGetCmd, "routine-id")
 
 	routineUpdateCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
 	routineUpdateCmd.Flags().StringVar(&routineUpdateTitle, subTitle, "", "New title")

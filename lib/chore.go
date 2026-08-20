@@ -161,6 +161,22 @@ func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chor
 	return &result, nil
 }
 
+// GetChore retrieves a single chore by ID.
+func (c *Client) GetChore(ctx context.Context, frameID, choreID string) (*Chore, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get chore request: %w", err)
+	}
+
+	var apiResp choreAPISingleResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to get chore: %w", err)
+	}
+
+	result := apiResp.Data.toChore()
+	return &result, nil
+}
+
 // UpdateChore updates an existing chore.
 func (c *Client) UpdateChore(ctx context.Context, frameID, choreID string, chore ChoreData) (*Chore, error) {
 	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)), chore)
