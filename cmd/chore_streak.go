@@ -10,7 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var streakDays int
+var (
+	streakDays       int
+	streakAssigneeID string
+)
 
 // ChoreStreakStats holds per-assignee chore completion statistics over a window.
 type ChoreStreakStats struct {
@@ -177,6 +180,16 @@ for a given member are ignored and do not break streaks.`,
 
 		results := computeChoreStreaks(chores, dates, catNames)
 
+		if streakAssigneeID != "" {
+			filtered := results[:0]
+			for _, r := range results {
+				if r.AssigneeID == streakAssigneeID {
+					filtered = append(filtered, r)
+				}
+			}
+			results = filtered
+		}
+
 		printOutput(results)
 		return nil
 	},
@@ -185,4 +198,5 @@ for a given member are ignored and do not break streaks.`,
 func init() {
 	choreCmd.AddCommand(choreStreakCmd)
 	choreStreakCmd.Flags().IntVar(&streakDays, "days", 30, "Number of days to analyze (default 30)")
+	choreStreakCmd.Flags().StringVar(&streakAssigneeID, "assignee-id", "", "Filter results to a single family member")
 }
