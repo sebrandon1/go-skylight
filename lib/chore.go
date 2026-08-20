@@ -16,6 +16,7 @@ const (
 	choreStatusPending = ChoreStatusPending
 	paramTrue          = "true"
 	applyToAll         = "all"
+	queryKeyApplyTo    = "apply_to"
 )
 
 // choreIDRe matches composite chore IDs like "18731133-2026-04-28" or "70190003-2026-04-28-0600".
@@ -201,7 +202,7 @@ func (c *Client) DeleteChore(ctx context.Context, frameID, choreID string) error
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}
 
-	addQueryParams(req, map[string]string{"apply_to": applyToAll})
+	addQueryParams(req, map[string]string{queryKeyApplyTo: applyToAll})
 
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete chore: %w", err)

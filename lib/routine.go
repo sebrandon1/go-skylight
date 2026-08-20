@@ -163,6 +163,50 @@ func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, e
 	return routines, nil
 }
 
+// RoutineUpdateData holds the fields that may be updated on an existing routine.
+// Only non-zero fields are sent to the API.
+type RoutineUpdateData struct {
+	Title     string `json:"title,omitempty"`
+	TimeOfDay string `json:"time_of_day,omitempty"`
+}
+
+// UpdateRoutine updates an existing routine. apply_to=all is required by the
+// API for any recurring chore. Only non-zero fields in data are sent.
+func (c *Client) UpdateRoutine(ctx context.Context, frameID, routineID string, data RoutineUpdateData) (*Routine, error) {
+	chore := ChoreData{Title: data.Title}
+	if data.TimeOfDay != "" {
+		hour, ok := routineByHour[data.TimeOfDay]
+		if !ok {
+			return nil, fmt.Errorf("invalid time-of-day %q: must be morning, afternoon, or evening", data.TimeOfDay)
+		}
+		chore.RecurrenceSet = []string{fmt.Sprintf("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=%d", hour)}
+	}
+
+	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)), chore)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create update routine request: %w", err)
+	}
+	addQueryParams(req, map[string]string{queryKeyApplyTo: applyToAll})
+
+	var apiResp choreAPISingleResponse
+	if err := c.put(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to update routine: %w", err)
+	}
+
+	ch := apiResp.Data.toChore()
+	tod := data.TimeOfDay
+	if tod == "" {
+		tod = timeOfDayFromRecurrence(ch.RecurrenceSet)
+	}
+	return &Routine{
+		ID:                 ch.ID,
+		Title:              ch.Title,
+		TimeOfDay:          tod,
+		AssigneeID:         ch.AssigneeID,
+		NextOccurrenceDate: ch.DueDate,
+	}, nil
+}
+
 // DeleteRoutine deletes a routine. apply_to=all is required by the API for
 // any recurring chore -- without it, the request 400s with "you must have a
 // valid value for apply_to".
@@ -171,7 +215,7 @@ func (c *Client) DeleteRoutine(ctx context.Context, frameID, routineID string) e
 	if err != nil {
 		return fmt.Errorf("failed to create delete routine request: %w", err)
 	}
-	addQueryParams(req, map[string]string{"apply_to": applyToAll})
+	addQueryParams(req, map[string]string{queryKeyApplyTo: applyToAll})
 
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete routine: %w", err)

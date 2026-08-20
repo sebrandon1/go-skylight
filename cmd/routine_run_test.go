@@ -15,6 +15,8 @@ func routineMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/chores/routine1") && r.Method == http.MethodDelete:
 			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/chores/routine1") && r.Method == http.MethodPut:
+			fmt.Fprint(w, `{"data":{"id":"routine1","attributes":{"summary":"Evening Walk","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}}`)
 		case strings.HasSuffix(r.URL.Path, "/chores"):
 			fmt.Fprint(w, `{"data":[{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}]}`)
 		default:
@@ -184,12 +186,10 @@ func TestRoutineCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "routine")
 }
 
-func TestRoutineCmd_UpdateAndReorderRemoved(t *testing.T) {
-	for _, use := range []string{"update", "reorder"} {
-		for _, sub := range routineCmd.Commands() {
-			if sub.Use == use || strings.HasPrefix(sub.Use, use+" ") {
-				t.Errorf("expected %q subcommand to be removed from routine, but it's still registered", use)
-			}
+func TestRoutineCmd_ReorderRemoved(t *testing.T) {
+	for _, sub := range routineCmd.Commands() {
+		if sub.Use == "reorder" || strings.HasPrefix(sub.Use, "reorder ") {
+			t.Errorf("expected %q subcommand to be removed from routine, but it's still registered", "reorder")
 		}
 	}
 }
@@ -215,5 +215,43 @@ func TestRoutineCreateCmd_TableOutput(t *testing.T) {
 	}
 	if !strings.Contains(out, "Brush Teeth") {
 		t.Errorf("expected routine title in table, got: %s", out)
+	}
+}
+
+func TestRoutineUpdateCmd(t *testing.T) {
+	newCmdTestClient(t, routineMockHandler())
+	origID := routineID
+	routineID = "routine1"
+	t.Cleanup(func() { routineID = origID })
+	if err := routineUpdateCmd.Flags().Set("title", "Evening Walk"); err != nil {
+		t.Fatalf("setting title flag: %v", err)
+	}
+	if err := routineUpdateCmd.Flags().Set("time-of-day", "evening"); err != nil {
+		t.Fatalf("setting time-of-day flag: %v", err)
+	}
+	routineUpdateTitle = "Evening Walk"
+	routineUpdateTimeOfDay = "evening"
+
+	out := captureStdout(func() {
+		if err := routineUpdateCmd.RunE(routineUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Evening Walk") {
+		t.Errorf("expected updated routine in output, got: %s", out)
+	}
+}
+
+func TestRoutineUpdateCmd_InvalidTimeOfDay(t *testing.T) {
+	newCmdTestClient(t, routineMockHandler())
+	origID, origTOD := routineID, routineUpdateTimeOfDay
+	routineID, routineUpdateTimeOfDay = "routine1", "midnight"
+	t.Cleanup(func() { routineID, routineUpdateTimeOfDay = origID, origTOD })
+	if err := routineUpdateCmd.Flags().Set("time-of-day", "midnight"); err != nil {
+		t.Fatalf("setting time-of-day flag: %v", err)
+	}
+
+	if err := routineUpdateCmd.RunE(routineUpdateCmd, nil); err == nil {
+		t.Error("expected error for invalid --time-of-day, got nil")
 	}
 }

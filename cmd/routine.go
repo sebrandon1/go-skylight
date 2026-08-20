@@ -10,12 +10,14 @@ import (
 var routineTimeOfDays = []string{lib.RoutineTODMorning, lib.RoutineTODAfternoon, lib.RoutineTODEvening}
 
 var (
-	routineID             string
-	routineTitle          string
-	routineTimeOfDay      string
-	routineCategoryID     string
-	routineStartDate      string
-	routineListAssigneeID string
+	routineID              string
+	routineTitle           string
+	routineTimeOfDay       string
+	routineCategoryID      string
+	routineStartDate       string
+	routineListAssigneeID  string
+	routineUpdateTitle     string
+	routineUpdateTimeOfDay string
 )
 
 var routineCmd = &cobra.Command{
@@ -103,6 +105,41 @@ var routineCreateCmd = &cobra.Command{
 	},
 }
 
+var routineUpdateCmd = &cobra.Command{
+	Use:   subUpdate,
+	Short: "Update a routine",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		upd := lib.RoutineUpdateData{}
+		if cmd.Flags().Changed("title") {
+			upd.Title = routineUpdateTitle
+		}
+		if cmd.Flags().Changed("time-of-day") {
+			if err := validateEnum(routineUpdateTimeOfDay, routineTimeOfDays); err != nil {
+				return err
+			}
+			upd.TimeOfDay = routineUpdateTimeOfDay
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		routine, err := client.UpdateRoutine(cmd.Context(), frameID, routineID, upd)
+		if err != nil {
+			return fmt.Errorf("updating routine: %w", err)
+		}
+
+		maybeLoadCatNames(cmd.Context(), client)
+		printOutput([]lib.Routine{*routine})
+		return nil
+	},
+}
+
 var routineDeleteCmd = &cobra.Command{
 	Use:   subDelete,
 	Short: "Delete a routine",
@@ -140,6 +177,7 @@ func init() {
 	routineCmd.AddCommand(routineListCmd)
 	routineListCmd.Flags().StringVar(&routineListAssigneeID, "assignee-id", "", "Filter routines by assignee ID")
 	routineCmd.AddCommand(routineCreateCmd)
+	routineCmd.AddCommand(routineUpdateCmd)
 	routineCmd.AddCommand(routineDeleteCmd)
 
 	routineCreateCmd.Flags().StringVar(&routineTitle, subTitle, "", "Routine title")
@@ -150,6 +188,11 @@ func init() {
 	markFlagRequired(routineCreateCmd, "time-of-day")
 	markFlagRequired(routineCreateCmd, "category-id")
 	markFlagRequired(routineCreateCmd, "start-date")
+
+	routineUpdateCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
+	routineUpdateCmd.Flags().StringVar(&routineUpdateTitle, subTitle, "", "New title")
+	routineUpdateCmd.Flags().StringVar(&routineUpdateTimeOfDay, "time-of-day", "", "New time of day: morning, afternoon, or evening")
+	markFlagRequired(routineUpdateCmd, "routine-id")
 
 	routineDeleteCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
 	routineDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
