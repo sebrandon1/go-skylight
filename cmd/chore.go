@@ -115,6 +115,30 @@ var choreListCmd = &cobra.Command{
 	},
 }
 
+var choreGetCmd = &cobra.Command{
+	Use:   subGet,
+	Short: "Get a single chore by ID",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		chore, err := client.GetChore(cmd.Context(), frameID, choreID)
+		if err != nil {
+			return fmt.Errorf("getting chore: %w", err)
+		}
+
+		maybeLoadCatNames(cmd.Context(), client)
+		printOutput([]lib.Chore{*chore})
+		return nil
+	},
+}
+
 var choreCreateCmd = &cobra.Command{
 	Use:   subCreate,
 	Short: "Create a chore",
@@ -397,6 +421,7 @@ var choreClaimCmd = &cobra.Command{
 
 func init() {
 	choreCmd.AddCommand(choreListCmd)
+	choreCmd.AddCommand(choreGetCmd)
 	choreCmd.AddCommand(choreCreateCmd)
 	choreCmd.AddCommand(choreUpdateCmd)
 	choreCmd.AddCommand(choreDeleteCmd)
@@ -446,6 +471,9 @@ func init() {
 	choreUpdateCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Make chore claimable by anyone")
 	registerEnumFlagCompletion(choreUpdateCmd, "status", choreStatuses...)
 	markFlagRequired(choreUpdateCmd, "chore-id")
+
+	choreGetCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to retrieve")
+	markFlagRequired(choreGetCmd, "chore-id")
 
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
 	choreDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")

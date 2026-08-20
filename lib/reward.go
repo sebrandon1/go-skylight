@@ -61,6 +61,22 @@ func (c *Client) UpdateReward(ctx context.Context, frameID, rewardID string, rew
 	return &result, nil
 }
 
+// GetReward retrieves a single reward by ID.
+func (c *Client) GetReward(ctx context.Context, frameID, rewardID string) (*Reward, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get reward request: %w", err)
+	}
+
+	var apiResp rewardAPISingleResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to get reward: %w", err)
+	}
+
+	result := apiResp.Data.toReward()
+	return &result, nil
+}
+
 // DeleteReward deletes a reward.
 func (c *Client) DeleteReward(ctx context.Context, frameID, rewardID string) error {
 	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/rewards/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(rewardID)))
