@@ -427,3 +427,67 @@ func TestDeleteRoutine_ServerError(t *testing.T) {
 		t.Fatal("expected error for server error response, got nil")
 	}
 }
+
+func TestUpdateRoutine(t *testing.T) {
+	var gotApplyTo string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		gotApplyTo = r.URL.Query().Get("apply_to")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"97874955","attributes":{"summary":"Evening Walk","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"9740544","type":"category"}}}}}`)
+	}))
+	defer srv.Close()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+	client, _ := NewClientWithToken("u", "t")
+	routine, err := client.UpdateRoutine(context.Background(), "frame1", "97874955", RoutineUpdateData{Title: "Evening Walk", TimeOfDay: "evening"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if routine.Title != "Evening Walk" {
+		t.Errorf("Title: want %q got %q", "Evening Walk", routine.Title)
+	}
+	if routine.TimeOfDay != "evening" {
+		t.Errorf("TimeOfDay: want %q got %q", "evening", routine.TimeOfDay)
+	}
+	if gotApplyTo != "all" {
+		t.Errorf("apply_to: want %q got %q", "all", gotApplyTo)
+	}
+}
+
+func TestUpdateRoutine_InvalidTimeOfDay(t *testing.T) {
+	called := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	}))
+	defer srv.Close()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.UpdateRoutine(context.Background(), "frame1", "97874955", RoutineUpdateData{TimeOfDay: "midnight"})
+	if err == nil {
+		t.Fatal("expected error for invalid time-of-day, got nil")
+	}
+	if called {
+		t.Error("expected no HTTP call for an invalid time-of-day")
+	}
+}
+
+func TestUpdateRoutine_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.UpdateRoutine(context.Background(), "frame1", "97874955", RoutineUpdateData{Title: "Test"})
+	if err == nil {
+		t.Fatal("expected error for server error response, got nil")
+	}
+}
