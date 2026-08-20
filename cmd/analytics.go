@@ -11,7 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var analyticsDays int
+var (
+	analyticsDays      int
+	analyticsStartDate string
+	analyticsEndDate   string
+)
 
 var analyticsCmd = &cobra.Command{
 	Use:   "analytics",
@@ -26,10 +30,40 @@ var analyticsCmd = &cobra.Command{
 			return err
 		}
 
+		dateRangeSet := cmd.Flags().Changed("start-date") || cmd.Flags().Changed("end-date")
+		if dateRangeSet && cmd.Flags().Changed("days") {
+			return fmt.Errorf("--days cannot be used together with --start-date or --end-date")
+		}
+
 		now := time.Now()
-		start := now.AddDate(0, 0, -analyticsDays)
+		var start, end time.Time
+
+		if dateRangeSet {
+			endTime := now
+			if analyticsEndDate != "" {
+				t, err := time.Parse(lib.DateFormat, analyticsEndDate)
+				if err != nil {
+					return fmt.Errorf("invalid --end-date %q: use YYYY-MM-DD", analyticsEndDate)
+				}
+				endTime = t
+			}
+			if analyticsStartDate != "" {
+				t, err := time.Parse(lib.DateFormat, analyticsStartDate)
+				if err != nil {
+					return fmt.Errorf("invalid --start-date %q: use YYYY-MM-DD", analyticsStartDate)
+				}
+				start = t
+			} else {
+				start = endTime.AddDate(0, 0, -analyticsDays)
+			}
+			end = endTime
+		} else {
+			start = now.AddDate(0, 0, -analyticsDays)
+			end = now
+		}
+
 		startStr := start.Format(lib.DateFormat)
-		endStr := now.Format(lib.DateFormat)
+		endStr := end.Format(lib.DateFormat)
 
 		ctx := cmd.Context()
 		frame, err := getFrameOrFail(ctx, client, frameID)
@@ -94,7 +128,7 @@ var analyticsCmd = &cobra.Command{
 		}
 
 		catNames := buildCatNames(categories)
-		stats := computeAnalytics(chores, rewards, points, events, catNames, start, now)
+		stats := computeAnalytics(chores, rewards, points, events, catNames, start, end)
 
 		if outputFormat == outputJSON {
 			printJSON(stats)
@@ -293,4 +327,6 @@ func printAnalyticsText(s AnalyticsStats) {
 func init() {
 	rootCmd.AddCommand(analyticsCmd)
 	analyticsCmd.Flags().IntVar(&analyticsDays, "days", 30, "Number of days to include in the report")
+	analyticsCmd.Flags().StringVar(&analyticsStartDate, "start-date", "", "Start date for the report (YYYY-MM-DD); mutually exclusive with --days")
+	analyticsCmd.Flags().StringVar(&analyticsEndDate, "end-date", "", "End date for the report (YYYY-MM-DD); mutually exclusive with --days")
 }

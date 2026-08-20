@@ -114,6 +114,103 @@ func TestAnalyticsCmd_ChoresFetchError(t *testing.T) {
 	}
 }
 
+func TestAnalyticsCmd_StartDateEndDate(t *testing.T) {
+	newCmdTestClient(t, analyticsMockHandler())
+	orig := struct{ start, end, fmt string }{analyticsStartDate, analyticsEndDate, outputFormat}
+	analyticsStartDate, analyticsEndDate, outputFormat = "2026-07-01", "2026-07-31", outputJSON
+	t.Cleanup(func() {
+		analyticsStartDate, analyticsEndDate, outputFormat = orig.start, orig.end, orig.fmt
+	})
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := analyticsCmd.Flags().Set("start-date", "2026-07-01"); err != nil {
+		t.Fatalf("setting start-date flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := analyticsCmd.RunE(analyticsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, `"start_date": "2026-07-01"`) {
+		t.Errorf("expected start_date in output, got: %s", out)
+	}
+	if !strings.Contains(out, `"end_date": "2026-07-31"`) {
+		t.Errorf("expected end_date in output, got: %s", out)
+	}
+}
+
+func TestAnalyticsCmd_EndDateOnly(t *testing.T) {
+	newCmdTestClient(t, analyticsMockHandler())
+	orig := struct{ start, end, fmt string }{analyticsStartDate, analyticsEndDate, outputFormat}
+	analyticsStartDate, analyticsEndDate, outputFormat = "", "2026-07-31", outputJSON
+	t.Cleanup(func() {
+		analyticsStartDate, analyticsEndDate, outputFormat = orig.start, orig.end, orig.fmt
+	})
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := analyticsCmd.Flags().Set("end-date", "2026-07-31"); err != nil {
+		t.Fatalf("setting end-date flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := analyticsCmd.RunE(analyticsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, `"end_date": "2026-07-31"`) {
+		t.Errorf("expected end_date in output, got: %s", out)
+	}
+}
+
+func TestAnalyticsCmd_InvalidStartDate(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	orig := struct{ start, end string }{analyticsStartDate, analyticsEndDate}
+	analyticsStartDate, analyticsEndDate = "not-a-date", ""
+	t.Cleanup(func() { analyticsStartDate, analyticsEndDate = orig.start, orig.end })
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := analyticsCmd.Flags().Set("start-date", "not-a-date"); err != nil {
+		t.Fatalf("setting start-date flag: %v", err)
+	}
+
+	err := analyticsCmd.RunE(analyticsCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid --start-date, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid --start-date") {
+		t.Errorf("expected 'invalid --start-date' in error, got: %v", err)
+	}
+}
+
+func TestAnalyticsCmd_InvalidEndDate(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	orig := struct{ start, end string }{analyticsStartDate, analyticsEndDate}
+	analyticsStartDate, analyticsEndDate = "", "not-a-date"
+	t.Cleanup(func() { analyticsStartDate, analyticsEndDate = orig.start, orig.end })
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := analyticsCmd.Flags().Set("end-date", "not-a-date"); err != nil {
+		t.Fatalf("setting end-date flag: %v", err)
+	}
+
+	err := analyticsCmd.RunE(analyticsCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid --end-date, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid --end-date") {
+		t.Errorf("expected 'invalid --end-date' in error, got: %v", err)
+	}
+}
+
 func TestAnalyticsCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "analytics")
 }
