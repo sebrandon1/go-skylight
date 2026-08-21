@@ -304,8 +304,15 @@ func pollPhotos(ctx context.Context, client *lib.Client, state *watchState, ts s
 				if err != nil {
 					return nil, err
 				}
+				allSeen := true
+				for _, p := range page {
+					if _, ok := state.seenPhotoIDs[p.ID]; !ok {
+						allSeen = false
+						break
+					}
+				}
 				all = append(all, page...)
-				if next == "" {
+				if next == "" || (len(page) > 0 && allSeen && !state.seeding) {
 					return all, nil
 				}
 				pageToken = next

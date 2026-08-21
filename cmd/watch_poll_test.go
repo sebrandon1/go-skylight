@@ -538,6 +538,73 @@ func TestPollPhotos_Pagination(t *testing.T) {
 	}
 }
 
+func TestPollPhotos_EarlyExitWhenAllSeen(t *testing.T) {
+	origFormat := outputFormat
+	outputFormat = ""
+	t.Cleanup(func() { outputFormat = origFormat })
+
+	callCount := 0
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		callCount++
+		switch r.URL.Query().Get("page_token") {
+		case "", "__START__":
+			// Page 1: p1 (already seen), with a next page token.
+			fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"asset_type":"image","status":"active"}}],"meta":{"next_page_token":"tok2"}}`)
+		default:
+			// Page 2: p2 (not yet seen) — should never be fetched.
+			fmt.Fprint(w, `{"data":[{"id":"p2","attributes":{"asset_type":"image","status":"active"}}]}`)
+		}
+	})
+
+	// Pre-populate seen so page 1 is fully covered → early exit expected.
+	state := &watchState{seenPhotoIDs: map[string]struct{}{"p1": {}}}
+	captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:00") })
+
+	if callCount != 1 {
+		t.Errorf("expected 1 API call (early exit after fully-seen page), got %d", callCount)
+	}
+	if _, seen := state.seenPhotoIDs["p2"]; seen {
+		t.Error("p2 should not be in seenPhotoIDs — page 2 was never fetched")
+	}
+}
+
+// TestPollPhotos_EarlyExitEmptyFrame verifies that a frame with zero photos
+// does not trigger early-exit on the first non-seeding poll. With the old
+// len(seenPhotoIDs)>0 guard, an empty-photo frame would never early-exit
+// because seenPhotoIDs stays empty after seeding.
+func TestPollPhotos_EarlyExitEmptyFrame(t *testing.T) {
+	origFormat := outputFormat
+	outputFormat = ""
+	t.Cleanup(func() { outputFormat = origFormat })
+
+	callCount := 0
+	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		callCount++
+		switch r.URL.Query().Get("page_token") {
+		case "", "__START__":
+			// Empty first page with a next token — simulates a frame that
+			// gained photos between seeding (empty) and now.
+			fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"tok2"}}`)
+		default:
+			fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"asset_type":"image","status":"active"}}]}`)
+		}
+	})
+
+	// Seeding produced zero photos: seenPhotoIDs is empty after seeding.
+	state := &watchState{seenPhotoIDs: make(map[string]struct{})}
+	out := captureStdout(func() { pollPhotos(context.Background(), client, state, "12:00:00") })
+
+	// Post-seeding poll should fetch all pages (not early-exit on the empty first page).
+	if callCount < 2 {
+		t.Errorf("expected ≥2 API calls when first page is empty but more pages exist, got %d", callCount)
+	}
+	if !strings.Contains(out, "p1") {
+		t.Errorf("expected p1 to be reported as new, got: %s", out)
+	}
+}
+
 func TestPoll_AllResources(t *testing.T) {
 	client := newWatchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
