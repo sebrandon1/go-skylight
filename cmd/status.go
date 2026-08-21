@@ -32,47 +32,85 @@ var statusCmd = &cobra.Command{
 			return fmt.Errorf("getting frame: %w", err)
 		}
 
-		chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{
-			After:  today,
-			Before: today,
-			Status: lib.ChoreStatusPending,
-		})
-		if err != nil {
-			return fmt.Errorf("listing chores: %w", err)
-		}
+		var (
+			chores          []lib.Chore
+			events          []lib.CalendarEvent
+			categories      []lib.Category
+			points          []lib.RewardPointEntry
+			sittings        []lib.MealSitting
+			lists           []lib.List
+			routines        []lib.Routine
+			incompleteItems int
+			listErrors      int
+		)
 
-		events, err := client.ListCalendarEvents(ctx, frameID, today, today, frame.TimeZone)
-		if err != nil {
-			return fmt.Errorf("listing calendar events: %w", err)
-		}
-
-		categories, err := client.ListCategories(ctx, frameID)
-		if err != nil {
-			return fmt.Errorf("listing categories: %w", err)
-		}
-
-		points, err := client.GetRewardPoints(ctx, frameID)
-		if err != nil {
-			return fmt.Errorf("getting reward points: %w", err)
-		}
-
-		sittings, err := client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{
-			DateMin: today,
-			DateMax: today,
-		})
-		if err != nil {
-			return fmt.Errorf("listing meal sittings: %w", err)
-		}
-
-		lists, err := client.ListLists(ctx, frameID)
-		if err != nil {
-			return fmt.Errorf("listing lists: %w", err)
-		}
-		incompleteItems, listErrors := countIncompleteListItems(ctx, client, frameID, lists)
-
-		routines, err := client.ListRoutines(ctx, frameID)
-		if err != nil {
-			return fmt.Errorf("listing routines: %w", err)
+		if err := runConcurrent(
+			func() error {
+				var err error
+				chores, err = client.ListChores(ctx, frameID, lib.ChoreListOptions{
+					After:  today,
+					Before: today,
+					Status: lib.ChoreStatusPending,
+				})
+				if err != nil {
+					return fmt.Errorf("listing chores: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				events, err = client.ListCalendarEvents(ctx, frameID, today, today, frame.TimeZone)
+				if err != nil {
+					return fmt.Errorf("listing calendar events: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				categories, err = client.ListCategories(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("listing categories: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				points, err = client.GetRewardPoints(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("getting reward points: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				sittings, err = client.ListMealSittings(ctx, frameID, lib.MealSittingListOptions{
+					DateMin: today,
+					DateMax: today,
+				})
+				if err != nil {
+					return fmt.Errorf("listing meal sittings: %w", err)
+				}
+				return nil
+			},
+			func() error {
+				var err error
+				lists, err = client.ListLists(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("listing lists: %w", err)
+				}
+				incompleteItems, listErrors = countIncompleteListItems(ctx, client, frameID, lists)
+				return nil
+			},
+			func() error {
+				var err error
+				routines, err = client.ListRoutines(ctx, frameID)
+				if err != nil {
+					return fmt.Errorf("listing routines: %w", err)
+				}
+				return nil
+			},
+		); err != nil {
+			return err
 		}
 
 		pointEntries := resolveRewardPointNames(points, categories)

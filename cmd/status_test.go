@@ -226,6 +226,38 @@ func TestStatusCmd_GetFrameError(t *testing.T) {
 	}
 }
 
+func TestStatusCmd_ChoresError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/chores") && r.URL.Query().Get("status") == "pending":
+			w.WriteHeader(http.StatusInternalServerError)
+		case strings.HasSuffix(r.URL.Path, "/categories"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/reward_points"):
+			fmt.Fprint(w, `[]`)
+		case strings.HasSuffix(r.URL.Path, "/chores"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case strings.HasSuffix(r.URL.Path, "/lists"):
+			fmt.Fprint(w, `{"data":[]}`)
+		default:
+			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+		}
+	})
+
+	err := statusCmd.RunE(statusCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when chores API returns 500, got nil")
+	}
+	if !strings.Contains(err.Error(), "listing chores") {
+		t.Errorf("expected 'listing chores' in error, got: %v", err)
+	}
+}
+
 func TestStatusCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "status")
 }
