@@ -3,10 +3,10 @@
 ## List chores
 
 ```bash
-# All pending chores
-skylight chore list --status pending
+# All pending chores (--after/--before are required by the API)
+skylight chore list --status pending --after 2026-08-01 --before 2026-08-31
 
-# Completed chores this week (--after/--before are required for status=complete)
+# Completed chores this week (uses GNU date; on macOS substitute the date manually)
 skylight chore list --status complete \
   --after $(date -d 'last monday' +%Y-%m-%d) \
   --before $(date +%Y-%m-%d)

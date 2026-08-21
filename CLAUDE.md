@@ -33,24 +33,26 @@ The build target injects version via ldflags: `-X main.Version=$(git describe --
 main.go                       # Entrypoint, sets Version, calls cmd.Execute()
 cmd/                           # Cobra command definitions
   root.go                      # Root command, persistent flags (--email, --password, --token, --user-id, --frame-id, --config, --refresh-token, --device-fingerprint, --output, --quiet), version
+  constants.go                 # Shared config-key names and subcommand strings
+  completion.go                # Shell completion command (bash/zsh/fish)
   session.go                   # login command (with --save flag for config file)
   config.go                    # Config file loading/saving (~/.skylight/config)
   configcmd.go                 # config show|get|set|unset|edit subcommands
   frame.go                     # frame list, info, devices, avatars, colors, set-album
-  calendar.go                  # calendar list, create, create-countdown, update, delete, sources, week
+  calendar.go                  # calendar list, get, create, create-countdown, day, week, update, delete, sources, source-enable/disable
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
-  chore.go                     # chore list (with --week), create, update, delete, complete, skip, claim
+  chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim
   chore_streak.go              # chore streak — per-assignee completion streak stats
   chore_week.go                # Weekly chore view builder (Mon-Sun slots)
-  reward.go                    # reward list, create, update, delete, redeem, unredeem, points, remove-stars
+  reward.go                    # reward list, get, create, update, delete, redeem, unredeem, points, remove-stars
   reward_remove_stars.go       # reward remove-stars — deduct points from a user balance
-  list.go                      # list all, info, create, update, delete, add-item, update-item, delete-item
-  meal.go                      # meal categories, recipes (create, update, delete), sittings, grocery list
+  list.go                      # list all, info, create, update, delete, add-item, update-item, delete-item, delete-section, reorder-item, clear-completed, task-box-item
+  meal.go                      # meal categories (CRUD), recipes (create, update, delete), sittings (CRUD), plan, sitting-recipe, grocery list
   category.go                  # category list, create, update, delete
   template.go                  # template save|apply|list|delete (stored in ~/.skylight/templates/)
   photo.go                     # photo list, upload, delete, download
-  routine.go                   # routine list, create, delete
-  grocery.go                   # grocery list, create, show, add, add-recipe, clear, organize, order
+  routine.go                   # routine list, get, create, update, delete
+  grocery.go                   # grocery list, create, show, delete, add, add-recipe, update-item, delete-item, organize, order
   bounty.go                    # bounty (chore + reward pair) create/list/update/delete
   rotation.go                  # chore rotation — generate rotating assignments across members
   addon.go                     # addon list — show frame add-ons and enabled state
@@ -58,9 +60,10 @@ cmd/                           # Cobra command definitions
   export.go                    # export — dump frame data to JSON file
   import.go                    # import — restore frame data from export JSON file
   watch.go                     # watch — poll for changes and print events as they happen
-  home.go                      # home — weekly combined view of events, tasks, lists, meals
+  home.go                      # home — weekly combined view of events, tasks, lists, meals, routines
   status.go                    # status — quick overview of the connected frame
   week.go                      # Generic weekly slot builder (used by chore_week and calendar_week)
+  fanout.go                    # runConcurrent — bounded parallel API calls (used by status)
   table_output.go              # Table renderers for all resource types (--output table)
   helpers.go                   # printJSON, printOutput, printSuccess, printDryRun, table writer, utilities
   *_test.go                    # Unit tests
@@ -68,7 +71,7 @@ lib/                           # API client library
   client.go                    # HTTP client, auth, request helpers (get/post/put/patch/delete)
   session.go                   # Login (POST /api/sessions), OAuth2 refresh token flow
   structs.go                   # All API types and request/response structs
-  options.go                   # ClientOption functional options (WithBaseURL, WithRetry, WithRateLimit, WithLogger)
+  options.go                   # ClientOption functional options (WithBaseURL, WithHTTPClient, WithAPIVersion, WithRetry, WithRateLimit, WithLogger)
   errors.go                    # Typed errors: AuthError, NotFoundError, RateLimitError, NetworkError, ValidationError; IsAuthError/IsRateLimited/IsValidation helpers
   retry.go                     # Retry with exponential backoff, jitter, and rate limiting
   poller.go                    # RewardsPoller — background poll loop with persistent dedup state
@@ -80,10 +83,10 @@ lib/                           # API client library
   list.go                      # List CRUD, list item CRUD, task box items
   meal.go                      # Recipes, meal sittings, meal categories, grocery list
   reward.go                    # Reward CRUD, redeem/unredeem, points, remove-stars (JSON-API format)
-  bounty.go                    # Bounty (chore + reward pair) create and list
+  bounty.go                    # Bounty (chore + reward pair) create, list, update, delete
   rotation.go                  # Chore rotation generator (rotating assignments across members)
   photo.go                     # Photo list, upload, delete, download
-  routine.go                   # Routine create/list/delete (a routine is a chore with routine:true and a BYHOUR-encoded time slot)
+  routine.go                   # Routine create/list/get/update/delete (a routine is a chore with routine:true and a BYHOUR-encoded time slot)
   *_test.go                    # Unit tests using httptest mock servers
   integration_test.go          # Integration tests (build tag: integration)
   integration_crud_test.go     # CRUD integration tests (build tag: integration)
@@ -117,6 +120,8 @@ SKYLIGHT_USER_ID=uid456
 SKYLIGHT_FRAME_ID=fid789
 SKYLIGHT_REFRESH_TOKEN=rt_abc123
 SKYLIGHT_DEVICE_FINGERPRINT=00000000-0000-4000-8000-000000000001
+SKYLIGHT_OUTPUT=json
+SKYLIGHT_QUIET=false
 ```
 
 - CLI flags take precedence over config file values
@@ -137,28 +142,28 @@ SKYLIGHT_DEVICE_FINGERPRINT=00000000-0000-4000-8000-000000000001
 
 - `login` -- Authenticate and print credentials (with `--save` to write config)
 - `status` -- Quick overview of the connected frame (chores, events, meals, lists, points)
-- `home` -- Weekly combined view of events, tasks, lists, and meals (with `--no-tasks`, `--no-lists`, `--no-meals`)
-- `analytics` -- Family activity statistics over a time period (with `--days`)
+- `home` -- Weekly combined view of events, tasks, lists, meals, and routines (with `--no-tasks`, `--no-lists`, `--no-meals`, `--no-routines`)
+- `analytics` -- Family activity statistics over a time period (with `--days` or `--start-date`/`--end-date`)
 - `watch` -- Poll for changes and print events as they happen (with `--interval`, `--resources`, `--persist`)
 - `export` -- Dump frame data to JSON file (with `--output-file`, `--resources`, `--days`)
 - `import` -- Restore frame data from export JSON file (with `--file`, `--dry-run`, `--resources`)
-- `bounty create|list` -- Chore + reward pairs
+- `bounty create|list|update|delete` -- Chore + reward pairs
 - `rotation create` -- Rotating chore assignments
 - `template save|apply|list|delete` -- Named chore+reward templates (stored in `~/.skylight/templates/`)
 - `config show|get|set|unset|edit` -- View and modify the local configuration file
 
 ### Resource Commands
 
-- `calendar list|create|create-countdown|update|delete|sources|week` -- Calendar events and source calendars
-- `chore list|create|update|delete|complete|skip|claim|streak` -- Chore management (list supports `--week` for weekly view)
-- `reward list|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
-- `list all|info|create|update|delete|add-item|update-item|delete-item` -- List management
-- `meal categories|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|create-sitting|add-to-grocery` -- Meal planning
+- `calendar list|get|create|create-countdown|day|week|update|delete|sources|source-enable|source-disable` -- Calendar events and source calendars
+- `chore list|get|search|create|update|delete|complete|skip|claim|streak` -- Chore management (list supports `--week` for weekly view)
+- `reward list|get|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
+- `list all|info|create|update|delete|add-item|update-item|delete-item|delete-section|reorder-item|clear-completed|task-box-item` -- List management
+- `meal categories|create-category|update-category|delete-category|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|get-sitting|create-sitting|update-sitting|delete-sitting|sitting-recipe|plan|add-to-grocery` -- Meal planning
 - `category list|create|update|delete` -- Family member category management
 - `frame list|info|devices|avatars|colors|set-album` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
-- `routine list|create|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
-- `grocery list|create|show|add|add-recipe|clear|organize|order` -- Grocery list management (Instacart ordering)
+- `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
+- `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order` -- Grocery list management (Instacart ordering)
 - `addon list` -- Frame add-ons and enabled state
 
 ### Legacy `get` Command

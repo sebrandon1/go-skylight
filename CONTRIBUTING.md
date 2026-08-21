@@ -4,7 +4,7 @@ Thank you for your interest in contributing!
 
 ## Prerequisites
 
-- Go 1.25+ (the module requires 1.26.1; use `go.mod` as the source of truth)
+- Go 1.26.x (`go.mod` is the source of truth; currently 1.26.6)
 - `golangci-lint` — install via `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - `make` — used for all dev workflows
 
@@ -68,7 +68,7 @@ recommended way to override the API base URL. Use WithBaseURL instead.
 2. Create `lib/<resource>.go` with methods on `*Client`. Use `c.effectiveURL()` for all URL construction.
 3. Create `lib/<resource>_test.go` with table-driven tests using `httptest.NewServer` and `WithBaseURL`.
 4. Add CLI commands under `cmd/` using Cobra.
-5. Update the API Coverage table in `README.md`.
+5. Update the API Coverage table in `docs/library-usage.md`.
 
 ## Running Tests
 
