@@ -285,6 +285,8 @@ func exportMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/categories"):
 			fmt.Fprint(w, `{"data":[{"id":"cat1","type":"category","attributes":{"label":"Alice","color":"blue"}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/messages"):
+			fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":""}}`)
 		default:
 			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
 		}

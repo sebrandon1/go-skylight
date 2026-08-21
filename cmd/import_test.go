@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -385,5 +387,51 @@ func TestImportCmd_FileNotFound(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "reading") {
 		t.Errorf("expected 'reading' in error, got: %v", err)
+	}
+}
+
+func TestImportPhotos(t *testing.T) {
+	imgBytes := []byte("fake-image-data")
+	encoded := base64.StdEncoding.EncodeToString(imgBytes)
+
+	var s3URL string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/upload_url", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"data":{"url":%q,"key":"k1","get_url":"http://cdn/k1.jpg"}}`, s3URL)
+	})
+	mux.HandleFunc("/s3-put", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	s3URL = srv.URL + "/s3-put"
+
+	client := clientAtURL(t, srv.URL)
+
+	origFrameID := frameID
+	frameID = "frame1"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	photos := []PhotoExport{{Ext: "jpg", Data: encoded}}
+	total, failed := importPhotos(context.Background(), client, photos)
+	if total != 1 || failed != 0 {
+		t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
+	}
+}
+
+func TestImportPhotos_BadBase64(t *testing.T) {
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+	})
+
+	origFrameID := frameID
+	frameID = "frame1"
+	t.Cleanup(func() { frameID = origFrameID })
+
+	photos := []PhotoExport{{Ext: "jpg", Data: "!!!not-base64!!!"}}
+	total, failed := importPhotos(context.Background(), client, photos)
+	if total != 1 || failed != 1 {
+		t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 	}
 }
