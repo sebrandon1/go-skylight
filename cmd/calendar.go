@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -18,6 +19,7 @@ var (
 	calendarColor         string
 	calendarCategoryID    string
 	calendarWeekDate      string
+	calendarDayDate       string
 	calendarCountdownDate string
 	calendarSourceID      string
 )
@@ -353,6 +355,45 @@ var calendarWeekCmd = &cobra.Command{
 	},
 }
 
+var calendarDayCmd = &cobra.Command{
+	Use:   "day",
+	Short: "Show a single day's calendar events",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		var dateStr string
+		if cmd.Flags().Changed(subDate) {
+			if err := validateDate(calendarDayDate); err != nil {
+				return err
+			}
+			dateStr = calendarDayDate
+		} else {
+			dateStr = time.Now().Format(lib.DateFormat)
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
+		if err != nil {
+			return err
+		}
+
+		events, err := client.ListCalendarEvents(ctx, frameID, dateStr, dateStr, frame.TimeZone)
+		if err != nil {
+			return fmt.Errorf("listing calendar events: %w", err)
+		}
+
+		printOutput(events)
+		return nil
+	},
+}
+
 func init() {
 	calendarCmd.AddCommand(calendarListCmd)
 	calendarCmd.AddCommand(calendarGetCmd)
@@ -364,6 +405,9 @@ func init() {
 	calendarCmd.AddCommand(calendarSourceEnableCmd)
 	calendarCmd.AddCommand(calendarSourceDisableCmd)
 	calendarCmd.AddCommand(calendarWeekCmd)
+	calendarCmd.AddCommand(calendarDayCmd)
+
+	calendarDayCmd.Flags().StringVar(&calendarDayDate, subDate, "", "Date to show (YYYY-MM-DD, default today)")
 
 	calendarGetCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to get")
 	markFlagRequired(calendarGetCmd, "event-id")
