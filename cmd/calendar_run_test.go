@@ -353,6 +353,52 @@ func TestCalendarSourceDisableCmd(t *testing.T) {
 	}
 }
 
+func TestCalendarDayCmd(t *testing.T) {
+	newCmdTestClient(t, calendarMockHandler())
+
+	if err := calendarDayCmd.Flags().Set(subDate, "2026-01-01"); err != nil {
+		t.Fatalf("setting date flag: %v", err)
+	}
+	orig := calendarDayDate
+	calendarDayDate = "2026-01-01"
+	t.Cleanup(func() { calendarDayDate = orig })
+
+	out := captureStdout(func() {
+		if err := calendarDayCmd.RunE(calendarDayCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Meeting") {
+		t.Errorf("expected event in output, got: %s", out)
+	}
+}
+
+func TestCalendarDayCmd_DefaultDate(t *testing.T) {
+	newCmdTestClient(t, calendarMockHandler())
+
+	out := captureStdout(func() {
+		if err := calendarDayCmd.RunE(calendarDayCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	_ = out // today may return empty events; just verify no error
+}
+
+func TestCalendarDayCmd_InvalidDate(t *testing.T) {
+	newCmdTestClient(t, calendarMockHandler())
+
+	if err := calendarDayCmd.Flags().Set(subDate, "not-a-date"); err != nil {
+		t.Fatalf("setting date flag: %v", err)
+	}
+	orig := calendarDayDate
+	calendarDayDate = "not-a-date"
+	t.Cleanup(func() { calendarDayDate = orig })
+
+	if err := calendarDayCmd.RunE(calendarDayCmd, nil); err == nil {
+		t.Error("expected error for invalid date, got nil")
+	}
+}
+
 func TestCalendarCreateCmd_TableOutput(t *testing.T) {
 	newCmdTestClient(t, calendarMockHandler())
 	origTitle, origStart, origEnd, origFmt := calendarTitle, calendarStartAt, calendarEndAt, outputFormat
