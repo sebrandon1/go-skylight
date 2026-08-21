@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -22,6 +23,7 @@ const (
 	exportResourceRoutines   = "routines"
 	exportResourceBounties   = "bounties"
 	exportResourceCategories = "categories"
+	exportResourcePhotos     = "photos"
 
 	// resourceAll is the documented default/wildcard value for the various
 	// --resources flags across commands, meaning "no filter, include all".
@@ -38,6 +40,14 @@ var allExportResources = []string{
 	exportResourceRoutines,
 	exportResourceBounties,
 	exportResourceCategories,
+	exportResourcePhotos,
+}
+
+// PhotoExport holds the binary content and metadata for a single exported photo.
+// Ext is a dot-free extension (e.g. "jpg"); Data is the base64-encoded raw bytes.
+type PhotoExport struct {
+	Ext  string `json:"ext"`
+	Data string `json:"data"`
 }
 
 type ExportData struct {
@@ -52,6 +62,7 @@ type ExportData struct {
 	Routines       []lib.Routine       `json:"routines,omitempty"`
 	Bounties       []lib.Bounty        `json:"bounties,omitempty"`
 	Categories     []lib.Category      `json:"categories,omitempty"`
+	Photos         []PhotoExport       `json:"photos,omitempty"`
 }
 
 var (
@@ -65,7 +76,7 @@ var exportCmd = &cobra.Command{
 	Short: "Dump frame data to a JSON file",
 	Long: `Export frame data to a JSON file for backup or migration.
 
-Resources exported: chores, rewards, lists, recipes, sittings, calendar, routines, bounties, categories.
+Resources exported: chores, rewards, lists, recipes, sittings, calendar, routines, bounties, categories, photos.
 Time-bounded resources (chores, sittings, calendar) use --days to set the window
 centered on today. Use --resources to limit which resource types are included.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -225,6 +236,34 @@ centered on today. Use --resources to limit which resource types are included.`,
 				return err
 			})
 		}
+		if want[exportResourcePhotos] {
+			launch(exportResourcePhotos, func() error {
+				photos, err := listAllPhotos(ctx, client, frameID)
+				if err != nil {
+					return err
+				}
+				exports := make([]PhotoExport, 0, len(photos))
+				for _, p := range photos {
+					if p.AssetURL == "" {
+						continue
+					}
+					raw, err := client.DownloadPhoto(ctx, p.AssetURL)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: skipping photo %s: %v\n", p.ID, err)
+						continue
+					}
+					ext := strings.TrimPrefix(photoAssetExt(p.AssetURL, p.AssetType), ".")
+					exports = append(exports, PhotoExport{
+						Ext:  ext,
+						Data: base64.StdEncoding.EncodeToString(raw),
+					})
+				}
+				mu.Lock()
+				data.Photos = exports
+				mu.Unlock()
+				return nil
+			})
+		}
 
 		go func() {
 			wg.Wait()
@@ -273,6 +312,6 @@ func parseExportResources(s string) ([]string, error) {
 func init() {
 	rootCmd.AddCommand(exportCmd)
 	exportCmd.Flags().StringVar(&exportOutputFile, "output-file", "", "Output file path (default: stdout)")
-	exportCmd.Flags().StringVar(&exportResources, "resources", resourceAll, "Comma-separated resource types: chores,rewards,lists,recipes,sittings,calendar,routines,bounties,categories")
+	exportCmd.Flags().StringVar(&exportResources, "resources", resourceAll, "Comma-separated resource types: chores,rewards,lists,recipes,sittings,calendar,routines,bounties,categories,photos")
 	exportCmd.Flags().IntVar(&exportDays, "days", 90, "Window (in days before/after today) for time-bounded resources")
 }

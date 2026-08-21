@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,6 +12,24 @@ import (
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
+
+// listAllPhotos paginates through all pages of ListPhotos and returns every photo on the frame.
+func listAllPhotos(ctx context.Context, client *lib.Client, fid string) ([]lib.Photo, error) {
+	var all []lib.Photo
+	var pageToken string
+	for {
+		photos, next, err := client.ListPhotos(ctx, fid, lib.PhotoListOptions{PageToken: pageToken})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, photos...)
+		if next == "" {
+			break
+		}
+		pageToken = next
+	}
+	return all, nil
+}
 
 const (
 	photoExtJPG = ".jpg"
@@ -188,23 +207,16 @@ var photoDownloadCmd = &cobra.Command{
 			wantIDs[id] = true
 		}
 
-		var toDownload []lib.Photo
 		ctx := cmd.Context()
-		pageToken := ""
-		for {
-			photos, nextToken, err := client.ListPhotos(ctx, frameID, lib.PhotoListOptions{PageToken: pageToken})
-			if err != nil {
-				return fmt.Errorf("listing photos: %w", err)
+		all, err := listAllPhotos(ctx, client, frameID)
+		if err != nil {
+			return fmt.Errorf("listing photos: %w", err)
+		}
+		var toDownload []lib.Photo
+		for _, p := range all {
+			if photoDownloadAll || wantIDs[p.ID] {
+				toDownload = append(toDownload, p)
 			}
-			for _, p := range photos {
-				if photoDownloadAll || wantIDs[p.ID] {
-					toDownload = append(toDownload, p)
-				}
-			}
-			if nextToken == "" {
-				break
-			}
-			pageToken = nextToken
 		}
 
 		if len(toDownload) == 0 {

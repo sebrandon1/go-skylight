@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -116,6 +117,7 @@ func runImportDryRun(data ExportData, want map[string]bool) {
 		exportResourceRoutines:   len(data.Routines),
 		exportResourceBounties:   len(data.Bounties),
 		exportResourceCategories: len(data.Categories),
+		exportResourcePhotos:     len(data.Photos),
 	}
 	fmt.Printf("Dry run — would import into frame %s:\n", frameID)
 	for _, r := range allExportResources {
@@ -152,6 +154,9 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 	}
 	if want[exportResourceBounties] {
 		tasks = append(tasks, func() (int, int) { return importBounties(ctx, client, data.Bounties) })
+	}
+	if want[exportResourcePhotos] {
+		tasks = append(tasks, func() (int, int) { return importPhotos(ctx, client, data.Photos) })
 	}
 
 	total, failed := parallelImport(tasks, func(fn importFn) (int, int) { return fn() })
@@ -266,6 +271,21 @@ func importBounties(ctx context.Context, client *lib.Client, bounties []lib.Boun
 			EmojiIcon:   b.Reward.EmojiIcon,
 		}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating bounty %q: %v\n", b.Chore.Title, err)
+			return 1, 1
+		}
+		return 1, 0
+	})
+}
+
+func importPhotos(ctx context.Context, client *lib.Client, photos []PhotoExport) (total, failed int) {
+	return parallelImport(photos, func(p PhotoExport) (int, int) {
+		raw, err := base64.StdEncoding.DecodeString(p.Data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error decoding photo data: %v\n", err)
+			return 1, 1
+		}
+		if _, err := client.UploadPhoto(ctx, frameID, p.Ext, raw, ""); err != nil {
+			fmt.Fprintf(os.Stderr, "Error uploading photo: %v\n", err)
 			return 1, 1
 		}
 		return 1, 0
