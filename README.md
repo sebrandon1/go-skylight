@@ -12,7 +12,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 
 ## Key Features
 
-- Full CRUD for calendar events, chores, rewards, lists, recipes, categories, photos, and grocery lists, plus create/list/delete for routines
+- Full CRUD for calendar events, chores, rewards, lists, recipes, categories, photos, and grocery lists, plus create/get/list/update/delete for routines
 - OAuth2 login with automatic token rotation and config file persistence
 - Table and JSON output formats (`--output json|table`), quiet mode (`--quiet`)
 - Family activity analytics and chore completion streaks
@@ -29,11 +29,12 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 # Install
 go install github.com/sebrandon1/go-skylight@latest
 
-# Login with OAuth2 refresh token (recommended)
-skylight login --refresh-token YOUR_REFRESH_TOKEN --save
+# One-time login — obtains and saves the OAuth2 refresh token
+# to ~/.skylight/config so subsequent commands authenticate automatically
+skylight login --email user@example.com --password yourpassword --save
 
-# Or with email/password (deprecated)
-# skylight login --email user@example.com --password yourpassword --save
+# Or bring your own refresh token:
+export SKYLIGHT_REFRESH_TOKEN=YOUR_REFRESH_TOKEN
 
 # Use any command
 skylight chore list --frame-id FRAME_ID
@@ -78,7 +79,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 |---------|-------------|
 | `login` | Authenticate and save credentials |
 | `status` | Quick overview of the connected frame |
-| `home` | Weekly combined view of events, tasks, lists, meals |
+| `home` | Weekly combined view of events, tasks, lists, meals, routines |
 | `analytics` | Family activity statistics over a time period |
 | `watch` | Poll for changes and print events in real time |
 | `export` / `import` | Backup and restore frame data as JSON |
@@ -88,9 +89,9 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `list` | List and list item CRUD |
 | `meal` | Recipe CRUD, meal sittings, meal categories |
 | `photo` | Photo/video list, upload, download, delete |
-| `routine` | Routine create/list/delete (a routine is a recurring chore with a morning/afternoon/evening slot) |
+| `routine` | Routine create/get/list/update/delete (a routine is a recurring chore with a morning/afternoon/evening slot) |
 | `grocery` | Grocery list management, Instacart ordering, recipe import |
-| `category` | List family member categories |
+| `category` | Family member category management (list/create/update/delete) |
 | `frame` | Frame info, devices, avatars, colors |
 | `addon` | Frame add-ons and enabled state |
 | `bounty` | Chore + reward pair management |
@@ -131,4 +132,4 @@ make vet            # go vet ./...
 make clean          # remove built binaries
 ```
 
-CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos across Go 1.25.x and 1.26.x.
+CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.26.x.

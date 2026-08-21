@@ -6,9 +6,11 @@ Import the `lib` package to use go-skylight as a Go library.
 import (
     "context"
     "fmt"
+    "log/slog"
     "time"
 
     "github.com/sebrandon1/go-skylight/lib"
+    "golang.org/x/time/rate"
 )
 ```
 
@@ -18,7 +20,8 @@ import (
 // Basic client
 client, err := lib.NewClientWithToken("user-id", "api-token")
 
-// With functional options: retry, rate limiting, logging, custom base URL
+// With functional options: retry, rate limiting, logging, custom HTTP client,
+// API version, custom base URL
 client, err := lib.NewClientWithToken("user-id", "api-token",
     lib.WithRetry(3, 500*time.Millisecond, 10*time.Second),
     lib.WithRateLimit(rate.Limit(5), 10),
@@ -92,6 +95,6 @@ if lib.IsValidation(err) { /* bad request */ }
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
 | Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |
 | Rotations | — | ✓ | — | — | rotating chore assignments |
-| Routines | ✓ | ✓ | — | ✓ | modeled as a chore with a time-of-day slot; no update/reorder |
+| Routines | ✓ | ✓ | ✓ | ✓ | get/update supported; modeled as a chore with a time-of-day slot |
 | Grocery | ✓ | ✓ | — | — | organize, order (Instacart), clear completed |
 | Status / Home / Analytics / Watch | — | — | — | — | dashboards, stats, and live polling |
