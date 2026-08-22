@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -401,7 +402,7 @@ func TestUpdateListItem(t *testing.T) {
 	}{
 		{
 			name:          "marks item completed",
-			input:         ListItemData{Title: "Updated Item", Completed: true},
+			input:         ListItemData{Title: "Updated Item", Completed: true, CompletedSet: true},
 			status:        http.StatusOK,
 			response:      `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated Item","status":"` + listItemStatusCompleted + `","position":1}}}`,
 			wantCompleted: true,
@@ -443,6 +444,43 @@ func TestUpdateListItem(t *testing.T) {
 				t.Errorf("Completed: want %v got %v", tc.wantCompleted, item.Completed)
 			}
 		})
+	}
+}
+
+func TestUpdateListItemSendsPendingWithTitle(t *testing.T) {
+	// #270: --title + --completed=false must include status=pending.
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 4096)
+		n, _ := r.Body.Read(buf)
+		gotBody = string(buf[:n])
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"id":"item1","type":"list_item","attributes":{"label":"new name","status":"pending","position":1}}}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	item, err := client.UpdateListItem("frame1", "1", "item1", ListItemData{
+		Title:        "new name",
+		Completed:    false,
+		CompletedSet: true,
+	})
+	if err != nil {
+		t.Fatalf("UpdateListItem: %v", err)
+	}
+	if item.Completed {
+		t.Error("want item incomplete")
+	}
+	if !strings.Contains(gotBody, `"status":"pending"`) && !strings.Contains(gotBody, `"status": "pending"`) {
+		t.Fatalf("request body missing status=pending: %s", gotBody)
+	}
+	if !strings.Contains(gotBody, "new name") {
+		t.Fatalf("request body missing title: %s", gotBody)
 	}
 }
 

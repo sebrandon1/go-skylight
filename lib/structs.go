@@ -284,9 +284,13 @@ type ListData struct {
 
 // ListItemData holds the list item fields for create/update requests.
 type ListItemData struct {
-	Title     string `json:"label,omitempty"`
-	Completed bool   `json:"-"`
-	Position  int    `json:"position,omitempty"`
+	Title string `json:"label,omitempty"`
+	// Completed is the desired completion state when CompletedSet is true.
+	Completed bool `json:"-"`
+	// CompletedSet is true when the caller explicitly set Completed (e.g. CLI
+	// --completed flag). Distinguishes "leave status alone" from "set pending".
+	CompletedSet bool `json:"-"`
+	Position     int  `json:"position,omitempty"`
 }
 
 // listItemSendData is the internal struct used when sending list item requests to the API.
