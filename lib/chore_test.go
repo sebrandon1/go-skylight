@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestListChores(t *testing.T) {
@@ -791,6 +792,88 @@ func TestListChores_SearchParam(t *testing.T) {
 			}
 			if tc.wantTitle != "" && len(chores) > 0 && chores[0].Title != tc.wantTitle {
 				t.Errorf("Title: want %q got %q", tc.wantTitle, chores[0].Title)
+			}
+		})
+	}
+}
+
+func TestListChoresDateWindow(t *testing.T) {
+	now := time.Now()
+	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	tests := []struct {
+		name       string
+		opts       ChoreListOptions
+		wantAfter  string
+		wantBefore string
+		wantAbsent []string // params that must not be sent at all
+	}{
+		{
+			name:       "no filters defaults to current calendar month",
+			wantAfter:  start.Format(DateFormat),
+			wantBefore: start.AddDate(0, 1, -1).Format(DateFormat),
+		},
+		{
+			name:       "date becomes same-day window",
+			opts:       ChoreListOptions{Date: "2024-01-15"},
+			wantAfter:  "2024-01-15",
+			wantBefore: "2024-01-15",
+		},
+		{
+			name:       "up-for-grabs defaults to week ahead",
+			opts:       ChoreListOptions{UpForGrabs: true},
+			wantAfter:  now.Format(DateFormat),
+			wantBefore: now.AddDate(0, 0, 7).Format(DateFormat),
+		},
+		{
+			name:       "explicit bounds are passed through untouched",
+			opts:       ChoreListOptions{After: "2024-02-01", Before: "2024-02-29", Search: "dishes"},
+			wantAfter:  "2024-02-01",
+			wantBefore: "2024-02-29",
+		},
+		{
+			name:       "up-for-grabs with one bound fills only the missing side",
+			opts:       ChoreListOptions{UpForGrabs: true, After: "2024-02-01"},
+			wantAfter:  "2024-02-01",
+			wantBefore: now.AddDate(0, 0, 7).Format(DateFormat),
+		},
+		{
+			name:       "lone after is sent without a fabricated before",
+			opts:       ChoreListOptions{After: "2024-03-01"},
+			wantAfter:  "2024-03-01",
+			wantAbsent: []string{"before"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				q := r.URL.Query()
+				if got := q.Get("after"); got != tc.wantAfter {
+					t.Errorf("after: want %q got %q", tc.wantAfter, got)
+				}
+				if tc.wantBefore != "" && q.Get("before") != tc.wantBefore {
+					t.Errorf("before: want %q got %q", tc.wantBefore, q.Get("before"))
+				}
+				for _, p := range tc.wantAbsent {
+					if _, ok := q[p]; ok {
+						t.Errorf("%s should be absent, got %q", p, q.Get(p))
+					}
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if _, err := w.Write([]byte(`{"data":[]}`)); err != nil {
+					t.Errorf("write: %v", err)
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			if _, err := client.ListChores(context.Background(), "frame1", tc.opts); err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 		})
 	}

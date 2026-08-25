@@ -64,27 +64,50 @@ func (opts ChoreListOptions) queryParams() map[string]string {
 	if opts.AssigneeID != "" {
 		params["assignee_id"] = opts.AssigneeID
 	}
-	if opts.After != "" {
-		params["after"] = opts.After
-	}
-	if opts.Before != "" {
-		params["before"] = opts.Before
-	}
 	if opts.IncludeLate {
 		params["include_late"] = paramTrue
 	}
 	if opts.UpForGrabs {
 		params["include_up_for_grabs"] = paramTrue
 		params["filter"] = "linked_to_profile"
-		if opts.After == "" {
-			params["after"] = time.Now().Format("2006-01-02")
-		}
-		if opts.Before == "" {
-			params["before"] = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
-		}
 	}
 	if opts.Search != "" {
 		params["q"] = opts.Search
+	}
+
+	// The Skylight API rejects any chore query without an explicit date window
+	// (422 "after can't be blank" / "before can't be blank"), so default one in.
+	// Up-for-grabs queries always get a full week-ahead window with any caller-
+	// supplied bounds winning. Otherwise explicit bounds are sent as-is — a lone
+	// bound passes through untouched so the API's own validation error names the
+	// missing side. With no bounds at all: Date becomes a same-day window and
+	// everything else falls back to the current calendar month.
+	switch {
+	case opts.UpForGrabs:
+		now := time.Now()
+		if opts.After != "" {
+			params["after"] = opts.After
+		} else {
+			params["after"] = now.Format(DateFormat)
+		}
+		if opts.Before != "" {
+			params["before"] = opts.Before
+		} else {
+			params["before"] = now.AddDate(0, 0, 7).Format(DateFormat)
+		}
+	case opts.After != "" || opts.Before != "":
+		if opts.After != "" {
+			params["after"] = opts.After
+		}
+		if opts.Before != "" {
+			params["before"] = opts.Before
+		}
+	case opts.Date != "":
+		params["after"], params["before"] = opts.Date, opts.Date
+	default:
+		now := time.Now()
+		start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		params["after"], params["before"] = start.Format(DateFormat), start.AddDate(0, 1, -1).Format(DateFormat)
 	}
 	return params
 }

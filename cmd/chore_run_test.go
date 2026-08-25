@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func choreMockHandler() http.HandlerFunc {
@@ -320,5 +322,93 @@ func TestChoreCreateCmd_TableOutput(t *testing.T) {
 	}
 	if !strings.Contains(out, "Dishes") {
 		t.Errorf("expected chore title in table, got: %s", out)
+	}
+}
+
+func TestChoreSearchCmd_DateWindow(t *testing.T) {
+	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("q") != "trash" {
+			t.Errorf("q param: want %q got %q", "trash", q.Get("q"))
+		}
+		if q.Get("after") == "" || q.Get("before") == "" {
+			t.Errorf("expected default date window on search, got after=%q before=%q", q.Get("after"), q.Get("before"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"c9","attributes":{"summary":"Take out trash","status":"pending"}}]}`)
+	}))
+
+	orig := choreSearchQuery
+	choreSearchQuery = "trash"
+	t.Cleanup(func() { choreSearchQuery = orig })
+
+	out := captureStdout(func() {
+		if err := choreSearchCmd.RunE(choreSearchCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Take out trash") {
+		t.Errorf("expected matching chore in output, got: %s", out)
+	}
+}
+
+// Verifies the request params rather than the rendered output: the shared
+// choreListCmd singleton may have flags marked changed by earlier tests
+// (e.g. --week), which changes what this command prints.
+func TestChoreListCmd_SendsDefaultDateWindow(t *testing.T) {
+	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if q.Get("after") == "" || q.Get("before") == "" {
+			t.Errorf("expected default date window on bare list, got after=%q before=%q", q.Get("after"), q.Get("before"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+
+	captureStdout(func() {
+		if err := choreListCmd.RunE(choreListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestRequireWindowPair(t *testing.T) {
+	tests := []struct {
+		name    string
+		after   bool
+		before  bool
+		wantErr string
+	}{
+		{name: "no flags passes"},
+		{name: "both flags pass", after: true, before: true},
+		{name: "lone after fails", after: true, wantErr: "--after requires --before"},
+		{name: "lone before fails", before: true, wantErr: "--before requires --after"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := &cobra.Command{Use: "test"}
+			cmd.Flags().String("after", "", "")
+			cmd.Flags().String("before", "", "")
+			if tc.after {
+				if err := cmd.Flags().Set("after", "2026-01-01"); err != nil {
+					t.Fatalf("setting after: %v", err)
+				}
+			}
+			if tc.before {
+				if err := cmd.Flags().Set("before", "2026-01-31"); err != nil {
+					t.Fatalf("setting before: %v", err)
+				}
+			}
+			err := requireWindowPair(cmd)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("want error containing %q, got %v", tc.wantErr, err)
+			}
+		})
 	}
 }

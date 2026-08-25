@@ -35,7 +35,8 @@ client, err := lib.NewClientWithToken("user-id", "api-token",
 ```go
 ctx := context.Background()
 
-// List chores
+// List chores (a missing after/before window is defaulted automatically —
+// Date becomes a same-day window; otherwise the current calendar month)
 chores, err := client.ListChores(ctx, "frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
 
 // Create a bounty (chore + matched reward)

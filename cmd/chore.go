@@ -31,6 +31,20 @@ var (
 
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
 
+// requireWindowPair enforces that --after/--before are provided together:
+// the Skylight API rejects chore queries missing either bound.
+func requireWindowPair(cmd *cobra.Command) error {
+	hasAfter := cmd.Flags().Changed("after")
+	hasBefore := cmd.Flags().Changed("before")
+	switch {
+	case hasAfter && !hasBefore:
+		return fmt.Errorf("--after requires --before: the API needs a full date window")
+	case hasBefore && !hasAfter:
+		return fmt.Errorf("--before requires --after: the API needs a full date window")
+	}
+	return nil
+}
+
 var choreCmd = &cobra.Command{
 	Use:   subChore,
 	Short: "Chore management commands",
@@ -67,6 +81,10 @@ var choreListCmd = &cobra.Command{
 					return err
 				}
 			}
+		}
+
+		if err := requireWindowPair(cmd); err != nil {
+			return err
 		}
 
 		if cmd.Flags().Changed("status") {
@@ -333,6 +351,27 @@ var choreSearchCmd = &cobra.Command{
 			return err
 		}
 
+		for _, f := range []struct {
+			name string
+			val  string
+		}{{"after", choreAfter}, {"before", choreBefore}} {
+			if cmd.Flags().Changed(f.name) {
+				if err := validateDate(f.val); err != nil {
+					return err
+				}
+			}
+		}
+
+		if err := requireWindowPair(cmd); err != nil {
+			return err
+		}
+
+		if cmd.Flags().Changed("status") {
+			if err := validateEnum(choreStatus, choreStatuses); err != nil {
+				return err
+			}
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -342,6 +381,8 @@ var choreSearchCmd = &cobra.Command{
 			Search:     choreSearchQuery,
 			AssigneeID: choreAssigneeID,
 			Status:     choreStatus,
+			After:      choreAfter,
+			Before:     choreBefore,
 		})
 		if err != nil {
 			return fmt.Errorf("searching chores: %w", err)
@@ -435,8 +476,8 @@ func init() {
 	choreListCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
 	registerEnumFlagCompletion(choreListCmd, "status", choreStatuses...)
 
-	choreListCmd.Flags().StringVar(&choreAfter, "after", "", "After date filter")
-	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "Before date filter")
+	choreListCmd.Flags().StringVar(&choreAfter, "after", "", "Start of date window (YYYY-MM-DD); defaults to the current month")
+	choreListCmd.Flags().StringVar(&choreBefore, "before", "", "End of date window (YYYY-MM-DD); defaults to the current month")
 	choreListCmd.Flags().BoolVar(&choreIncludeLate, "include-late", false, "Include late chores")
 	choreListCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Only show up-for-grabs chores")
 	choreListCmd.Flags().StringVar(&choreWeek, "week", "", "Show weekly calendar view; optionally specify YYYY-MM-DD to select the week")
@@ -495,6 +536,8 @@ func init() {
 	choreSearchCmd.Flags().StringVar(&choreSearchQuery, "query", "", "Search term to match against chore title or description")
 	choreSearchCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID filter")
 	choreSearchCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter: pending, complete, skipped")
+	choreSearchCmd.Flags().StringVar(&choreAfter, "after", "", "Start of date window (YYYY-MM-DD); defaults to the current month")
+	choreSearchCmd.Flags().StringVar(&choreBefore, "before", "", "End of date window (YYYY-MM-DD); defaults to the current month")
 	markFlagRequired(choreSearchCmd, "query")
 	registerEnumFlagCompletion(choreSearchCmd, "status", choreStatuses...)
 }
