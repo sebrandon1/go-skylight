@@ -325,6 +325,25 @@ func TestChoreCreateCmd_TableOutput(t *testing.T) {
 	}
 }
 
+func TestChoreGetCmd(t *testing.T) {
+	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}}}`)
+	}))
+	orig := choreID
+	choreID = "c1"
+	t.Cleanup(func() { choreID = orig })
+
+	out := captureStdout(func() {
+		if err := choreGetCmd.RunE(choreGetCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dishes") {
+		t.Errorf("expected chore title in output, got: %s", out)
+	}
+}
+
 func TestChoreSearchCmd_DateWindow(t *testing.T) {
 	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
