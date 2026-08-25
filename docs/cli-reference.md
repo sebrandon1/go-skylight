@@ -54,7 +54,7 @@ skylight calendar week [--date DATE]
 ```bash
 skylight chore list [--date DATE] [--assignee-id ID] [--status S] [--after DATE] [--before DATE] [--include-late] [--up-for-grabs] [--week [DATE]]
 skylight chore get --chore-id ID
-skylight chore search --query TERM [--assignee-id ID] [--status S]
+skylight chore search --query TERM [--assignee-id ID] [--status S] [--after DATE] [--before DATE]
 skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID] [--date DATE] [--recurring] [--up-for-grabs] \
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE] [--recur-from scheduled|completed]
 skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE] [--up-for-grabs] \
@@ -66,10 +66,11 @@ skylight chore claim --chore-id ID --assignee-id ID
 skylight chore streak [--days N] [--assignee-id ID]
 ```
 
-> **Note:** The Skylight API currently requires a date window for chore queries.
-> Pass `--after`/`--before` (or use `--week`); a bare `chore list`, `--date` alone,
-> or `chore search` returns `422 validation failed`. `chore search` does not yet
-> expose `--after`/`--before` flags.
+> **Note:** The Skylight API requires a date window for every chore query.
+> When `--after`/`--before` are omitted, go-skylight supplies one automatically:
+> `--date DATE` becomes a same-day window, `--up-for-grabs` uses the next 7 days,
+> and bare `chore list` / `chore search` use the current calendar month. When
+> passed explicitly, `--after` and `--before` must be used together.
 
 ## Rewards
 

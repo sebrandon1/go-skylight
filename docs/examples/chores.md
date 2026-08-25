@@ -3,8 +3,12 @@
 ## List chores
 
 ```bash
-# All pending chores (--after/--before are required by the API)
+# All pending chores in an explicit date window (--after/--before must be used together)
 skylight chore list --status pending --after 2026-08-01 --before 2026-08-31
+
+# Without flags, list defaults to the current calendar month
+# (--date DATE alone becomes a same-day window)
+skylight chore list --status pending
 
 # Completed chores this week (uses GNU date; on macOS substitute the date manually)
 skylight chore list --status complete \
