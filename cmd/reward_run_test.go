@@ -488,3 +488,22 @@ func TestRewardCreateCmd_TableOutput(t *testing.T) {
 		t.Errorf("expected reward title in table, got: %s", out)
 	}
 }
+
+func TestRewardGetCmd(t *testing.T) {
+	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"r1","attributes":{"name":"Ice cream","point_value":50}}}`)
+	}))
+	orig := rewardID
+	rewardID = "r1"
+	t.Cleanup(func() { rewardID = orig })
+
+	out := captureStdout(func() {
+		if err := rewardGetCmd.RunE(rewardGetCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Ice cream") {
+		t.Errorf("expected reward title in output, got: %s", out)
+	}
+}

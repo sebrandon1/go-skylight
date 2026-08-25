@@ -255,3 +255,22 @@ func TestRoutineUpdateCmd_InvalidTimeOfDay(t *testing.T) {
 		t.Error("expected error for invalid --time-of-day, got nil")
 	}
 }
+
+func TestRoutineGetCmd(t *testing.T) {
+	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}}`)
+	}))
+	orig := routineID
+	routineID = "routine1"
+	t.Cleanup(func() { routineID = orig })
+
+	out := captureStdout(func() {
+		if err := routineGetCmd.RunE(routineGetCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Morning") {
+		t.Errorf("expected routine title in output, got: %s", out)
+	}
+}
