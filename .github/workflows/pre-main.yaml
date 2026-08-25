@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        go-version: ['1.26.6']
+        go-version: ['1.26.7']
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
@@ -54,7 +54,9 @@ jobs:
       run: go test -v -race -coverprofile=coverage.out ./...
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26.x'
+      # Single Go version in the matrix, so only the OS needs matching.
+      # A pinned go-version comparison here silently never matched ('1.26.x' vs '1.26.6').
+      if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v7
       with:
         files: ./coverage.out
