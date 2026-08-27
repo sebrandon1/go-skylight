@@ -258,9 +258,9 @@ func TestListClearCompletedCmd(t *testing.T) {
 			fmt.Fprint(w, `{"data":{"id":"list1","type":"list","attributes":{"label":"Groceries","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"completed","position":0}}]}`)
 		}
 	})
-	origID := listID
-	listID = "list1"
-	t.Cleanup(func() { listID = origID })
+	origID, origYes := listID, yes
+	listID, yes = "list1", true
+	t.Cleanup(func() { listID, yes = origID, origYes })
 
 	out := captureStdout(func() {
 		if err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil); err != nil {
@@ -321,6 +321,126 @@ func TestListDeleteSectionCmd_DryRun(t *testing.T) {
 	})
 	if !strings.Contains(out, "Dry run") {
 		t.Errorf("expected dry-run indicator in output, got: %s", out)
+	}
+}
+
+func listClearCompletedMockHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/item1") && r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusOK)
+		case strings.HasSuffix(r.URL.Path, "/list1"):
+			fmt.Fprint(w, `{"data":{"id":"list1","type":"list","attributes":{"label":"Groceries","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"completed","position":0}},{"id":"item2","type":"list_item","attributes":{"label":"Eggs","status":"pending","position":1}}]}`)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
+
+func TestListClearCompletedCmd_DryRun(t *testing.T) {
+	newCmdTestClient(t, listClearCompletedMockHandler())
+	origID, origDryRun := listID, dryRun
+	listID, dryRun = "list1", true
+	t.Cleanup(func() { listID, dryRun = origID, origDryRun })
+
+	out := captureStdout(func() {
+		if err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Dry run") {
+		t.Errorf("expected dry-run indicator in output, got: %s", out)
+	}
+	if !strings.Contains(out, "Milk") {
+		t.Errorf("expected completed item title in dry-run output, got: %s", out)
+	}
+}
+
+func TestListClearCompletedCmd_DryRun_NoItems(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"list1","type":"list","attributes":{"label":"Empty","kind":"to_do"}},"included":[]}`)
+	}
+	newCmdTestClient(t, http.HandlerFunc(handler))
+	origID, origDryRun := listID, dryRun
+	listID, dryRun = "list1", true
+	t.Cleanup(func() { listID, dryRun = origID, origDryRun })
+
+	out := captureStdout(func() {
+		if err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "0 completed items") {
+		t.Errorf("expected no-items message in output, got: %s", out)
+	}
+}
+
+func TestListClearCompletedCmd_DryRunError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	origID, origDryRun := listID, dryRun
+	listID, dryRun = "list1", true
+	t.Cleanup(func() { listID, dryRun = origID, origDryRun })
+
+	err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for API failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "fetching list") {
+		t.Errorf("expected 'fetching list' in error, got: %v", err)
+	}
+}
+
+func TestListClearCompletedCmd_APIError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"list1","type":"list","attributes":{"label":"Groceries","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"completed","position":0}}]}`)
+	})
+	origID, origYes := listID, yes
+	listID, yes = "list1", true
+	t.Cleanup(func() { listID, yes = origID, origYes })
+
+	err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for API failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "clearing completed items") {
+		t.Errorf("expected 'clearing completed items' in error, got: %v", err)
+	}
+}
+
+func TestListClearCompletedCmd_PartialDeleteError(t *testing.T) {
+	deleteCount := 0
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodDelete {
+			deleteCount++
+			if deleteCount == 1 {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"list1","type":"list","attributes":{"label":"Groceries","kind":"to_do"}},"included":[{"id":"item1","type":"list_item","attributes":{"label":"Milk","status":"completed","position":0}},{"id":"item2","type":"list_item","attributes":{"label":"Bread","status":"completed","position":1}}]}`)
+	})
+	origID, origYes := listID, yes
+	listID, yes = "list1", true
+	t.Cleanup(func() { listID, yes = origID, origYes })
+
+	err := listClearCompletedCmd.RunE(listClearCompletedCmd, nil)
+	if err == nil {
+		t.Fatal("expected error for partial API failure, got nil")
+	}
+	if !strings.Contains(err.Error(), "deleted 1 item(s) before error") {
+		t.Errorf("expected partial deletion message in error, got: %v", err)
 	}
 }
 
