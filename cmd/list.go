@@ -363,6 +363,28 @@ var listClearCompletedCmd = &cobra.Command{
 			return err
 		}
 
+		if dryRun {
+			list, err := client.GetList(cmd.Context(), frameID, listID)
+			if err != nil {
+				return fmt.Errorf("fetching list: %w", err)
+			}
+			var count int
+			for _, item := range list.Items {
+				if item.Completed {
+					printDryRun("delete item %q (id: %s)", item.Title, item.ID)
+					count++
+				}
+			}
+			if count == 0 {
+				printDryRun("delete 0 completed items (none found)")
+			}
+			return nil
+		}
+
+		if !confirmAction(fmt.Sprintf("Delete all completed items from list %s?", listID)) {
+			return nil
+		}
+
 		deleted, err := client.ClearCompletedListItems(cmd.Context(), frameID, listID)
 		if err != nil {
 			if deleted > 0 {
@@ -434,6 +456,8 @@ func init() {
 	markFlagRequired(listDeleteItemCmd, "item-id")
 
 	listClearCompletedCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
+	listClearCompletedCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
+	listClearCompletedCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(listClearCompletedCmd, "list-id")
 
 	listReorderItemCmd.Flags().StringVar(&listID, "list-id", "", "List ID")
