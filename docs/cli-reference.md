@@ -114,12 +114,12 @@ skylight meal recipes [--title FILTER]
 skylight meal recipe-info --recipe-id ID
 skylight meal create-recipe --title TITLE [--description D] [--ingredients a,b] [--url URL] [--meal-category-id ID]
 skylight meal update-recipe --recipe-id ID [--title T] [--description D] [--ingredients a,b] [--url URL]
-skylight meal delete-recipe --recipe-id ID
+skylight meal delete-recipe --recipe-id ID [--dry-run] [--yes]
 skylight meal sittings [--date-min DATE] [--date-max DATE]
 skylight meal get-sitting --sitting-id ID
 skylight meal create-sitting --recipe-id ID --date DATE [--summary S] [--meal-category-id ID]
 skylight meal update-sitting --sitting-id ID [--date DATE] [--summary S] [--meal-category-id ID] [--recipe-id ID]
-skylight meal delete-sitting --sitting-id ID [--date DATE]
+skylight meal delete-sitting --sitting-id ID [--date DATE] [--dry-run] [--yes]
 skylight meal sitting-recipe --sitting-id ID
 skylight meal add-to-grocery --recipe-id ID
 skylight meal plan --recipes ID,ID --start-date DATE [--categories ID,ID]
