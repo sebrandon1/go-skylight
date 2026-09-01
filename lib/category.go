@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// ListCategories retrieves categories (family members) for a frame.
+// ListCategories retrieves all categories (profiles and labels) for a frame.
 func (c *Client) ListCategories(ctx context.Context, frameID string) ([]Category, error) {
 	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/categories", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
@@ -54,6 +54,30 @@ func (c *Client) UpdateCategory(ctx context.Context, frameID, categoryID string,
 
 	result := apiResp.Data.toCategory()
 	return &result, nil
+}
+
+// ListProfiles retrieves categories that are household member profiles.
+func (c *Client) ListProfiles(ctx context.Context, frameID string) ([]Category, error) {
+	return c.filterCategories(ctx, frameID, true)
+}
+
+// ListLabels retrieves categories that are event/task labels.
+func (c *Client) ListLabels(ctx context.Context, frameID string) ([]Category, error) {
+	return c.filterCategories(ctx, frameID, false)
+}
+
+func (c *Client) filterCategories(ctx context.Context, frameID string, linked bool) ([]Category, error) {
+	all, err := c.ListCategories(ctx, frameID)
+	if err != nil {
+		return nil, err
+	}
+	var out []Category
+	for _, cat := range all {
+		if cat.LinkedToProfile == linked {
+			out = append(out, cat)
+		}
+	}
+	return out, nil
 }
 
 // DeleteCategory deletes a category (profile/label).

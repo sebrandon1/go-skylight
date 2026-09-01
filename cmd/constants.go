@@ -32,4 +32,6 @@ const (
 	subType       = "type"
 	subDeleteItem = "delete-item"
 	subCategory   = "category"
+	subProfile    = "profile"
+	subLabel      = "label"
 )
