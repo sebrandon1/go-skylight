@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -205,6 +207,32 @@ func TestLoginHeadless_InvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestGeneratePKCE(t *testing.T) {
+	verifier, challenge, err := generatePKCE()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if verifier == "" {
+		t.Error("verifier should not be empty")
+	}
+	if challenge == "" {
+		t.Error("challenge should not be empty")
+	}
+	h := sha256.Sum256([]byte(verifier))
+	want := base64.RawURLEncoding.EncodeToString(h[:])
+	if challenge != want {
+		t.Errorf("challenge does not match S256(verifier): got %s, want %s", challenge, want)
+	}
+	// Two calls must produce different verifiers.
+	verifier2, _, err := generatePKCE()
+	if err != nil {
+		t.Fatalf("second call error: %v", err)
+	}
+	if verifier == verifier2 {
+		t.Error("generatePKCE produced the same verifier twice")
+	}
+}
+
 func TestFetchAuthCode_NoLocation(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +251,7 @@ func TestFetchAuthCode_NoLocation(t *testing.T) {
 			return http.ErrUseLastResponse
 		},
 	}
-	_, err := fetchAuthCode(hc, "fp1")
+	_, err := fetchAuthCode(hc, "fp1", "testchallenge")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -250,7 +278,7 @@ func TestFetchAuthCode_NoCodeInRedirect(t *testing.T) {
 			return http.ErrUseLastResponse
 		},
 	}
-	_, err := fetchAuthCode(hc, "fp1")
+	_, err := fetchAuthCode(hc, "fp1", "testchallenge")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -272,6 +300,9 @@ func TestExchangeAuthCode(t *testing.T) {
 			if r.FormValue("code") != "mycode" {
 				t.Errorf("code: want mycode, got %s", r.FormValue("code"))
 			}
+			if r.FormValue("code_verifier") != "testverifier" {
+				t.Errorf("code_verifier: want testverifier, got %s", r.FormValue("code_verifier"))
+			}
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `{"access_token":"at1","refresh_token":"rt1","expires_in":3600}`)
 		}))
@@ -281,7 +312,7 @@ func TestExchangeAuthCode(t *testing.T) {
 		OAuthURL = srv.URL
 		defer func() { OAuthURL = old }()
 
-		tok, err := exchangeAuthCode("mycode", "fp1")
+		tok, err := exchangeAuthCode("mycode", "fp1", "testverifier")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -304,7 +335,7 @@ func TestExchangeAuthCode(t *testing.T) {
 		OAuthURL = srv.URL
 		defer func() { OAuthURL = old }()
 
-		_, err := exchangeAuthCode("badcode", "fp1")
+		_, err := exchangeAuthCode("badcode", "fp1", "testverifier")
 		if err == nil {
 			t.Error("expected error, got nil")
 		}
@@ -410,6 +441,12 @@ func TestNewBrowserRequest_BadMethod(t *testing.T) {
 func TestFetchAuthCode_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("code_challenge") != "testchallenge" {
+			t.Errorf("code_challenge: want testchallenge, got %q", r.URL.Query().Get("code_challenge"))
+		}
+		if r.URL.Query().Get("code_challenge_method") != "S256" {
+			t.Errorf("code_challenge_method: want S256, got %q", r.URL.Query().Get("code_challenge_method"))
+		}
 		w.Header().Set("Location", "https://ourskylight.com/welcome?code=myauthcode")
 		w.WriteHeader(http.StatusFound)
 	})
@@ -425,7 +462,7 @@ func TestFetchAuthCode_Success(t *testing.T) {
 			return http.ErrUseLastResponse
 		},
 	}
-	code, err := fetchAuthCode(hc, "fp1")
+	code, err := fetchAuthCode(hc, "fp1", "testchallenge")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -458,7 +495,7 @@ func TestFetchAuthCode_NetworkError(t *testing.T) {
 	OAuthAuthorizeURL = srvURL + "/oauth/authorize"
 	defer func() { OAuthAuthorizeURL = old }()
 
-	_, err := fetchAuthCode(&http.Client{}, "fp1")
+	_, err := fetchAuthCode(&http.Client{}, "fp1", "testchallenge")
 	if err == nil {
 		t.Error("expected error for connection refused, got nil")
 	}

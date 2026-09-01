@@ -2,6 +2,9 @@ package lib
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +21,17 @@ const (
 	browserAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 )
 
+func generatePKCE() (verifier, challenge string, err error) {
+	b := make([]byte, 32)
+	if _, err = rand.Read(b); err != nil {
+		return
+	}
+	verifier = base64.RawURLEncoding.EncodeToString(b)
+	h := sha256.Sum256([]byte(verifier))
+	challenge = base64.RawURLEncoding.EncodeToString(h[:])
+	return
+}
+
 func newBrowserRequest(method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -29,10 +43,11 @@ func newBrowserRequest(method, url string, body io.Reader) (*http.Request, error
 }
 
 const (
-	skylightClientID    = "skylight-mobile"
-	skylightScope       = "everything"
-	skylightRedirectURI = "https://ourskylight.com/welcome"
-	oauthRefreshToken   = "refresh_token"
+	skylightClientID            = "skylight-mobile"
+	skylightScope               = "everything"
+	skylightRedirectURI         = "https://ourskylight.com/welcome"
+	oauthRefreshToken           = "refresh_token"
+	pkceCodeChallengeMethodS256 = "S256"
 )
 
 var (
@@ -68,6 +83,11 @@ func LoginHeadless(email, password, fingerprint string) (*OAuthTokenResponse, er
 		return nil, fmt.Errorf("creating cookie jar: %w", err)
 	}
 
+	verifier, challenge, err := generatePKCE()
+	if err != nil {
+		return nil, fmt.Errorf("generating PKCE: %w", err)
+	}
+
 	hc := &http.Client{
 		Jar:     jar,
 		Timeout: 30 * time.Second,
@@ -88,13 +108,13 @@ func LoginHeadless(email, password, fingerprint string) (*OAuthTokenResponse, er
 	}
 
 	// Step 3: GET OAuth authorize endpoint to receive the auth code.
-	code, err := fetchAuthCode(hc, fingerprint)
+	code, err := fetchAuthCode(hc, fingerprint, challenge)
 	if err != nil {
 		return nil, fmt.Errorf("fetching auth code: %w", err)
 	}
 
 	// Step 4: Exchange auth code for tokens.
-	return exchangeAuthCode(code, fingerprint)
+	return exchangeAuthCode(code, fingerprint, verifier)
 }
 
 // fetchCSRFToken GETs the login page and extracts the Rails authenticity_token.
@@ -188,13 +208,15 @@ func isLoginPageURL(rawURL string) bool {
 
 // fetchAuthCode GETs the OAuth authorize endpoint and extracts the auth code
 // from the redirect Location header.
-func fetchAuthCode(hc *http.Client, fingerprint string) (string, error) {
+func fetchAuthCode(hc *http.Client, fingerprint, codeChallenge string) (string, error) {
 	params := url.Values{}
 	params.Set("client_id", skylightClientID)
 	params.Set("response_type", "code")
 	params.Set("redirect_uri", skylightRedirectURI)
 	params.Set("scope", skylightScope)
 	params.Set("skylight_api_client_device_fingerprint", fingerprint)
+	params.Set("code_challenge", codeChallenge)
+	params.Set("code_challenge_method", pkceCodeChallengeMethodS256)
 
 	authorizeURL := OAuthAuthorizeURL + "?" + params.Encode()
 	req, err := newBrowserRequest("GET", authorizeURL, nil)
@@ -230,7 +252,7 @@ func fetchAuthCode(hc *http.Client, fingerprint string) (string, error) {
 }
 
 // exchangeAuthCode exchanges an OAuth2 authorization code for tokens.
-func exchangeAuthCode(code, fingerprint string) (*OAuthTokenResponse, error) {
+func exchangeAuthCode(code, fingerprint, codeVerifier string) (*OAuthTokenResponse, error) {
 	return postOAuthToken(url.Values{
 		"grant_type":                             {"authorization_code"},
 		"code":                                   {code},
@@ -238,6 +260,7 @@ func exchangeAuthCode(code, fingerprint string) (*OAuthTokenResponse, error) {
 		"redirect_uri":                           {skylightRedirectURI},
 		"scope":                                  {skylightScope},
 		"skylight_api_client_device_fingerprint": {fingerprint},
+		"code_verifier":                          {codeVerifier},
 	})
 }
 
