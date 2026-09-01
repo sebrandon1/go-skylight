@@ -90,7 +90,31 @@ func TestToCategoryNilProfilePic(t *testing.T) {
 func TestToCategoryWithProfilePic(t *testing.T) {
 	entry := categoryAPIEntry{ID: "cat1"}
 	url := "http://example.com/pic.jpg"
-	entry.Attributes.ProfilePicURL = &url
+	entry.Attributes.ProfilePictureURLs.Large = &url
+	c := entry.toCategory()
+	if c.AvatarURL != url {
+		t.Errorf("AvatarURL = %q, want %q", c.AvatarURL, url)
+	}
+}
+
+func TestToCategoryLinkedToProfile(t *testing.T) {
+	entry := categoryAPIEntry{ID: "cat1"}
+	entry.Attributes.Label = "Mom"
+	entry.Attributes.LinkedToProfile = true
+	entry.Attributes.SelectedForChoreChart = true
+	c := entry.toCategory()
+	if !c.LinkedToProfile {
+		t.Errorf("LinkedToProfile should be true")
+	}
+	if !c.SelectedForChoreChart {
+		t.Errorf("SelectedForChoreChart should be true")
+	}
+}
+
+func TestToCategoryWithProfilePicOriginalFallback(t *testing.T) {
+	entry := categoryAPIEntry{ID: "cat1"}
+	url := "http://example.com/original.jpg"
+	entry.Attributes.ProfilePictureURLs.Original = &url
 	c := entry.toCategory()
 	if c.AvatarURL != url {
 		t.Errorf("AvatarURL = %q, want %q", c.AvatarURL, url)

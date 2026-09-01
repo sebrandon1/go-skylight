@@ -78,6 +78,8 @@ func init() {
 	rootCmd.AddCommand(rewardCmd)
 	rootCmd.AddCommand(mealCmd)
 	rootCmd.AddCommand(categoryCmd)
+	rootCmd.AddCommand(profileCmd)
+	rootCmd.AddCommand(labelCmd)
 	rootCmd.AddCommand(frameCmd)
 	rootCmd.AddCommand(photoCmd)
 	rootCmd.AddCommand(configCmd)

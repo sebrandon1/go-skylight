@@ -656,14 +656,16 @@ func (e *mealCategoryAPIEntry) toMealCategory() MealCategory {
 	}
 }
 
-// Category represents a family member/category.
+// Category represents a family member category (profile or label).
 type Category struct {
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"label,omitempty"`
-	Color     string `json:"color,omitempty"`
-	AvatarURL string `json:"profile_pic_url,omitempty"`
-	CreatedAt string `json:"created_at,omitempty"`
-	UpdatedAt string `json:"updated_at,omitempty"`
+	ID                    string `json:"id,omitempty"`
+	Name                  string `json:"label,omitempty"`
+	Color                 string `json:"color,omitempty"`
+	AvatarURL             string `json:"avatar_url,omitempty"`
+	LinkedToProfile       bool   `json:"linked_to_profile"`
+	SelectedForChoreChart bool   `json:"selected_for_chore_chart"`
+	CreatedAt             string `json:"created_at,omitempty"`
+	UpdatedAt             string `json:"updated_at,omitempty"`
 }
 
 // categoryAPIResponse wraps the JSON-API envelope for category list responses.
@@ -675,9 +677,16 @@ type categoryAPIResponse struct {
 type categoryAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Label         string  `json:"label"`
-		Color         string  `json:"color"`
-		ProfilePicURL *string `json:"profile_pic_url"`
+		Label                 string `json:"label"`
+		Color                 string `json:"color"`
+		LinkedToProfile       bool   `json:"linked_to_profile"`
+		SelectedForChoreChart bool   `json:"selected_for_chore_chart"`
+		ProfilePictureURLs    struct {
+			Original *string `json:"original"`
+			Large    *string `json:"large"`
+			Medium   *string `json:"medium"`
+			Small    *string `json:"small"`
+		} `json:"profile_picture_urls"`
 	} `json:"attributes"`
 }
 
@@ -686,20 +695,25 @@ type categoryAPISingleResponse struct {
 	Data categoryAPIEntry `json:"data"`
 }
 
-// CategoryData holds the category fields for update requests.
+// CategoryData holds the category fields for create/update requests.
 type CategoryData struct {
-	Name  string `json:"label,omitempty"`
-	Color string `json:"color,omitempty"`
+	Name            string `json:"label,omitempty"`
+	Color           string `json:"color,omitempty"`
+	LinkedToProfile *bool  `json:"linked_to_profile,omitempty"`
 }
 
 func (e *categoryAPIEntry) toCategory() Category {
 	c := Category{
-		ID:    e.ID,
-		Name:  e.Attributes.Label,
-		Color: e.Attributes.Color,
+		ID:                    e.ID,
+		Name:                  e.Attributes.Label,
+		Color:                 e.Attributes.Color,
+		LinkedToProfile:       e.Attributes.LinkedToProfile,
+		SelectedForChoreChart: e.Attributes.SelectedForChoreChart,
 	}
-	if e.Attributes.ProfilePicURL != nil {
-		c.AvatarURL = *e.Attributes.ProfilePicURL
+	if e.Attributes.ProfilePictureURLs.Large != nil {
+		c.AvatarURL = *e.Attributes.ProfilePictureURLs.Large
+	} else if e.Attributes.ProfilePictureURLs.Original != nil {
+		c.AvatarURL = *e.Attributes.ProfilePictureURLs.Original
 	}
 	return c
 }

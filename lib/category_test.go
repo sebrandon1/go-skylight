@@ -85,20 +85,13 @@ func TestListCategories(t *testing.T) {
 }
 
 func TestListCategoriesRequestBody(t *testing.T) {
-	data, _ := json.Marshal(categoryAPIResponse{
-		Data: []categoryAPIEntry{
-			{ID: "1", Attributes: struct {
-				Label         string  `json:"label"`
-				Color         string  `json:"color"`
-				ProfilePicURL *string `json:"profile_pic_url"`
-			}{Label: "Mom", Color: "#FF0000"}},
-			{ID: "2", Attributes: struct {
-				Label         string  `json:"label"`
-				Color         string  `json:"color"`
-				ProfilePicURL *string `json:"profile_pic_url"`
-			}{Label: "Dad", Color: "#0000FF"}},
-		},
-	})
+	e1 := categoryAPIEntry{ID: "1"}
+	e1.Attributes.Label = "Mom"
+	e1.Attributes.Color = "#FF0000"
+	e2 := categoryAPIEntry{ID: "2"}
+	e2.Attributes.Label = "Dad"
+	e2.Attributes.Color = "#0000FF"
+	data, _ := json.Marshal(categoryAPIResponse{Data: []categoryAPIEntry{e1, e2}})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -123,6 +116,130 @@ func TestListCategoriesRequestBody(t *testing.T) {
 	}
 	if categories[0].Color != "#FF0000" {
 		t.Errorf("expected color #FF0000, got %s", categories[0].Color)
+	}
+}
+
+func TestListProfiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		wantLen  int
+		wantErr  bool
+	}{
+		{
+			name:     "returns only linked_to_profile categories",
+			response: `{"data":[{"id":"1","attributes":{"label":"Mom","color":"#FF0000","linked_to_profile":true}},{"id":"2","attributes":{"label":"Family","color":"#0000FF","linked_to_profile":false}}]}`,
+			wantLen:  1,
+		},
+		{
+			name:     "empty list when none are profiles",
+			response: `{"data":[{"id":"1","attributes":{"label":"Family","color":"#FF0000","linked_to_profile":false}}]}`,
+			wantLen:  0,
+		},
+		{
+			name:    "propagates error from ListCategories",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if tc.wantErr {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write([]byte(tc.response)); err != nil {
+					t.Errorf("write response: %v", err)
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			profiles, err := client.ListProfiles(context.Background(), "frame1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(profiles) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(profiles))
+			}
+			for _, p := range profiles {
+				if !p.LinkedToProfile {
+					t.Errorf("ListProfiles returned category with LinkedToProfile=false: %+v", p)
+				}
+			}
+		})
+	}
+}
+
+func TestListLabels(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		wantLen  int
+		wantErr  bool
+	}{
+		{
+			name:     "returns only non-profile categories",
+			response: `{"data":[{"id":"1","attributes":{"label":"Mom","color":"#FF0000","linked_to_profile":true}},{"id":"2","attributes":{"label":"Family","color":"#0000FF","linked_to_profile":false}}]}`,
+			wantLen:  1,
+		},
+		{
+			name:     "empty list when all are profiles",
+			response: `{"data":[{"id":"1","attributes":{"label":"Mom","color":"#FF0000","linked_to_profile":true}}]}`,
+			wantLen:  0,
+		},
+		{
+			name:    "propagates error from ListCategories",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if tc.wantErr {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				if _, err := w.Write([]byte(tc.response)); err != nil {
+					t.Errorf("write response: %v", err)
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			labels, err := client.ListLabels(context.Background(), "frame1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(labels) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(labels))
+			}
+			for _, l := range labels {
+				if l.LinkedToProfile {
+					t.Errorf("ListLabels returned category with LinkedToProfile=true: %+v", l)
+				}
+			}
+		})
 	}
 }
 
