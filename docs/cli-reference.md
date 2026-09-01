@@ -93,13 +93,13 @@ skylight list all
 skylight list info       --list-id ID
 skylight list create     --title TITLE [--color COLOR] [--hide-from-frame]
 skylight list update     --list-id ID [--title T] [--color C] [--hide-from-frame]
-skylight list delete     --list-id ID
+skylight list delete     --list-id ID [--dry-run] [--yes]
 skylight list add-item   --list-id ID --title TITLE [--position N]
 skylight list update-item --list-id ID --item-id ITEM_ID [--title T] [--completed] [--position N]
-skylight list delete-item --list-id ID --item-id ITEM_ID
+skylight list delete-item --list-id ID --item-id ITEM_ID [--dry-run] [--yes]
 skylight list delete-section --list-id ID --section-id SECTION_ID [--dry-run] [--yes]
 skylight list reorder-item  --list-id ID --item-id ITEM_ID --position N
-skylight list clear-completed --list-id ID
+skylight list clear-completed --list-id ID [--dry-run] [--yes]
 skylight list task-box-item --title TITLE
 ```
 
