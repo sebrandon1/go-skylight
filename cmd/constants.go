@@ -34,4 +34,8 @@ const (
 	subCategory   = "category"
 	subProfile    = "profile"
 	subLabel      = "label"
+
+	// Frame update flag names
+	flagScreensaverShowWeather = "screensaver-show-weather"
+	flagScreensaverShowEvents  = "screensaver-show-events"
 )
