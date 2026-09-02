@@ -130,3 +130,44 @@ func TestFrameSetAlbumCmdQuiet(t *testing.T) {
 		t.Errorf("expected no output with --quiet, got: %q", out)
 	}
 }
+
+func TestFrameUpdateCmd(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// pflag.Set() marks the flag as permanently "changed" on the shared
+	// command singleton (no unset API), so this only runs once per process.
+	if err := frameUpdateCmd.Flags().Set("screensaver-show-weather", "true"); err != nil {
+		t.Fatalf("setting screensaver-show-weather flag: %v", err)
+	}
+
+	out := captureStdout(func() {
+		if err := frameUpdateCmd.RunE(frameUpdateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Frame settings updated") {
+		t.Errorf("expected confirmation message, got: %s", out)
+	}
+}
+
+func TestFrameUpdateCmd_APIError(t *testing.T) {
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+
+	if err := frameUpdateCmd.RunE(frameUpdateCmd, nil); err == nil {
+		t.Error("expected error from API failure, got nil")
+	}
+}
+
+func TestFrameUpdateCmd_MissingFrameID(t *testing.T) {
+	origFrameID := frameID
+	frameID = ""
+	t.Cleanup(func() { frameID = origFrameID })
+
+	if err := frameUpdateCmd.RunE(frameUpdateCmd, nil); err == nil {
+		t.Error("expected error for missing frame ID, got nil")
+	}
+}
