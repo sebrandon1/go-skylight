@@ -138,7 +138,7 @@ func TestFrameUpdateCmd(t *testing.T) {
 
 	// pflag.Set() marks the flag as permanently "changed" on the shared
 	// command singleton (no unset API), so this only runs once per process.
-	if err := frameUpdateCmd.Flags().Set("screensaver-show-weather", "true"); err != nil {
+	if err := frameUpdateCmd.Flags().Set(flagScreensaverShowWeather, "true"); err != nil {
 		t.Fatalf("setting screensaver-show-weather flag: %v", err)
 	}
 

@@ -99,16 +99,13 @@ func (c *Client) SetCurrentAlbum(ctx context.Context, frameID string, albumID in
 	return nil
 }
 
-// UpdateFrameSettingsOptions holds optional fields for UpdateFrameSettings.
-// Only non-nil fields are included in the PATCH request.
+// UpdateFrameSettingsOptions holds optional screensaver fields for UpdateFrameSettings.
 type UpdateFrameSettingsOptions struct {
 	ScreensaverShowWeather *bool
 	ScreensaverShowEvents  *bool
 }
 
-// UpdateFrameSettings patches frame-level settings. Only fields with non-nil
-// values in opts are sent, so callers can update a single field without
-// affecting others.
+// UpdateFrameSettings patches frame-level settings.
 func (c *Client) UpdateFrameSettings(ctx context.Context, frameID string, opts UpdateFrameSettingsOptions) error {
 	inner := map[string]any{}
 	if opts.ScreensaverShowWeather != nil {

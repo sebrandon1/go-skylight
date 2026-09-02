@@ -177,10 +177,10 @@ update a single setting without affecting the others.
 		}
 
 		opts := lib.UpdateFrameSettingsOptions{}
-		if cmd.Flags().Changed("screensaver-show-weather") {
+		if cmd.Flags().Changed(flagScreensaverShowWeather) {
 			opts.ScreensaverShowWeather = &screensaverShowWeather
 		}
-		if cmd.Flags().Changed("screensaver-show-events") {
+		if cmd.Flags().Changed(flagScreensaverShowEvents) {
 			opts.ScreensaverShowEvents = &screensaverShowEvents
 		}
 
@@ -205,6 +205,6 @@ func init() {
 	frameSetAlbumCmd.Flags().IntVar(&currentAlbumID, "album-id", 0, "Album ID to display (-1 for all photos)")
 	markFlagRequired(frameSetAlbumCmd, "album-id")
 
-	frameUpdateCmd.Flags().BoolVar(&screensaverShowWeather, "screensaver-show-weather", false, "Show weather on the photo screensaver (requires Calendar Plus)")
-	frameUpdateCmd.Flags().BoolVar(&screensaverShowEvents, "screensaver-show-events", false, "Show upcoming calendar events on the photo screensaver (requires Calendar Plus)")
+	frameUpdateCmd.Flags().BoolVar(&screensaverShowWeather, flagScreensaverShowWeather, false, "Show weather on the photo screensaver (requires Calendar Plus)")
+	frameUpdateCmd.Flags().BoolVar(&screensaverShowEvents, flagScreensaverShowEvents, false, "Show upcoming calendar events on the photo screensaver (requires Calendar Plus)")
 }
