@@ -99,6 +99,37 @@ func (c *Client) SetCurrentAlbum(ctx context.Context, frameID string, albumID in
 	return nil
 }
 
+// UpdateFrameSettingsOptions holds optional fields for UpdateFrameSettings.
+// Only non-nil fields are included in the PATCH request.
+type UpdateFrameSettingsOptions struct {
+	ScreensaverShowWeather *bool
+	ScreensaverShowEvents  *bool
+}
+
+// UpdateFrameSettings patches frame-level settings. Only fields with non-nil
+// values in opts are sent, so callers can update a single field without
+// affecting others.
+func (c *Client) UpdateFrameSettings(ctx context.Context, frameID string, opts UpdateFrameSettingsOptions) error {
+	inner := map[string]any{}
+	if opts.ScreensaverShowWeather != nil {
+		inner["screensaver_show_weather"] = *opts.ScreensaverShowWeather
+	}
+	if opts.ScreensaverShowEvents != nil {
+		inner["screensaver_show_events"] = *opts.ScreensaverShowEvents
+	}
+
+	body := map[string]any{"frame": inner}
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s", c.effectiveURL(), pathSeg(frameID)), body)
+	if err != nil {
+		return fmt.Errorf("failed to create update frame request: %w", err)
+	}
+
+	if err := c.patch(req, nil); err != nil {
+		return fmt.Errorf("failed to update frame settings: %w", err)
+	}
+	return nil
+}
+
 // GetColors retrieves available colors.
 func (c *Client) GetColors(ctx context.Context) ([]Color, error) {
 	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/colors", c.effectiveURL()))

@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -321,6 +322,134 @@ func TestSetCurrentAlbum(t *testing.T) {
 
 			client, _ := NewClientWithToken("u", "t")
 			err := client.SetCurrentAlbum(context.Background(), "frame1", 42)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestUpdateFrameSettings(t *testing.T) {
+	trueVal := true
+	falseVal := false
+
+	tests := []struct {
+		name    string
+		opts    UpdateFrameSettingsOptions
+		status  int
+		wantErr bool
+		verify  func(t *testing.T, r *http.Request)
+	}{
+		{
+			name: "sets both fields",
+			opts: UpdateFrameSettingsOptions{
+				ScreensaverShowWeather: &trueVal,
+				ScreensaverShowEvents:  &falseVal,
+			},
+			status: http.StatusNoContent,
+			verify: func(t *testing.T, r *http.Request) {
+				var body struct {
+					Frame struct {
+						Weather *bool `json:"screensaver_show_weather"`
+						Events  *bool `json:"screensaver_show_events"`
+					} `json:"frame"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				if body.Frame.Weather == nil || *body.Frame.Weather != true {
+					t.Errorf("weather: want true, got %v", body.Frame.Weather)
+				}
+				if body.Frame.Events == nil || *body.Frame.Events != false {
+					t.Errorf("events: want false, got %v", body.Frame.Events)
+				}
+			},
+		},
+		{
+			name: "sets only weather",
+			opts: UpdateFrameSettingsOptions{
+				ScreensaverShowWeather: &trueVal,
+			},
+			status: http.StatusNoContent,
+			verify: func(t *testing.T, r *http.Request) {
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				frame := body["frame"].(map[string]any)
+				if len(frame) != 1 {
+					t.Errorf("expected 1 field, got %d", len(frame))
+				}
+				if frame["screensaver_show_weather"] != true {
+					t.Errorf("weather: want true, got %v", frame["screensaver_show_weather"])
+				}
+			},
+		},
+		{
+			name: "sets only events",
+			opts: UpdateFrameSettingsOptions{
+				ScreensaverShowEvents: &falseVal,
+			},
+			status: http.StatusNoContent,
+			verify: func(t *testing.T, r *http.Request) {
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				frame := body["frame"].(map[string]any)
+				if len(frame) != 1 {
+					t.Errorf("expected 1 field, got %d", len(frame))
+				}
+				if frame["screensaver_show_events"] != false {
+					t.Errorf("events: want false, got %v", frame["screensaver_show_events"])
+				}
+			},
+		},
+		{
+			name:   "no fields set",
+			opts:   UpdateFrameSettingsOptions{},
+			status: http.StatusNoContent,
+			verify: func(t *testing.T, r *http.Request) {
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				frame := body["frame"].(map[string]any)
+				if len(frame) != 0 {
+					t.Errorf("expected 0 fields, got %d", len(frame))
+				}
+			},
+		},
+		{
+			name:    "server error returns error",
+			opts:    UpdateFrameSettingsOptions{},
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch {
+					t.Errorf("expected PATCH, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/f1" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				if tc.verify != nil {
+					tc.verify(t, r)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.UpdateFrameSettings(context.Background(), "f1", tc.opts)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

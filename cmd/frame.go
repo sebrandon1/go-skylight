@@ -3,10 +3,15 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
 )
 
-var currentAlbumID int
+var (
+	currentAlbumID         int
+	screensaverShowWeather bool
+	screensaverShowEvents  bool
+)
 
 var frameCmd = &cobra.Command{
 	Use:   subFrame,
@@ -148,6 +153,46 @@ var frameSetAlbumCmd = &cobra.Command{
 	},
 }
 
+var frameUpdateCmd = &cobra.Command{
+	Use:   subUpdate,
+	Short: "Update frame screensaver settings",
+	Long: `Patch frame-level screensaver settings.
+
+Only flags that are explicitly provided are sent to the API, so you can
+update a single setting without affecting the others.
+
+  # Enable weather on the photo screensaver
+  skylight frame update --frame-id 12345678 --screensaver-show-weather=true
+
+  # Disable calendar events on the photo screensaver
+  skylight frame update --frame-id 12345678 --screensaver-show-events=false`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		opts := lib.UpdateFrameSettingsOptions{}
+		if cmd.Flags().Changed("screensaver-show-weather") {
+			opts.ScreensaverShowWeather = &screensaverShowWeather
+		}
+		if cmd.Flags().Changed("screensaver-show-events") {
+			opts.ScreensaverShowEvents = &screensaverShowEvents
+		}
+
+		if err := client.UpdateFrameSettings(cmd.Context(), frameID, opts); err != nil {
+			return fmt.Errorf("updating frame settings: %w", err)
+		}
+
+		printSuccessf("Frame settings updated\n")
+		return nil
+	},
+}
+
 func init() {
 	frameCmd.AddCommand(frameListCmd)
 	frameCmd.AddCommand(frameInfoCmd)
@@ -155,7 +200,11 @@ func init() {
 	frameCmd.AddCommand(frameAvatarsCmd)
 	frameCmd.AddCommand(frameColorsCmd)
 	frameCmd.AddCommand(frameSetAlbumCmd)
+	frameCmd.AddCommand(frameUpdateCmd)
 
 	frameSetAlbumCmd.Flags().IntVar(&currentAlbumID, "album-id", 0, "Album ID to display (-1 for all photos)")
 	markFlagRequired(frameSetAlbumCmd, "album-id")
+
+	frameUpdateCmd.Flags().BoolVar(&screensaverShowWeather, "screensaver-show-weather", false, "Show weather on the photo screensaver (requires Calendar Plus)")
+	frameUpdateCmd.Flags().BoolVar(&screensaverShowEvents, "screensaver-show-events", false, "Show upcoming calendar events on the photo screensaver (requires Calendar Plus)")
 }
