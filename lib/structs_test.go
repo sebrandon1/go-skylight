@@ -121,6 +121,55 @@ func TestToCategoryWithProfilePicOriginalFallback(t *testing.T) {
 	}
 }
 
+func TestToCategoryWithXLProfilePic(t *testing.T) {
+	entry := categoryAPIEntry{ID: "cat1"}
+	xl := "http://example.com/xl.jpg"
+	large := "http://example.com/large.jpg"
+	entry.Attributes.ProfilePictureURLs.XL = &xl
+	entry.Attributes.ProfilePictureURLs.Large = &large
+	c := entry.toCategory()
+	if c.AvatarURL != xl {
+		t.Errorf("AvatarURL = %q, want XL %q", c.AvatarURL, xl)
+	}
+}
+
+func TestToCategoryWithAvatarRelationship(t *testing.T) {
+	entry := categoryAPIEntry{ID: "cat1"}
+	entry.Relationships.Avatar.Data = &apiRelationshipData{ID: "av42"}
+	c := entry.toCategory()
+	if c.AvatarID != "av42" {
+		t.Errorf("AvatarID = %q, want %q", c.AvatarID, "av42")
+	}
+	if c.HatID != "" {
+		t.Errorf("HatID should be empty when hat relationship is nil, got %q", c.HatID)
+	}
+}
+
+func TestToCategoryWithHatRelationship(t *testing.T) {
+	entry := categoryAPIEntry{ID: "cat1"}
+	entry.Relationships.Hat.Data = &apiRelationshipData{ID: "hat7"}
+	c := entry.toCategory()
+	if c.HatID != "hat7" {
+		t.Errorf("HatID = %q, want %q", c.HatID, "hat7")
+	}
+	if c.AvatarID != "" {
+		t.Errorf("AvatarID should be empty when avatar relationship is nil, got %q", c.AvatarID)
+	}
+}
+
+func TestToCategoryWithBothRelationships(t *testing.T) {
+	entry := categoryAPIEntry{ID: "cat1"}
+	entry.Relationships.Avatar.Data = &apiRelationshipData{ID: "av1"}
+	entry.Relationships.Hat.Data = &apiRelationshipData{ID: "hat1"}
+	c := entry.toCategory()
+	if c.AvatarID != "av1" {
+		t.Errorf("AvatarID = %q, want %q", c.AvatarID, "av1")
+	}
+	if c.HatID != "hat1" {
+		t.Errorf("HatID = %q, want %q", c.HatID, "hat1")
+	}
+}
+
 func TestToMealSittingNilRelationships(t *testing.T) {
 	entry := mealSittingAPIEntry{ID: "ms1"}
 	entry.Attributes.Summary = "Dinner"
@@ -284,6 +333,31 @@ func TestToAvatar(t *testing.T) {
 	}
 	if a.ImageURL != "http://example.com/cat.png" {
 		t.Errorf("ImageURL = %q, want %q", a.ImageURL, "http://example.com/cat.png")
+	}
+}
+
+func TestToAvatarWithKindAndDisplayPosition(t *testing.T) {
+	pos := 3
+	entry := avatarAPIEntry{ID: "a2"}
+	entry.Attributes.Name = "Raccoon"
+	entry.Attributes.ImageURL = "http://example.com/raccoon.png"
+	entry.Attributes.Kind = "default"
+	entry.Attributes.DisplayPosition = &pos
+	a := entry.toAvatar()
+	if a.Kind != "default" {
+		t.Errorf("Kind = %q, want %q", a.Kind, "default")
+	}
+	if a.DisplayPosition == nil || *a.DisplayPosition != 3 {
+		t.Errorf("DisplayPosition = %v, want 3", a.DisplayPosition)
+	}
+}
+
+func TestToAvatarNilDisplayPosition(t *testing.T) {
+	entry := avatarAPIEntry{ID: "a3"}
+	entry.Attributes.Kind = "default"
+	a := entry.toAvatar()
+	if a.DisplayPosition != nil {
+		t.Errorf("DisplayPosition should be nil, got %v", a.DisplayPosition)
 	}
 }
 

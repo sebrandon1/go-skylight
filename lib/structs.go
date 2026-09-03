@@ -662,6 +662,8 @@ type Category struct {
 	Name                  string `json:"label,omitempty"`
 	Color                 string `json:"color,omitempty"`
 	AvatarURL             string `json:"avatar_url,omitempty"`
+	AvatarID              string `json:"avatar_id,omitempty"`
+	HatID                 string `json:"hat_id,omitempty"`
 	LinkedToProfile       bool   `json:"linked_to_profile"`
 	SelectedForChoreChart bool   `json:"selected_for_chore_chart"`
 	CreatedAt             string `json:"created_at,omitempty"`
@@ -683,11 +685,20 @@ type categoryAPIEntry struct {
 		SelectedForChoreChart bool   `json:"selected_for_chore_chart"`
 		ProfilePictureURLs    struct {
 			Original *string `json:"original"`
+			XL       *string `json:"xl"`
 			Large    *string `json:"large"`
 			Medium   *string `json:"medium"`
 			Small    *string `json:"small"`
 		} `json:"profile_picture_urls"`
 	} `json:"attributes"`
+	Relationships struct {
+		Avatar struct {
+			Data *apiRelationshipData `json:"data"`
+		} `json:"avatar"`
+		Hat struct {
+			Data *apiRelationshipData `json:"data"`
+		} `json:"hat"`
+	} `json:"relationships"`
 }
 
 // categoryAPISingleResponse wraps the JSON-API envelope for single category responses.
@@ -710,10 +721,19 @@ func (e *categoryAPIEntry) toCategory() Category {
 		LinkedToProfile:       e.Attributes.LinkedToProfile,
 		SelectedForChoreChart: e.Attributes.SelectedForChoreChart,
 	}
-	if e.Attributes.ProfilePictureURLs.Large != nil {
+	switch {
+	case e.Attributes.ProfilePictureURLs.XL != nil:
+		c.AvatarURL = *e.Attributes.ProfilePictureURLs.XL
+	case e.Attributes.ProfilePictureURLs.Large != nil:
 		c.AvatarURL = *e.Attributes.ProfilePictureURLs.Large
-	} else if e.Attributes.ProfilePictureURLs.Original != nil {
+	case e.Attributes.ProfilePictureURLs.Original != nil:
 		c.AvatarURL = *e.Attributes.ProfilePictureURLs.Original
+	}
+	if e.Relationships.Avatar.Data != nil {
+		c.AvatarID = e.Relationships.Avatar.Data.ID
+	}
+	if e.Relationships.Hat.Data != nil {
+		c.HatID = e.Relationships.Hat.Data.ID
 	}
 	return c
 }
@@ -836,9 +856,11 @@ func (e *deviceAPIEntry) toDevice() Device {
 
 // Avatar represents an available avatar option.
 type Avatar struct {
-	ID       string `json:"id,omitempty"`
-	Name     string `json:"name,omitempty"`
-	ImageURL string `json:"image_url,omitempty"`
+	ID              string `json:"id,omitempty"`
+	Name            string `json:"name,omitempty"`
+	ImageURL        string `json:"image_url,omitempty"`
+	Kind            string `json:"kind,omitempty"`
+	DisplayPosition *int   `json:"display_position,omitempty"`
 }
 
 // avatarAPIResponse wraps the JSON-API envelope for avatar list responses.
@@ -850,16 +872,20 @@ type avatarAPIResponse struct {
 type avatarAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Name     string `json:"name"`
-		ImageURL string `json:"image_url"`
+		Name            string `json:"name"`
+		ImageURL        string `json:"image_url"`
+		Kind            string `json:"kind"`
+		DisplayPosition *int   `json:"display_position"`
 	} `json:"attributes"`
 }
 
 func (e *avatarAPIEntry) toAvatar() Avatar {
 	return Avatar{
-		ID:       e.ID,
-		Name:     e.Attributes.Name,
-		ImageURL: e.Attributes.ImageURL,
+		ID:              e.ID,
+		Name:            e.Attributes.Name,
+		ImageURL:        e.Attributes.ImageURL,
+		Kind:            e.Attributes.Kind,
+		DisplayPosition: e.Attributes.DisplayPosition,
 	}
 }
 
