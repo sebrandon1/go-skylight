@@ -232,10 +232,25 @@ func (c *Client) ClaimChore(ctx context.Context, frameID, choreID, assigneeID st
 	return c.UpdateChore(ctx, frameID, choreID, ChoreData{AssigneeID: assigneeID})
 }
 
-// DeleteChore deletes a chore. apply_to=all is sent unconditionally because
-// the Skylight API requires it for recurring chores (400 otherwise) and ignores
-// it for non-recurring ones.
+// DeleteChore deletes a one-time (non-recurring) chore. The Skylight API
+// rejects apply_to for one-time chores, so it is not sent. Use
+// DeleteRecurringChore for recurring chores.
 func (c *Client) DeleteChore(ctx context.Context, frameID, choreID string) error {
+	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
+	if err != nil {
+		return fmt.Errorf("failed to create delete chore request: %w", err)
+	}
+
+	if err := c.doDelete(req); err != nil {
+		return fmt.Errorf("failed to delete chore: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteRecurringChore deletes all instances of a recurring chore by sending
+// apply_to=all, which the Skylight API requires for recurring chores.
+func (c *Client) DeleteRecurringChore(ctx context.Context, frameID, choreID string) error {
 	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)

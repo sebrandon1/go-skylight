@@ -667,6 +667,42 @@ func TestDeleteChore(t *testing.T) {
 				if r.Method != http.MethodDelete {
 					t.Errorf("expected DELETE, got %s", r.Method)
 				}
+				if got := r.URL.Query().Get("apply_to"); got != "" {
+					t.Errorf("apply_to: want empty got %q", got)
+				}
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			err := client.DeleteChore(context.Background(), "frame1", "chore1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestDeleteRecurringChore(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		wantErr bool
+	}{
+		{"deletes all instances with 204", http.StatusNoContent, false},
+		{"server error returns error", http.StatusInternalServerError, true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete {
+					t.Errorf("expected DELETE, got %s", r.Method)
+				}
 				if got := r.URL.Query().Get("apply_to"); got != "all" {
 					t.Errorf("apply_to: want %q got %q", "all", got)
 				}
@@ -679,7 +715,7 @@ func TestDeleteChore(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			err := client.DeleteChore(context.Background(), "frame1", "chore1")
+			err := client.DeleteRecurringChore(context.Background(), "frame1", "chore1")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

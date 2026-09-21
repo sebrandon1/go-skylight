@@ -21,6 +21,97 @@ var (
 	clientErr     error
 )
 
+// TestMain sweeps leftover integration-test-* resources before running tests
+// so that interrupted prior runs don't accumulate artifacts on the live frame.
+func TestMain(m *testing.M) {
+	sweepIntegrationTestResources()
+	os.Exit(m.Run())
+}
+
+func sweepIntegrationTestResources() {
+	email := os.Getenv("SKYLIGHT_EMAIL")
+	password := os.Getenv("SKYLIGHT_PASSWORD")
+	frameID := os.Getenv("SKYLIGHT_FRAME_ID")
+	loadSkylightConfig(&email, &password, &frameID)
+	if email == "" || password == "" || frameID == "" {
+		return
+	}
+
+	fingerprint := "integration-test-" + frameID
+	tok, err := LoginHeadless(email, password, fingerprint)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "sweep: auth failed: %v\n", err)
+		return
+	}
+	c, err := NewClientWithToken("integration", tok.AccessToken)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "sweep: client init failed: %v\n", err)
+		return
+	}
+
+	ctx := context.Background()
+	now := time.Now()
+
+	// Sweep chores (past year + today)
+	chores, err := c.ListChores(ctx, frameID, ChoreListOptions{
+		After:       now.AddDate(-1, 0, 0).Format(DateFormat),
+		Before:      now.AddDate(0, 0, 1).Format(DateFormat),
+		IncludeLate: true,
+	})
+	if err == nil {
+		for _, ch := range chores {
+			if strings.HasPrefix(ch.Title, "integration-test-") {
+				_ = c.DeleteChore(ctx, frameID, ch.ID)
+			}
+		}
+	}
+
+	// Sweep rewards
+	rewards, err := c.ListRewards(ctx, frameID)
+	if err == nil {
+		for _, r := range rewards {
+			if strings.HasPrefix(r.Title, "integration-test-") {
+				_ = c.DeleteReward(ctx, frameID, r.ID)
+			}
+		}
+	}
+
+	// Sweep lists
+	lists, err := c.ListLists(ctx, frameID)
+	if err == nil {
+		for _, l := range lists {
+			if strings.HasPrefix(l.Title, "integration-test-") {
+				_ = c.DeleteList(ctx, frameID, l.ID)
+			}
+		}
+	}
+
+	// Sweep recipes
+	recipes, err := c.ListRecipes(ctx, frameID)
+	if err == nil {
+		for _, r := range recipes {
+			if strings.HasPrefix(r.Title, "integration-test-") {
+				_ = c.DeleteRecipe(ctx, frameID, r.ID)
+			}
+		}
+	}
+
+	// Sweep calendar events (past year and next 30 days)
+	for _, window := range [][2]string{
+		{now.AddDate(-1, 0, 0).Format(DateFormat), now.Format(DateFormat)},
+		{now.Format(DateFormat), now.AddDate(0, 0, 30).Format(DateFormat)},
+	} {
+		events, err := c.ListCalendarEvents(ctx, frameID, window[0], window[1], "")
+		if err == nil {
+			for _, e := range events {
+				if strings.HasPrefix(e.Title, "integration-test-") {
+					_ = c.DeleteCalendarEvent(ctx, frameID, e.ID)
+				}
+			}
+		}
+	}
+}
+
 func integrationClient(t *testing.T) (*Client, string) {
 	t.Helper()
 

@@ -18,6 +18,8 @@ func choreMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes"}}}`)
 		case strings.HasSuffix(r.URL.Path, "/create_multiple"):
 			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes","up_for_grabs":true}}]}`)
+		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodGet:
+			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes","recurrence":false}}}`)
 		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodPut:
 			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Updated"}}}`)
 		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodDelete:
@@ -123,6 +125,58 @@ func TestChoreDeleteCmd_Quiet(t *testing.T) {
 	})
 	if out != "" {
 		t.Errorf("expected no output with --quiet, got: %s", out)
+	}
+}
+
+func TestChoreDeleteCmd_Recurring(t *testing.T) {
+	applyToSeen := ""
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodGet:
+			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Daily chores","recurring":true}}}`)
+		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodDelete:
+			applyToSeen = r.URL.Query().Get("apply_to")
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Daily chores","status":"pending"}}]}`)
+		}
+	})
+	newCmdTestClient(t, handler)
+	origID, origYes := choreID, yes
+	choreID, yes = "c1", true
+	t.Cleanup(func() { choreID, yes = origID, origYes })
+
+	out := captureStdout(func() {
+		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "deleted successfully") {
+		t.Errorf("expected deletion confirmation, got: %s", out)
+	}
+	if applyToSeen != "all" {
+		t.Errorf("expected apply_to=all for recurring chore, got %q", applyToSeen)
+	}
+}
+
+func TestChoreDeleteCmd_GetChoreError(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, `{"error":"not found"}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":[]}`)
+	})
+	newCmdTestClient(t, handler)
+	origID, origYes := choreID, yes
+	choreID, yes = "c1", true
+	t.Cleanup(func() { choreID, yes = origID, origYes })
+
+	if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err == nil {
+		t.Error("expected error when GetChore fails, got nil")
 	}
 }
 

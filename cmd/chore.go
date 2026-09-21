@@ -237,7 +237,17 @@ var choreDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if err := client.DeleteChore(cmd.Context(), frameID, choreID); err != nil {
+		chore, err := client.GetChore(cmd.Context(), frameID, choreID)
+		if err != nil {
+			return fmt.Errorf("fetching chore: %w", err)
+		}
+
+		if chore.Recurring {
+			err = client.DeleteRecurringChore(cmd.Context(), frameID, choreID)
+		} else {
+			err = client.DeleteChore(cmd.Context(), frameID, choreID)
+		}
+		if err != nil {
 			return fmt.Errorf("deleting chore: %w", err)
 		}
 

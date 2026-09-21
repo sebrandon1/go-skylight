@@ -47,8 +47,8 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteChore(context.Background(), frameID, chore.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteChore: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteChore: %v", err)
 		}
 	})
 
@@ -134,8 +134,8 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteReward(context.Background(), frameID, reward.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteReward: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteReward: %v", err)
 		}
 	})
 
@@ -210,8 +210,8 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteCalendarEvent(context.Background(), frameID, event.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteCalendarEvent: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteCalendarEvent: %v", err)
 		}
 	})
 
@@ -269,8 +269,8 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteList(context.Background(), frameID, list.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteList: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteList: %v", err)
 		}
 	})
 
@@ -304,8 +304,8 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteListItem(context.Background(), frameID, list.ID, item.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteListItem: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteListItem: %v", err)
 		}
 	})
 
@@ -369,8 +369,8 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteRecipe(context.Background(), frameID, recipe.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteRecipe: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteRecipe: %v", err)
 		}
 	})
 
@@ -425,8 +425,8 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	}
 	t.Cleanup(func() {
 		if err := client.DeleteRecipe(context.Background(), frameID, recipe.ID); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteRecipe (for sitting): %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteRecipe (for sitting): %v", err)
 		}
 	})
 
@@ -446,8 +446,8 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := client.DeleteMealSitting(context.Background(), frameID, sitting.ID, date); err != nil &&
-			!strings.Contains(err.Error(), "404") {
-			t.Logf("cleanup DeleteMealSitting: %v", err)
+			!IsNotFound(err) {
+			t.Errorf("cleanup DeleteMealSitting: %v", err)
 		}
 	})
 
