@@ -163,8 +163,8 @@ func TestAuthorizationHeader(t *testing.T) {
 			t.Errorf("Authorization: want Bearer token1, got %q", auth)
 		}
 		apiVer := r.Header.Get("skylight-api-version")
-		if apiVer != "2026-03-01" {
-			t.Errorf("skylight-api-version: want 2026-03-01, got %q", apiVer)
+		if apiVer != "2026-06-01" {
+			t.Errorf("skylight-api-version: want 2026-06-01, got %q", apiVer)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

@@ -63,7 +63,7 @@ func WithRateLimit(r rate.Limit, b int) ClientOption {
 	}
 }
 
-const defaultAPIVersion = "2026-03-01"
+const defaultAPIVersion = "2026-06-01"
 
 // WithAPIVersion overrides the skylight-api-version header sent with every
 // request. The default is "2026-03-01".
