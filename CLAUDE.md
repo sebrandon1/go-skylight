@@ -4,7 +4,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 
 ## Go Version
 
-Go 1.26 (see `go.mod`)
+Go 1.27.1 (see `go.mod`)
 
 ## Dependencies
 

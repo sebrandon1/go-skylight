@@ -27,6 +27,22 @@ skylight config unset <key>
 skylight config edit
 ```
 
+## Config file keys
+
+| Key | Description |
+|-----|-------------|
+| `SKYLIGHT_EMAIL` | User email address (deprecated; use refresh token) |
+| `SKYLIGHT_PASSWORD` | User password (deprecated; use refresh token) |
+| `SKYLIGHT_TOKEN` | Bearer access token |
+| `SKYLIGHT_USER_ID` | User ID (used with `SKYLIGHT_TOKEN`) |
+| `SKYLIGHT_FRAME_ID` | Default frame ID |
+| `SKYLIGHT_REFRESH_TOKEN` | OAuth2 refresh token (recommended) |
+| `SKYLIGHT_DEVICE_FINGERPRINT` | Stable device UUID used with OAuth |
+| `SKYLIGHT_OUTPUT` | Output format (`json` or `table`) |
+| `SKYLIGHT_QUIET` | Suppress non-essential success messages (`true`/`false`) |
+
+> **Note:** CLI flags take precedence over config file values.
+
 ## Login
 
 ```bash
@@ -75,7 +91,7 @@ skylight chore streak [--days N] [--assignee-id ID]
 ## Rewards
 
 ```bash
-skylight reward list
+skylight reward list [--assignee-id ID] [--points-min N] [--points-max N] [--status redeemed|available]
 skylight reward get --reward-id ID
 skylight reward create --title TITLE --points N [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
 skylight reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
@@ -143,6 +159,24 @@ skylight category update --category-id ID [--name NAME] [--color COLOR]
 skylight category delete --category-id ID
 ```
 
+## Profiles
+
+```bash
+skylight profile list
+skylight profile create --name NAME [--color COLOR] [--emoji EMOJI] [--avatar-id ID]
+skylight profile update --profile-id ID [--name NAME] [--color COLOR] [--emoji EMOJI] [--avatar-id ID]
+skylight profile delete --profile-id ID [--yes]
+```
+
+## Labels
+
+```bash
+skylight label list
+skylight label create --name NAME [--color COLOR]
+skylight label update --label-id ID [--name NAME] [--color COLOR]
+skylight label delete --label-id ID [--yes]
+```
+
 ## Frame
 
 ```bash
@@ -152,6 +186,7 @@ skylight frame devices
 skylight frame avatars
 skylight frame colors
 skylight frame set-album --album-id ID   # -1 for all photos
+skylight frame update [--screensaver-show-weather=true|false] [--screensaver-show-events=true|false]
 ```
 
 ## Add-ons

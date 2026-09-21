@@ -132,4 +132,4 @@ make vet            # go vet ./...
 make clean          # remove built binaries
 ```
 
-CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.26.x.
+CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.1.

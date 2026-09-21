@@ -19,13 +19,16 @@ import (
 ```go
 // Basic client
 client, err := lib.NewClientWithToken("user-id", "api-token")
+```
 
+```go
 // With functional options: retry, rate limiting, logging, custom HTTP client,
 // API version, custom base URL
 client, err := lib.NewClientWithToken("user-id", "api-token",
     lib.WithRetry(3, 500*time.Millisecond, 10*time.Second),
     lib.WithRateLimit(rate.Limit(5), 10),
     lib.WithLogger(slog.Default()),
+    lib.WithAPIVersion("2026-06-01"),
     lib.WithBaseURL("https://staging.example.com/api"), // test seam
 )
 ```
@@ -59,6 +62,11 @@ for event := range poller.Events() {
 ## Typed Errors
 
 ```go
+import "errors"
+
+// err comes from a lib API call, e.g.:
+//   _, err = client.GetChore(ctx, frameID, choreID)
+
 var authErr *lib.AuthError
 var notFound *lib.NotFoundError
 var rateLimit *lib.RateLimitError

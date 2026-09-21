@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- `profile list|create|update|delete` — household member profile management
+- `label list|create|update|delete` — event/task label management
+- `frame update` — patch screensaver settings (`--screensaver-show-weather`, `--screensaver-show-events`)
+- `reward list` now accepts `--assignee-id`, `--points-min`, `--points-max`, `--status` filters
+- Integration test pre-run sweep (`TestMain`) cleans up `integration-test-*` artifacts before each run
+
+### Changed
+- `DeleteChore` split into `DeleteChore` (one-time) and `DeleteRecurringChore` (recurring) in `lib/chore.go`; the CLI `chore delete` command fetches the chore first to pick the right variant
+- Default `skylight-api-version` header bumped from `2026-03-01` to `2026-06-01` to support deletion of Up for Grabs chores
+- Go version updated to 1.27.1 (`go.mod`, CI, Dockerfile)
+- Dependency: `golang.org/x/time` bumped to v0.16.0
+
+### Fixed
+- Integration test cleanup failures were silently swallowed (`t.Logf`); now surface as test failures (`t.Errorf`)
+- `IsNotFound` typed check replaces fragile `strings.Contains(err.Error(), "404")` in integration tests
+
 ## [v0.0.12] - 2026-03-18
 
 ### Changed
