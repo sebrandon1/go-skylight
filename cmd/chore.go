@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -182,7 +183,19 @@ var choreCreateCmd = &cobra.Command{
 		}
 		var chore *lib.Chore
 		ctx := cmd.Context()
-		if choreUpForGrabs {
+		if len(choreRecurrenceDays) > 0 {
+			// The API ignores frequency/recurrence_days; recurrence only takes via an RRULE on create_multiple.
+			days := make([]string, len(choreRecurrenceDays))
+			for i, d := range choreRecurrenceDays {
+				days[i] = strings.ToUpper(d[:2])
+			}
+			data.RecurrenceSet = []string{"RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=" + strings.Join(days, ",")}
+			data.UpForGrabs = choreUpForGrabs
+			if !choreUpForGrabs {
+				data.CategoryIDs = []string{choreAssigneeID}
+			}
+			chore, err = client.CreateMultipleChore(ctx, frameID, data)
+		} else if choreUpForGrabs {
 			chore, err = client.CreateUpForGrabsChore(ctx, frameID, data)
 		} else {
 			data.AssigneeID = choreAssigneeID
@@ -237,15 +250,9 @@ var choreDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		chore, err := client.GetChore(cmd.Context(), frameID, choreID)
-		if err != nil {
-			return fmt.Errorf("fetching chore: %w", err)
-		}
-
-		if chore.Recurring {
+		// GET /chores/{id} 404s, so recurrence can't be looked up first; one-time delete rejects apply_to, so try it before apply_to=all.
+		if err = client.DeleteChore(cmd.Context(), frameID, choreID); err != nil {
 			err = client.DeleteRecurringChore(cmd.Context(), frameID, choreID)
-		} else {
-			err = client.DeleteChore(cmd.Context(), frameID, choreID)
 		}
 		if err != nil {
 			return fmt.Errorf("deleting chore: %w", err)

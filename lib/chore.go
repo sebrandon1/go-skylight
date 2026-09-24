@@ -167,6 +167,11 @@ func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreDat
 // create_multiple endpoint which accepts up_for_grabs without a category_id.
 func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
 	chore.UpForGrabs = true
+	return c.CreateMultipleChore(ctx, frameID, chore)
+}
+
+// CreateMultipleChore posts to create_multiple, the only endpoint that honours recurrence_set.
+func (c *Client) CreateMultipleChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
 	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/chores/create_multiple", c.effectiveURL(), pathSeg(frameID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create up-for-grabs chore request: %w", err)
