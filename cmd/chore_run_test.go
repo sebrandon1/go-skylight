@@ -18,8 +18,6 @@ func choreMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes"}}}`)
 		case strings.HasSuffix(r.URL.Path, "/create_multiple"):
 			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes","up_for_grabs":true}}]}`)
-		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodGet:
-			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes","recurrence":false}}}`)
 		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodPut:
 			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Updated"}}}`)
 		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodDelete:
@@ -132,20 +130,17 @@ func TestChoreDeleteCmd_Recurring(t *testing.T) {
 	applyToSeen := ""
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodGet:
-			fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Daily chores","recurring":true}}}`)
-		case strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodDelete:
+		if strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodDelete {
 			applyToSeen = r.URL.Query().Get("apply_to")
 			w.WriteHeader(http.StatusNoContent)
-		default:
-			fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Daily chores","status":"pending"}}]}`)
+			return
 		}
+		fmt.Fprint(w, `{"data":[]}`)
 	})
 	newCmdTestClient(t, handler)
-	origID, origYes := choreID, yes
-	choreID, yes = "c1", true
-	t.Cleanup(func() { choreID, yes = origID, origYes })
+	origID, origYes, origRecurring := choreID, yes, choreDeleteRecurring
+	choreID, yes, choreDeleteRecurring = "c1", true, true
+	t.Cleanup(func() { choreID, yes, choreDeleteRecurring = origID, origYes, origRecurring })
 
 	out := captureStdout(func() {
 		if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
@@ -156,27 +151,58 @@ func TestChoreDeleteCmd_Recurring(t *testing.T) {
 		t.Errorf("expected deletion confirmation, got: %s", out)
 	}
 	if applyToSeen != "all" {
-		t.Errorf("expected apply_to=all for recurring chore, got %q", applyToSeen)
+		t.Errorf("expected apply_to=all with --recurring, got %q", applyToSeen)
 	}
 }
 
-func TestChoreDeleteCmd_GetChoreError(t *testing.T) {
+func TestChoreDeleteCmd_NonRecurring_NoApplyTo(t *testing.T) {
+	deleteCalled := false
+	applyToSeen := ""
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusNotFound)
-			fmt.Fprint(w, `{"error":"not found"}`)
+		if strings.HasSuffix(r.URL.Path, "/c1") && r.Method == http.MethodDelete {
+			deleteCalled = true
+			applyToSeen = r.URL.Query().Get("apply_to")
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		fmt.Fprint(w, `{"data":[]}`)
 	})
 	newCmdTestClient(t, handler)
-	origID, origYes := choreID, yes
-	choreID, yes = "c1", true
-	t.Cleanup(func() { choreID, yes = origID, origYes })
+	origID, origYes, origRecurring := choreID, yes, choreDeleteRecurring
+	choreID, yes, choreDeleteRecurring = "c1", true, false
+	t.Cleanup(func() { choreID, yes, choreDeleteRecurring = origID, origYes, origRecurring })
 
-	if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err == nil {
-		t.Error("expected error when GetChore fails, got nil")
+	if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !deleteCalled {
+		t.Fatal("DELETE request was never sent")
+	}
+	if applyToSeen != "" {
+		t.Errorf("apply_to: want empty without --recurring, got %q", applyToSeen)
+	}
+}
+
+func TestChoreDeleteCmd_APIError(t *testing.T) {
+	tests := []struct {
+		name      string
+		recurring bool
+	}{
+		{name: "non-recurring", recurring: false},
+		{name: "recurring", recurring: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			newCmdTestClient(t, http500Handler)
+			origID, origYes, origRecurring := choreID, yes, choreDeleteRecurring
+			choreID, yes, choreDeleteRecurring = "c1", true, tc.recurring
+			t.Cleanup(func() { choreID, yes, choreDeleteRecurring = origID, origYes, origRecurring })
+
+			if err := choreDeleteCmd.RunE(choreDeleteCmd, nil); err == nil {
+				t.Errorf("expected error from API failure, got nil")
+			}
+		})
 	}
 }
 

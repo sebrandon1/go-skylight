@@ -112,3 +112,30 @@ func TestCategoryUpdateCmd(t *testing.T) {
 func TestCategoryCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "category")
 }
+
+func TestCategoryCmd_APIErrors(t *testing.T) {
+	runAPIErrorCases(t, []apiErrorCase{
+		{
+			name: "list",
+			cmd:  func() error { return categoryListCmd.RunE(categoryListCmd, nil) },
+		},
+		{
+			name: "create",
+			setup: func(t *testing.T) {
+				orig := categoryName
+				categoryName = "Mom"
+				t.Cleanup(func() { categoryName = orig })
+			},
+			cmd: func() error { return categoryCreateCmd.RunE(categoryCreateCmd, nil) },
+		},
+		{
+			name: "delete",
+			setup: func(t *testing.T) {
+				origID, origYes := categoryID, yes
+				categoryID, yes = "cat1", true
+				t.Cleanup(func() { categoryID, yes = origID, origYes })
+			},
+			cmd: func() error { return categoryDeleteCmd.RunE(categoryDeleteCmd, nil) },
+		},
+	})
+}

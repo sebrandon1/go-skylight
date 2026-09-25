@@ -13,7 +13,7 @@ import (
 
 // testPrefix returns a unique name prefix for integration test resources.
 func testPrefix() string {
-	return fmt.Sprintf("integration-test-%d", time.Now().UnixMilli())
+	return fmt.Sprintf("%s%d", integrationTestPrefix, time.Now().UnixMilli())
 }
 
 func TestIntegration_ChoresCRUD(t *testing.T) {
@@ -98,6 +98,80 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 		t.Fatalf("CompleteChore: %v", err)
 	}
 	t.Log("completed chore")
+}
+
+// TestIntegration_DeleteChore_NonRecurring confirms that DeleteChore (no
+// apply_to param) succeeds on a one-time chore — the scenario that 404'd
+// when the old code tried GET /chores/{id} first.
+func TestIntegration_DeleteChore_NonRecurring(t *testing.T) {
+	client, frameID := integrationClient(t)
+
+	categories, err := client.ListCategories(context.Background(), frameID)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	if len(categories) == 0 {
+		t.Skip("no categories available — cannot create chore")
+	}
+
+	chore, err := client.CreateChore(context.Background(), frameID, ChoreData{
+		Title:      testPrefix() + "-delete-nonrecurring",
+		DueDate:    time.Now().Format(DateFormat),
+		AssigneeID: categories[0].ID,
+	})
+	if err != nil {
+		t.Fatalf("CreateChore: %v", err)
+	}
+	t.Logf("created chore %s (%s)", chore.Title, chore.ID)
+
+	t.Cleanup(func() {
+		// safety net in case delete below fails
+		_ = client.DeleteChore(context.Background(), frameID, chore.ID)
+	})
+
+	if err := client.DeleteChore(context.Background(), frameID, chore.ID); err != nil {
+		t.Fatalf("DeleteChore: %v", err)
+	}
+	t.Logf("deleted non-recurring chore %s", chore.ID)
+}
+
+// TestIntegration_DeleteChore_Recurring confirms that DeleteRecurringChore
+// (apply_to=all) succeeds on a recurring chore.
+func TestIntegration_DeleteChore_Recurring(t *testing.T) {
+	client, frameID := integrationClient(t)
+
+	categories, err := client.ListCategories(context.Background(), frameID)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	if len(categories) == 0 {
+		t.Skip("no categories available — cannot create chore")
+	}
+
+	chore, err := client.CreateChore(context.Background(), frameID, ChoreData{
+		Title:      testPrefix() + "-delete-recurring",
+		DueDate:    time.Now().Format(DateFormat),
+		AssigneeID: categories[0].ID,
+		Recurring:  true,
+		Frequency:  "DAILY",
+	})
+	if err != nil {
+		t.Fatalf("CreateChore (recurring): %v", err)
+	}
+	t.Logf("created chore %s (%s), recurring=%v", chore.Title, chore.ID, chore.Recurring)
+
+	t.Cleanup(func() {
+		_ = client.DeleteChore(context.Background(), frameID, chore.ID)
+	})
+
+	if !chore.Recurring {
+		t.Skip("API created chore as non-recurring — cannot test DeleteRecurringChore via create; skipping")
+	}
+
+	if err := client.DeleteRecurringChore(context.Background(), frameID, chore.ID); err != nil {
+		t.Fatalf("DeleteRecurringChore: %v", err)
+	}
+	t.Logf("deleted recurring chore %s", chore.ID)
 }
 
 func TestIntegration_RewardsCRUD(t *testing.T) {

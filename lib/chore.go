@@ -233,34 +233,27 @@ func (c *Client) ClaimChore(ctx context.Context, frameID, choreID, assigneeID st
 }
 
 // DeleteChore deletes a one-time (non-recurring) chore. The Skylight API
-// rejects apply_to for one-time chores, so it is not sent. Use
-// DeleteRecurringChore for recurring chores.
+// rejects apply_to for one-time chores, so it is not sent.
 func (c *Client) DeleteChore(ctx context.Context, frameID, choreID string) error {
-	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
-	if err != nil {
-		return fmt.Errorf("failed to create delete chore request: %w", err)
-	}
-
-	if err := c.doDelete(req); err != nil {
-		return fmt.Errorf("failed to delete chore: %w", err)
-	}
-
-	return nil
+	return c.deleteChore(ctx, frameID, choreID, "")
 }
 
-// DeleteRecurringChore deletes all instances of a recurring chore by sending
-// apply_to=all, which the Skylight API requires for recurring chores.
+// DeleteRecurringChore deletes all instances of a recurring chore.
+// apply_to=all is required by the Skylight API for recurring chores.
 func (c *Client) DeleteRecurringChore(ctx context.Context, frameID, choreID string) error {
+	return c.deleteChore(ctx, frameID, choreID, applyToAll)
+}
+
+func (c *Client) deleteChore(ctx context.Context, frameID, choreID, applyTo string) error {
 	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}
-
-	addQueryParams(req, map[string]string{queryKeyApplyTo: applyToAll})
-
+	if applyTo != "" {
+		addQueryParams(req, map[string]string{queryKeyApplyTo: applyTo})
+	}
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete chore: %w", err)
 	}
-
 	return nil
 }

@@ -375,18 +375,44 @@ func TestImportCmd_DryRun(t *testing.T) {
 	}
 }
 
-func TestImportCmd_FileNotFound(t *testing.T) {
-	origFrameID, origFile := frameID, importFile
-	frameID = "test-frame"
-	importFile = "/nonexistent/path/export.json"
-	t.Cleanup(func() { frameID, importFile = origFrameID, origFile })
-
-	err := importCmd.RunE(importCmd, nil)
-	if err == nil {
-		t.Fatal("expected error for missing import file, got nil")
+func TestImportCmd_FileErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		setupFile func(t *testing.T) string
+		wantMsg   string
+	}{
+		{
+			name:      "missing file",
+			setupFile: func(t *testing.T) string { return "/nonexistent/path/export.json" },
+			wantMsg:   "reading",
+		},
+		{
+			name: "invalid JSON",
+			setupFile: func(t *testing.T) string {
+				path := filepath.Join(t.TempDir(), "bad.json")
+				if err := os.WriteFile(path, []byte("not valid json {{{"), 0o600); err != nil {
+					t.Fatalf("writing temp file: %v", err)
+				}
+				return path
+			},
+			wantMsg: "parsing",
+		},
 	}
-	if !strings.Contains(err.Error(), "reading") {
-		t.Errorf("expected 'reading' in error, got: %v", err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			origFrameID, origFile := frameID, importFile
+			frameID = "test-frame"
+			importFile = tc.setupFile(t)
+			t.Cleanup(func() { frameID, importFile = origFrameID, origFile })
+
+			err := importCmd.RunE(importCmd, nil)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), tc.wantMsg) {
+				t.Errorf("expected %q in error, got: %v", tc.wantMsg, err)
+			}
+		})
 	}
 }
 

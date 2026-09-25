@@ -8,25 +8,26 @@ import (
 )
 
 var (
-	choreDate           string
-	choreStatus         string
-	choreAssigneeID     string
-	choreID             string
-	choreTitle          string
-	choreDescription    string
-	chorePoints         int
-	choreAfter          string
-	choreBefore         string
-	choreIncludeLate    bool
-	choreRecurring      bool
-	choreUpForGrabs     bool
-	choreWeek           string
-	choreFrequency      string
-	choreInterval       int
-	choreRecurrenceDays []string
-	choreEndDate        string
-	choreRecurFrom      string
-	choreSearchQuery    string
+	choreDate            string
+	choreStatus          string
+	choreAssigneeID      string
+	choreID              string
+	choreTitle           string
+	choreDescription     string
+	chorePoints          int
+	choreAfter           string
+	choreBefore          string
+	choreIncludeLate     bool
+	choreRecurring       bool
+	choreUpForGrabs      bool
+	choreWeek            string
+	choreFrequency       string
+	choreInterval        int
+	choreRecurrenceDays  []string
+	choreEndDate         string
+	choreRecurFrom       string
+	choreSearchQuery     string
+	choreDeleteRecurring bool
 )
 
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
@@ -237,18 +238,14 @@ var choreDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		chore, err := client.GetChore(cmd.Context(), frameID, choreID)
-		if err != nil {
-			return fmt.Errorf("fetching chore: %w", err)
-		}
-
-		if chore.Recurring {
-			err = client.DeleteRecurringChore(cmd.Context(), frameID, choreID)
+		var delErr error
+		if choreDeleteRecurring {
+			delErr = client.DeleteRecurringChore(cmd.Context(), frameID, choreID)
 		} else {
-			err = client.DeleteChore(cmd.Context(), frameID, choreID)
+			delErr = client.DeleteChore(cmd.Context(), frameID, choreID)
 		}
-		if err != nil {
-			return fmt.Errorf("deleting chore: %w", err)
+		if delErr != nil {
+			return fmt.Errorf("deleting chore: %w", delErr)
 		}
 
 		printSuccess("Chore deleted successfully")
@@ -529,6 +526,7 @@ func init() {
 	choreDeleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to delete")
 	choreDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	choreDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
+	choreDeleteCmd.Flags().BoolVar(&choreDeleteRecurring, "recurring", false, "Delete all instances of a recurring chore")
 	markFlagRequired(choreDeleteCmd, "chore-id")
 
 	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")

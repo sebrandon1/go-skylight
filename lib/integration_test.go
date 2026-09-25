@@ -14,6 +14,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const integrationTestPrefix = "integration-test-"
+
 var (
 	sharedClient  *Client
 	sharedFrameID string
@@ -37,7 +39,7 @@ func sweepIntegrationTestResources() {
 		return
 	}
 
-	fingerprint := "integration-test-" + frameID
+	fingerprint := integrationTestPrefix + frameID
 	tok, err := LoginHeadless(email, password, fingerprint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sweep: auth failed: %v\n", err)
@@ -60,8 +62,12 @@ func sweepIntegrationTestResources() {
 	})
 	if err == nil {
 		for _, ch := range chores {
-			if strings.HasPrefix(ch.Title, "integration-test-") {
-				_ = c.DeleteChore(ctx, frameID, ch.ID)
+			if strings.HasPrefix(ch.Title, integrationTestPrefix) {
+				if ch.Recurring {
+					_ = c.DeleteRecurringChore(ctx, frameID, ch.ID)
+				} else {
+					_ = c.DeleteChore(ctx, frameID, ch.ID)
+				}
 			}
 		}
 	}
@@ -70,7 +76,7 @@ func sweepIntegrationTestResources() {
 	rewards, err := c.ListRewards(ctx, frameID)
 	if err == nil {
 		for _, r := range rewards {
-			if strings.HasPrefix(r.Title, "integration-test-") {
+			if strings.HasPrefix(r.Title, integrationTestPrefix) {
 				_ = c.DeleteReward(ctx, frameID, r.ID)
 			}
 		}
@@ -80,7 +86,7 @@ func sweepIntegrationTestResources() {
 	lists, err := c.ListLists(ctx, frameID)
 	if err == nil {
 		for _, l := range lists {
-			if strings.HasPrefix(l.Title, "integration-test-") {
+			if strings.HasPrefix(l.Title, integrationTestPrefix) {
 				_ = c.DeleteList(ctx, frameID, l.ID)
 			}
 		}
@@ -90,23 +96,22 @@ func sweepIntegrationTestResources() {
 	recipes, err := c.ListRecipes(ctx, frameID)
 	if err == nil {
 		for _, r := range recipes {
-			if strings.HasPrefix(r.Title, "integration-test-") {
+			if strings.HasPrefix(r.Title, integrationTestPrefix) {
 				_ = c.DeleteRecipe(ctx, frameID, r.ID)
 			}
 		}
 	}
 
-	// Sweep calendar events (past year and next 30 days)
-	for _, window := range [][2]string{
-		{now.AddDate(-1, 0, 0).Format(DateFormat), now.Format(DateFormat)},
-		{now.Format(DateFormat), now.AddDate(0, 0, 30).Format(DateFormat)},
-	} {
-		events, err := c.ListCalendarEvents(ctx, frameID, window[0], window[1], "")
-		if err == nil {
-			for _, e := range events {
-				if strings.HasPrefix(e.Title, "integration-test-") {
-					_ = c.DeleteCalendarEvent(ctx, frameID, e.ID)
-				}
+	// Sweep calendar events (past year through next 30 days)
+	events, err := c.ListCalendarEvents(ctx, frameID,
+		now.AddDate(-1, 0, 0).Format(DateFormat),
+		now.AddDate(0, 0, 30).Format(DateFormat),
+		"",
+	)
+	if err == nil {
+		for _, e := range events {
+			if strings.HasPrefix(e.Title, integrationTestPrefix) {
+				_ = c.DeleteCalendarEvent(ctx, frameID, e.ID)
 			}
 		}
 	}
@@ -129,7 +134,7 @@ func integrationClient(t *testing.T) (*Client, string) {
 	}
 
 	clientOnce.Do(func() {
-		fingerprint := "integration-test-" + frameID
+		fingerprint := integrationTestPrefix + frameID
 		tok, err := LoginHeadless(email, password, fingerprint)
 		if err != nil {
 			clientErr = fmt.Errorf("LoginHeadless: %w", err)

@@ -100,6 +100,36 @@ func mockStdin(t *testing.T, input string) {
 	})
 }
 
+// http500Handler is a HandlerFunc that always responds 500 Internal Server
+// Error. Use with newCmdTestClient to exercise API error paths.
+var http500Handler http.HandlerFunc = func(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
+// apiErrorCase is a single entry for runAPIErrorCases.
+type apiErrorCase struct {
+	name  string
+	setup func(t *testing.T)
+	cmd   func() error
+}
+
+// runAPIErrorCases runs each case against an http500Handler mock and asserts
+// that the command returns a non-nil error.
+func runAPIErrorCases(t *testing.T, cases []apiErrorCase) {
+	t.Helper()
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			newCmdTestClient(t, http500Handler)
+			if tc.setup != nil {
+				tc.setup(t)
+			}
+			if err := tc.cmd(); err == nil {
+				t.Errorf("expected error from API failure, got nil")
+			}
+		})
+	}
+}
+
 // assertCommandRegistered fails the test unless parent has a direct
 // subcommand whose Use matches use.
 func assertCommandRegistered(t *testing.T, parent *cobra.Command, use string) {

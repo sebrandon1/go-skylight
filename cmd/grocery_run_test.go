@@ -319,3 +319,30 @@ func TestGroceryUpdateItemCmd_Completed(t *testing.T) {
 func TestGroceryCmdExists(t *testing.T) {
 	assertCommandRegistered(t, rootCmd, "grocery")
 }
+
+func TestGroceryCmd_APIErrors(t *testing.T) {
+	runAPIErrorCases(t, []apiErrorCase{
+		{
+			name: "list",
+			cmd:  func() error { return groceryListCmd.RunE(groceryListCmd, nil) },
+		},
+		{
+			name: "create",
+			setup: func(t *testing.T) {
+				orig := groceryTitle
+				groceryTitle = "Groceries"
+				t.Cleanup(func() { groceryTitle = orig })
+			},
+			cmd: func() error { return groceryCreateCmd.RunE(groceryCreateCmd, nil) },
+		},
+		{
+			name: "add",
+			setup: func(t *testing.T) {
+				origID, origItems := groceryListID, groceryItems
+				groceryListID, groceryItems = "list1", []string{"Eggs"}
+				t.Cleanup(func() { groceryListID, groceryItems = origID, origItems })
+			},
+			cmd: func() error { return groceryAddCmd.RunE(groceryAddCmd, nil) },
+		},
+	})
+}
