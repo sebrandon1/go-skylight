@@ -184,25 +184,48 @@ func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chor
 	return &result, nil
 }
 
-// GetChore retrieves a single chore by ID.
+// GetChore retrieves a single chore by ID. The Skylight API has no dedicated
+// single-item GET endpoint; this fetches the day's chore list and matches by
+// ID. For composite instance IDs like "12345-2026-04-28" the embedded date is
+// used as the query window; plain numeric IDs default to today.
 func (c *Client) GetChore(ctx context.Context, frameID, choreID string) (*Chore, error) {
-	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
+	baseID, instanceDate, _ := parseChoreID(choreID)
+	date := instanceDate
+	if date == "" {
+		date = time.Now().Format(DateFormat)
+	}
+
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get chore request: %w", err)
 	}
+	addQueryParams(req, map[string]string{
+		"after":        date,
+		"before":       date,
+		"include_late": paramTrue,
+	})
 
-	var apiResp choreAPISingleResponse
+	var apiResp choreAPIResponse
 	if err := c.get(req, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to get chore: %w", err)
 	}
 
-	result := apiResp.Data.toChore()
-	return &result, nil
+	for i := range apiResp.Data {
+		id := apiResp.Data[i].ID
+		entryBase, _, _ := parseChoreID(id)
+		if id == choreID || entryBase == baseID {
+			result := apiResp.Data[i].toChore()
+			return &result, nil
+		}
+	}
+	return nil, &NotFoundError{Resource: "chore", ID: choreID}
 }
 
-// UpdateChore updates an existing chore.
+// UpdateChore updates an existing chore. Composite instance IDs are normalized
+// to their base ID before the request.
 func (c *Client) UpdateChore(ctx context.Context, frameID, choreID string, chore ChoreData) (*Chore, error) {
-	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)), chore)
+	baseID, _, _ := parseChoreID(choreID)
+	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(baseID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update chore request: %w", err)
 	}

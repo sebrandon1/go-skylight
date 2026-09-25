@@ -723,6 +723,88 @@ func TestDeleteRecurringChore(t *testing.T) {
 	}
 }
 
+func TestGetChore(t *testing.T) {
+	// list response includes two chores so the test can verify ID matching
+	const listResp = `{"data":[{"id":"99-2026-09-01","attributes":{"summary":"Other chore","reward_points":0}},{"id":"42-2026-09-01","attributes":{"summary":"Walk dog","reward_points":5}}]}`
+	const emptyResp = `{"data":[]}`
+
+	tests := []struct {
+		name      string
+		choreID   string
+		response  string
+		status    int
+		wantTitle string
+		wantErr   bool
+	}{
+		{
+			name:      "composite instance ID matches exact ID",
+			choreID:   "42-2026-09-01",
+			response:  listResp,
+			status:    http.StatusOK,
+			wantTitle: "Walk dog",
+		},
+		{
+			name:      "composite instance ID with time matches base ID",
+			choreID:   "42-2026-09-01-0600",
+			response:  `{"data":[{"id":"42-2026-09-01-0600","attributes":{"summary":"Walk dog","reward_points":5}}]}`,
+			status:    http.StatusOK,
+			wantTitle: "Walk dog",
+		},
+		{
+			name:      "plain ID falls back to base-ID match",
+			choreID:   "42",
+			response:  listResp,
+			status:    http.StatusOK,
+			wantTitle: "Walk dog",
+		},
+		{
+			name:     "no match returns not found",
+			choreID:  "77-2026-09-01",
+			response: emptyResp,
+			status:   http.StatusOK,
+			wantErr:  true,
+		},
+		{
+			name:    "server error returns error",
+			choreID: "42-2026-09-01",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/chores" {
+					t.Errorf("path: want /api/frames/frame1/chores got %q", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					_, _ = w.Write([]byte(tc.response))
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			chore, err := client.GetChore(context.Background(), "frame1", tc.choreID)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if !tc.wantErr && chore.Title != tc.wantTitle {
+				t.Errorf("Title: want %q got %q", tc.wantTitle, chore.Title)
+			}
+		})
+	}
+}
+
 func TestListChores_RecurrenceFields(t *testing.T) {
 	response := `{"data":[{"id":"1","attributes":{"summary":"Daily walk","status":"pending","frequency":"weekly","interval":2,"recurrence_days":["mon","wed"],"end_date":"2026-12-31","recur_from":"completed"}}]}`
 

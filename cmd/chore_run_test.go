@@ -408,7 +408,7 @@ func TestChoreCreateCmd_TableOutput(t *testing.T) {
 func TestChoreGetCmd(t *testing.T) {
 	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}}}`)
+		fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Dishes","status":"pending"}}]}`)
 	}))
 	orig := choreID
 	choreID = "c1"
