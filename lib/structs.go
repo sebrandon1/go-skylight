@@ -854,6 +854,47 @@ func (e *deviceAPIEntry) toDevice() Device {
 	}
 }
 
+// Album represents a photo album on a Skylight frame.
+type Album struct {
+	ID                   string `json:"id,omitempty"`
+	Title                string `json:"title,omitempty"`
+	Kind                 string `json:"kind,omitempty"`
+	PhotosCount          int    `json:"photos_count,omitempty"`
+	VideosCount          int    `json:"videos_count,omitempty"`
+	Editable             bool   `json:"editable,omitempty"`
+	ExcludeFromSlideshow bool   `json:"exclude_from_slideshow,omitempty"`
+}
+
+// albumsAPIResponse wraps the JSON-API envelope for album list responses.
+type albumsAPIResponse struct {
+	Data []albumAPIEntry `json:"data"`
+}
+
+// albumAPIEntry represents a single album in JSON-API format.
+type albumAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Title                string `json:"title"`
+		Kind                 string `json:"kind"`
+		PhotosCount          int    `json:"photos_count"`
+		VideosCount          int    `json:"videos_count"`
+		Editable             bool   `json:"editable"`
+		ExcludeFromSlideshow bool   `json:"exclude_from_slideshow"`
+	} `json:"attributes"`
+}
+
+func (e *albumAPIEntry) toAlbum() Album {
+	return Album{
+		ID:                   e.ID,
+		Title:                e.Attributes.Title,
+		Kind:                 e.Attributes.Kind,
+		PhotosCount:          e.Attributes.PhotosCount,
+		VideosCount:          e.Attributes.VideosCount,
+		Editable:             e.Attributes.Editable,
+		ExcludeFromSlideshow: e.Attributes.ExcludeFromSlideshow,
+	}
+}
+
 // Avatar represents an available avatar option.
 type Avatar struct {
 	ID              string `json:"id,omitempty"`

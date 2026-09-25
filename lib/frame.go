@@ -127,6 +127,25 @@ func (c *Client) UpdateFrameSettings(ctx context.Context, frameID string, opts U
 	return nil
 }
 
+// ListAlbums retrieves the photo albums for a frame.
+func (c *Client) ListAlbums(ctx context.Context, frameID string) ([]Album, error) {
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/albums", c.effectiveURL(), pathSeg(frameID)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create list albums request: %w", err)
+	}
+
+	var apiResp albumsAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to list albums: %w", err)
+	}
+
+	albums := make([]Album, len(apiResp.Data))
+	for i := range apiResp.Data {
+		albums[i] = apiResp.Data[i].toAlbum()
+	}
+	return albums, nil
+}
+
 // GetColors retrieves available colors.
 func (c *Client) GetColors(ctx context.Context) ([]Color, error) {
 	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/colors", c.effectiveURL()))

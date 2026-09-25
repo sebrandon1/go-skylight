@@ -38,7 +38,7 @@ cmd/                           # Cobra command definitions
   session.go                   # login command (with --save flag for config file)
   config.go                    # Config file loading/saving (~/.skylight/config)
   configcmd.go                 # config show|get|set|unset|edit subcommands
-  frame.go                     # frame list, info, devices, avatars, colors, set-album
+  frame.go                     # frame list, info, devices, avatars, colors, list-albums, set-album
   calendar.go                  # calendar list, get, create, create-countdown, day, week, update, delete, sources, source-enable/disable
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
   chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim
@@ -160,7 +160,7 @@ SKYLIGHT_QUIET=false
 - `list all|info|create|update|delete|add-item|update-item|delete-item|delete-section|reorder-item|clear-completed|task-box-item` -- List management
 - `meal categories|create-category|update-category|delete-category|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|get-sitting|create-sitting|update-sitting|delete-sitting|sitting-recipe|plan|add-to-grocery` -- Meal planning
 - `category list|create|update|delete` -- Family member category management
-- `frame list|info|devices|avatars|colors|set-album` -- Frame info and settings
+- `frame list|info|devices|avatars|colors|list-albums|set-album` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
 - `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order` -- Grocery list management (Instacart ordering)

@@ -235,6 +235,15 @@ func printMealSittingsTable(sittings []lib.MealSitting) {
 	w.Flush()
 }
 
+func printAlbumsTable(albums []lib.Album) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "ID\tTITLE\tKIND\tPHOTOS\tVIDEOS")
+	for _, a := range albums {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\n", a.ID, a.Title, a.Kind, a.PhotosCount, a.VideosCount)
+	}
+	w.Flush()
+}
+
 func printPhotosTable(photos []lib.Photo) {
 	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tTYPE\tSTATUS\tCREATED")

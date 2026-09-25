@@ -185,7 +185,8 @@ skylight frame info
 skylight frame devices
 skylight frame avatars
 skylight frame colors
-skylight frame set-album --album-id ID   # -1 for all photos
+skylight frame list-albums
+skylight frame set-album --album-id ID   # -1 for all photos; use list-albums to find IDs
 skylight frame update [--screensaver-show-weather=true|false] [--screensaver-show-events=true|false]
 ```
 

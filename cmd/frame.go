@@ -130,6 +130,29 @@ var frameColorsCmd = &cobra.Command{
 	},
 }
 
+var frameListAlbumsCmd = &cobra.Command{
+	Use:   "list-albums",
+	Short: "List photo albums for a frame",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		albums, err := client.ListAlbums(cmd.Context(), frameID)
+		if err != nil {
+			return fmt.Errorf("listing albums: %w", err)
+		}
+
+		printOutput(albums)
+		return nil
+	},
+}
+
 var frameSetAlbumCmd = &cobra.Command{
 	Use:   "set-album",
 	Short: "Set the active slideshow album by album ID (-1 for all photos)",
@@ -199,6 +222,7 @@ func init() {
 	frameCmd.AddCommand(frameDevicesCmd)
 	frameCmd.AddCommand(frameAvatarsCmd)
 	frameCmd.AddCommand(frameColorsCmd)
+	frameCmd.AddCommand(frameListAlbumsCmd)
 	frameCmd.AddCommand(frameSetAlbumCmd)
 	frameCmd.AddCommand(frameUpdateCmd)
 

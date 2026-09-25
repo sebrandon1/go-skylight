@@ -329,6 +329,81 @@ func TestSetCurrentAlbum(t *testing.T) {
 	}
 }
 
+func TestListAlbums(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   int
+		response string
+		wantLen  int
+		wantName string
+		wantErr  bool
+	}{
+		{
+			name:     "returns albums",
+			status:   http.StatusOK,
+			response: `{"data":[{"id":"1","type":"album_with_messages","attributes":{"title":"Summer 2024","kind":"user","photos_count":42,"videos_count":1,"editable":true,"exclude_from_slideshow":false}},{"id":"2","type":"album_with_messages","attributes":{"title":"Birthday","kind":"user","photos_count":10,"videos_count":0,"editable":true,"exclude_from_slideshow":false}}]}`,
+			wantLen:  2,
+			wantName: "Summer 2024",
+		},
+		{
+			name:     "empty list",
+			status:   http.StatusOK,
+			response: `{"data":[]}`,
+			wantLen:  0,
+		},
+		{
+			name:    "not found returns error",
+			status:  http.StatusNotFound,
+			wantErr: true,
+		},
+		{
+			name:    "server error returns error",
+			status:  http.StatusInternalServerError,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/frame1/albums" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				if tc.response != "" {
+					if _, err := w.Write([]byte(tc.response)); err != nil {
+						t.Errorf("write: %v", err)
+					}
+				}
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			albums, err := client.ListAlbums(context.Background(), "frame1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(albums) != tc.wantLen {
+				t.Errorf("wantLen=%d got %d", tc.wantLen, len(albums))
+			}
+			if tc.wantName != "" && len(albums) > 0 && albums[0].Title != tc.wantName {
+				t.Errorf("Title: want %q got %q", tc.wantName, albums[0].Title)
+			}
+		})
+	}
+}
+
 func TestUpdateFrameSettings(t *testing.T) {
 	trueVal := true
 	falseVal := false

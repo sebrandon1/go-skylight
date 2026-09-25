@@ -233,6 +233,8 @@ func printTableOutputMore(data any) bool {
 		printRecipesTable(v)
 	case []lib.MealSitting:
 		printMealSittingsTable(v)
+	case []lib.Album:
+		printAlbumsTable(v)
 	case []lib.Photo:
 		printPhotosTable(v)
 	case []lib.Routine:
