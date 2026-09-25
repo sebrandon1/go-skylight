@@ -22,6 +22,8 @@ var (
 	calendarDayDate       string
 	calendarCountdownDate string
 	calendarSourceID      string
+	calendarScheduleDate  string
+	calendarScheduleDays  int
 )
 
 var calendarCmd = &cobra.Command{
@@ -355,6 +357,55 @@ var calendarWeekCmd = &cobra.Command{
 	},
 }
 
+var calendarScheduleCmd = &cobra.Command{
+	Use:   "schedule",
+	Short: "Show an agenda-style schedule view of upcoming calendar events",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		var start time.Time
+		if cmd.Flags().Changed(subDate) {
+			t, err := time.Parse(lib.DateFormat, calendarScheduleDate)
+			if err != nil {
+				return fmt.Errorf("invalid date %q: use YYYY-MM-DD format", calendarScheduleDate)
+			}
+			start = t
+		} else {
+			start = time.Now().UTC().Truncate(24 * time.Hour)
+		}
+
+		end := start.AddDate(0, 0, calendarScheduleDays-1)
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		ctx := cmd.Context()
+		frame, err := getFrameOrFail(ctx, client, frameID)
+		if err != nil {
+			return err
+		}
+
+		events, err := client.ListCalendarEvents(
+			ctx,
+			frameID,
+			start.Format(lib.DateFormat),
+			end.Format(lib.DateFormat),
+			frame.TimeZone,
+		)
+		if err != nil {
+			return fmt.Errorf("listing calendar events: %w", err)
+		}
+
+		days := buildCalendarScheduleView(events, start, calendarScheduleDays)
+		printOutput(days)
+		return nil
+	},
+}
+
 var calendarDayCmd = &cobra.Command{
 	Use:   "day",
 	Short: "Show a single day's calendar events",
@@ -406,8 +457,12 @@ func init() {
 	calendarCmd.AddCommand(calendarSourceDisableCmd)
 	calendarCmd.AddCommand(calendarWeekCmd)
 	calendarCmd.AddCommand(calendarDayCmd)
+	calendarCmd.AddCommand(calendarScheduleCmd)
 
 	calendarDayCmd.Flags().StringVar(&calendarDayDate, subDate, "", "Date to show (YYYY-MM-DD, default today)")
+
+	calendarScheduleCmd.Flags().StringVar(&calendarScheduleDate, subDate, "", "Start date (YYYY-MM-DD, default today)")
+	calendarScheduleCmd.Flags().IntVar(&calendarScheduleDays, "days", 3, "Number of days to show")
 
 	calendarGetCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to get")
 	markFlagRequired(calendarGetCmd, "event-id")

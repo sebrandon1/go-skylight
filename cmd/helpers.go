@@ -207,6 +207,8 @@ func printTableOutput(data any) bool {
 		printChoreWeekTable(v)
 	case []WeeklyCalendarDay:
 		printCalendarWeekTable(v)
+	case []ScheduleDay:
+		printCalendarScheduleTable(v)
 	case []lib.Bounty:
 		printBountiesTable(v)
 	default:

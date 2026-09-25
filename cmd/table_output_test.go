@@ -105,6 +105,99 @@ func TestPrintRewardsTable_ResolvesCatName(t *testing.T) {
 	}
 }
 
+func TestFormatScheduleTime_ISO8601(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"2026-09-25T09:00:00Z", "9:00 AM"},
+		{"2026-09-25T13:30:00Z", "1:30 PM"},
+		{"2026-09-25T00:00:00Z", "12:00 AM"},
+		{"2026-09-25T12:00:00.000-05:00", "12:00 PM"},
+	}
+	for _, tc := range cases {
+		got := formatScheduleTime(tc.input)
+		if got != tc.want {
+			t.Errorf("formatScheduleTime(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+func TestFormatScheduleTime_ShortFallback(t *testing.T) {
+	// 16-char string: falls back to HH:MM slice (no AM/PM parse possible)
+	got := formatScheduleTime("2026-09-25T14:30")
+	if got != "14:30" {
+		t.Errorf("want HH:MM fallback '14:30', got %q", got)
+	}
+}
+
+func TestFormatScheduleTime_TooShort(t *testing.T) {
+	got := formatScheduleTime("bad")
+	if got != "—" {
+		t.Errorf("want '—' for short input, got %q", got)
+	}
+}
+
+func TestPrintCalendarScheduleTable_NoEvents(t *testing.T) {
+	days := []ScheduleDay{
+		{Day: "Thu", Date: "2026-09-25", Display: "Sep 25", Events: []lib.CalendarEvent{}},
+	}
+	out := captureStdout(func() { printCalendarScheduleTable(days) })
+	if !strings.Contains(out, "(no events)") {
+		t.Errorf("expected '(no events)' for empty day, got: %s", out)
+	}
+	if !strings.Contains(out, "Thu Sep 25") {
+		t.Errorf("expected date column 'Thu Sep 25', got: %s", out)
+	}
+}
+
+func TestPrintCalendarScheduleTable_TimeRange(t *testing.T) {
+	days := []ScheduleDay{
+		{Day: "Thu", Date: "2026-09-25", Display: "Sep 25", Events: []lib.CalendarEvent{
+			{Title: "Choir Practice", StartAt: "2026-09-25T13:30:00Z", EndAt: "2026-09-25T14:45:00Z"},
+		}},
+	}
+	out := captureStdout(func() { printCalendarScheduleTable(days) })
+	if !strings.Contains(out, "Choir Practice") {
+		t.Errorf("expected event title in output, got: %s", out)
+	}
+	if !strings.Contains(out, "1:30 PM") {
+		t.Errorf("expected start time in output, got: %s", out)
+	}
+	if !strings.Contains(out, "2:45 PM") {
+		t.Errorf("expected end time in output, got: %s", out)
+	}
+}
+
+func TestPrintCalendarScheduleTable_AllDay(t *testing.T) {
+	days := []ScheduleDay{
+		{Day: "Sun", Date: "2026-09-27", Display: "Sep 27", Events: []lib.CalendarEvent{
+			{Title: "Birthday", AllDay: true},
+		}},
+	}
+	out := captureStdout(func() { printCalendarScheduleTable(days) })
+	if !strings.Contains(out, "All day") {
+		t.Errorf("expected 'All day' in TIME column, got: %s", out)
+	}
+	if !strings.Contains(out, boolYes) {
+		t.Errorf("expected %q in ALL DAY column, got: %s", boolYes, out)
+	}
+}
+
+func TestPrintCalendarScheduleTable_MultipleDays_DateBlank(t *testing.T) {
+	days := []ScheduleDay{
+		{Day: "Thu", Date: "2026-09-25", Display: "Sep 25", Events: []lib.CalendarEvent{
+			{Title: "First event", StartAt: "2026-09-25T09:00:00Z", EndAt: "2026-09-25T10:00:00Z"},
+			{Title: "Second event", StartAt: "2026-09-25T11:00:00Z", EndAt: "2026-09-25T12:00:00Z"},
+		}},
+	}
+	out := captureStdout(func() { printCalendarScheduleTable(days) })
+	// The date "Thu Sep 25" should appear exactly once (blank for 2nd event)
+	if strings.Count(out, "Thu Sep 25") != 1 {
+		t.Errorf("expected date column to appear once, got: %s", out)
+	}
+}
+
 func TestPrintRoutinesTable_ResolvesCatName(t *testing.T) {
 	orig := activeCatNames
 	activeCatNames = map[string]string{"a1": "Charlie"}

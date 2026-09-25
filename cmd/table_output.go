@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 )
@@ -138,6 +139,53 @@ func printCalendarWeekTable(days []WeeklyCalendarDay) {
 		}
 	}
 	w.Flush()
+}
+
+func printCalendarScheduleTable(days []ScheduleDay) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "DATE\tTIME\tTITLE\tALL DAY")
+	for _, d := range days {
+		if len(d.Events) == 0 {
+			fmt.Fprintf(w, "%s %s\t%s\t%s\t%s\n", d.Day, d.Display, "(no events)", "—", "—")
+			continue
+		}
+		for i, e := range d.Events {
+			dateCol := d.Day + " " + d.Display
+			if i > 0 {
+				dateCol = ""
+			}
+			var timeCol string
+			if e.AllDay {
+				timeCol = "All day"
+			} else {
+				s := formatScheduleTime(e.StartAt)
+				end := formatScheduleTime(e.EndAt)
+				if end != "—" && end != s {
+					timeCol = s + " – " + end
+				} else {
+					timeCol = s
+				}
+			}
+			allDayCol := boolNo
+			if e.AllDay {
+				allDayCol = boolYes
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", dateCol, timeCol, e.Title, allDayCol)
+		}
+	}
+	w.Flush()
+}
+
+func formatScheduleTime(s string) string {
+	if len(s) >= 19 {
+		if t, err := time.Parse("2006-01-02T15:04:05", s[:19]); err == nil {
+			return t.Format("3:04 PM")
+		}
+	}
+	if len(s) >= 16 {
+		return s[11:16]
+	}
+	return "—"
 }
 
 func printBountiesTable(bounties []lib.Bounty) {
