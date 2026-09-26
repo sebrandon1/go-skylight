@@ -72,9 +72,9 @@ skylight chore list [--date DATE] [--assignee-id ID] [--status S] [--after DATE]
 skylight chore get --chore-id ID
 skylight chore search --query TERM [--assignee-id ID] [--status S] [--after DATE] [--before DATE]
 skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID] [--date DATE] [--recurring] [--up-for-grabs] \
-    [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE] [--recur-from scheduled|completed]
+    [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
 skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE] [--up-for-grabs] \
-    [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE] [--recur-from scheduled|completed]
+    [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
 skylight chore delete --chore-id ID
 skylight chore complete --chore-id ID
 skylight chore skip --chore-id ID [--defer-until DATE]
@@ -87,6 +87,9 @@ skylight chore streak [--days N] [--assignee-id ID]
 > `--date DATE` becomes a same-day window, `--up-for-grabs` uses the next 7 days,
 > and bare `chore list` / `chore search` use the current calendar month. When
 > passed explicitly, `--after` and `--before` must be used together.
+>
+> On `chore update`, `--frequency`/`--recurrence-days` replace the whole schedule,
+> so pass `--interval` and `--end-date` again if the chore uses them.
 
 ## Rewards
 

@@ -248,6 +248,7 @@ type ChoreData struct {
 	UpForGrabs     bool     `json:"up_for_grabs,omitempty"`
 	CategoryIDs    []string `json:"category_ids,omitempty"`
 	RecurrenceSet  []string `json:"recurrence_set,omitempty"`
+	RecurringUntil string   `json:"recurring_until,omitempty"`
 	Routine        bool     `json:"routine,omitempty"`
 }
 

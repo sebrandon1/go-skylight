@@ -5,6 +5,7 @@ package lib
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"testing"
@@ -550,4 +551,86 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 		t.Fatalf("DeleteMealSitting: %v", err)
 	}
 	t.Log("deleted meal sitting")
+}
+
+func TestIntegration_RecurringChore(t *testing.T) {
+	client, frameID := integrationClient(t)
+	ctx := context.Background()
+
+	categories, err := client.ListCategories(ctx, frameID)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	if len(categories) == 0 {
+		t.Skip("no categories available — cannot create chore")
+	}
+
+	chore, err := client.CreateChore(ctx, frameID, ChoreData{
+		Title:          testPrefix() + "-recurring",
+		DueDate:        time.Now().Format(DateFormat),
+		AssigneeID:     categories[0].ID,
+		Frequency:      "weekly",
+		RecurrenceDays: []string{"mon", "thu"},
+	})
+	if err != nil {
+		t.Fatalf("CreateChore: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := client.DeleteRecurringChore(ctx, frameID, chore.ID); err != nil && !IsNotFound(err) {
+			t.Errorf("cleanup DeleteRecurringChore: %v", err)
+		}
+	})
+	if !chore.Recurring {
+		t.Fatalf("created chore is not recurring: %+v", chore)
+	}
+
+	assertWeekdays(ctx, t, client, frameID, chore.ID, time.Monday, time.Thursday)
+
+	if _, err := client.UpdateChore(ctx, frameID, chore.ID, ChoreData{
+		Frequency:      "weekly",
+		RecurrenceDays: []string{"wed"},
+	}); err != nil {
+		t.Fatalf("UpdateChore: %v", err)
+	}
+
+	assertWeekdays(ctx, t, client, frameID, chore.ID, time.Wednesday)
+}
+
+// assertWeekdays checks that a recurring chore's occurrences over the next two weeks
+// fall on exactly the given weekdays, retrying for API eventual consistency.
+func assertWeekdays(ctx context.Context, t *testing.T, client *Client, frameID, choreID string, want ...time.Weekday) {
+	t.Helper()
+	wantSet := map[time.Weekday]bool{}
+	for _, d := range want {
+		wantSet[d] = true
+	}
+	opts := ChoreListOptions{
+		After:  time.Now().Format(DateFormat),
+		Before: time.Now().AddDate(0, 0, 14).Format(DateFormat),
+	}
+	var got map[time.Weekday]bool
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			time.Sleep(2 * time.Second)
+		}
+		chores, err := client.ListChores(ctx, frameID, opts)
+		if err != nil {
+			t.Fatalf("ListChores: %v", err)
+		}
+		got = map[time.Weekday]bool{}
+		for _, c := range chores {
+			if c.ID != choreID && !strings.HasPrefix(c.ID, choreID+"-") {
+				continue
+			}
+			due, err := time.Parse(DateFormat, c.DueDate)
+			if err != nil {
+				t.Fatalf("parse due date %q: %v", c.DueDate, err)
+			}
+			got[due.Weekday()] = true
+		}
+		if maps.Equal(got, wantSet) {
+			return
+		}
+	}
+	t.Errorf("occurrence weekdays: want %v got %v", want, got)
 }

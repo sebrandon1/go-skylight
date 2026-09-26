@@ -181,29 +181,29 @@ var choreCreateCmd = &cobra.Command{
 			DueDate:     choreDate,
 			Points:      chorePoints,
 		}
+		data.Recurring = choreRecurring
+		if cmd.Flags().Changed("frequency") {
+			data.Frequency = choreFrequency
+			data.Recurring = true
+		}
+		if cmd.Flags().Changed("interval") {
+			data.Interval = choreInterval
+		}
+		if cmd.Flags().Changed("recurrence-days") {
+			data.RecurrenceDays = choreRecurrenceDays
+		}
+		if cmd.Flags().Changed("end-date") {
+			data.EndDate = choreEndDate
+		}
+		if cmd.Flags().Changed("recur-from") {
+			data.RecurFrom = choreRecurFrom
+		}
 		var chore *lib.Chore
 		ctx := cmd.Context()
 		if choreUpForGrabs {
 			chore, err = client.CreateUpForGrabsChore(ctx, frameID, data)
 		} else {
 			data.AssigneeID = choreAssigneeID
-			data.Recurring = choreRecurring
-			if cmd.Flags().Changed("frequency") {
-				data.Frequency = choreFrequency
-				data.Recurring = true
-			}
-			if cmd.Flags().Changed("interval") {
-				data.Interval = choreInterval
-			}
-			if cmd.Flags().Changed("recurrence-days") {
-				data.RecurrenceDays = choreRecurrenceDays
-			}
-			if cmd.Flags().Changed("end-date") {
-				data.EndDate = choreEndDate
-			}
-			if cmd.Flags().Changed("recur-from") {
-				data.RecurFrom = choreRecurFrom
-			}
 			chore, err = client.CreateChore(ctx, frameID, data)
 		}
 		if err != nil {
@@ -501,7 +501,7 @@ func init() {
 	choreCreateCmd.Flags().IntVar(&choreInterval, "interval", 0, "Recurrence interval (every N periods)")
 	choreCreateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri)")
 	choreCreateCmd.Flags().StringVar(&choreEndDate, "end-date", "", "End date for recurring chore (YYYY-MM-DD)")
-	choreCreateCmd.Flags().StringVar(&choreRecurFrom, "recur-from", "", "When to anchor recurrence: scheduled or completed")
+	choreCreateCmd.Flags().StringVar(&choreRecurFrom, "recur-from", "", "Has no effect (not stored by the API)")
 	markFlagRequired(choreCreateCmd, subTitle)
 
 	choreUpdateCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to update")
@@ -511,11 +511,11 @@ func init() {
 	choreUpdateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreUpdateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
-	choreUpdateCmd.Flags().StringVar(&choreFrequency, "frequency", "", "Recurrence frequency: daily, weekly, monthly")
+	choreUpdateCmd.Flags().StringVar(&choreFrequency, "frequency", "", "Recurrence frequency: daily, weekly, monthly (replaces the schedule)")
 	choreUpdateCmd.Flags().IntVar(&choreInterval, "interval", 0, "Recurrence interval (every N periods)")
-	choreUpdateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri)")
+	choreUpdateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri; replaces the schedule)")
 	choreUpdateCmd.Flags().StringVar(&choreEndDate, "end-date", "", "End date for recurring chore (YYYY-MM-DD)")
-	choreUpdateCmd.Flags().StringVar(&choreRecurFrom, "recur-from", "", "When to anchor recurrence: scheduled or completed")
+	choreUpdateCmd.Flags().StringVar(&choreRecurFrom, "recur-from", "", "Has no effect (not stored by the API)")
 	choreUpdateCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Make chore claimable by anyone")
 	registerEnumFlagCompletion(choreUpdateCmd, "status", choreStatuses...)
 	markFlagRequired(choreUpdateCmd, "chore-id")

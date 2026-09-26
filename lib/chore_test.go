@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -992,6 +993,243 @@ func TestListChoresDateWindow(t *testing.T) {
 			client, _ := NewClientWithToken("u", "t")
 			if _, err := client.ListChores(context.Background(), "frame1", tc.opts); err != nil {
 				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestCreateChoreRecurring(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        ChoreData
+		upForGrabs   bool
+		wantRule     string
+		wantCategory []any
+		wantUntil    any
+		wantErr      bool
+	}{
+		{
+			name:         "weekly days become BYDAY",
+			input:        ChoreData{Title: "Bins", AssigneeID: "cat1", Frequency: "weekly", RecurrenceDays: []string{"mon", "Wed"}},
+			wantRule:     "RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=MO,WE",
+			wantCategory: []any{"cat1"},
+		},
+		{
+			name:         "days without frequency imply weekly and duplicates are dropped",
+			input:        ChoreData{Title: "Bins", AssigneeID: "cat1", RecurrenceDays: []string{"sat", "sat"}},
+			wantRule:     "RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=SA",
+			wantCategory: []any{"cat1"},
+		},
+		{
+			name:         "daily with interval",
+			input:        ChoreData{Title: "Water plants", AssigneeID: "cat1", Frequency: "daily", Interval: 2},
+			wantRule:     "RRULE:FREQ=DAILY;INTERVAL=2;WKST=SU",
+			wantCategory: []any{"cat1"},
+		},
+		{
+			name:         "monthly",
+			input:        ChoreData{Title: "Change filter", AssigneeID: "cat1", Frequency: "monthly"},
+			wantRule:     "RRULE:FREQ=MONTHLY;INTERVAL=1;WKST=SU",
+			wantCategory: []any{"cat1"},
+		},
+		{
+			name:         "end date is sent as recurring_until",
+			input:        ChoreData{Title: "Water plants", AssigneeID: "cat1", Frequency: "daily", EndDate: "2026-09-27"},
+			wantRule:     "RRULE:FREQ=DAILY;INTERVAL=1;WKST=SU",
+			wantCategory: []any{"cat1"},
+			wantUntil:    "2026-09-27",
+		},
+		{
+			name:     "caller-supplied recurrence_set is sent as is",
+			input:    ChoreData{Title: "Bins", RecurrenceSet: []string{"RRULE:FREQ=WEEKLY;BYDAY=TU"}},
+			wantRule: "RRULE:FREQ=WEEKLY;BYDAY=TU",
+		},
+		{
+			name:       "up-for-grabs weekly has no category",
+			input:      ChoreData{Title: "Pack lunches", Frequency: "weekly", RecurrenceDays: []string{"mon", "fri"}},
+			upForGrabs: true,
+			wantRule:   "RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=MO,FR",
+		},
+		{
+			name:    "invalid day",
+			input:   ChoreData{Title: "Bins", Frequency: "weekly", RecurrenceDays: []string{"funday"}},
+			wantErr: true,
+		},
+		{
+			name:    "invalid frequency",
+			input:   ChoreData{Title: "Bins", Frequency: "yearly"},
+			wantErr: true,
+		},
+		{
+			name:    "days with a non-weekly frequency",
+			input:   ChoreData{Title: "Bins", Frequency: "monthly", RecurrenceDays: []string{"mon"}},
+			wantErr: true,
+		},
+		{
+			name:    "negative interval",
+			input:   ChoreData{Title: "Bins", Frequency: "daily", Interval: -1},
+			wantErr: true,
+		},
+		{
+			name:    "interval without a frequency",
+			input:   ChoreData{Title: "Bins", Interval: 2},
+			wantErr: true,
+		},
+		{
+			name:       "up-for-grabs interval without a frequency",
+			input:      ChoreData{Title: "Bins", Interval: 2},
+			upForGrabs: true,
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var body map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/api/frames/frame1/chores/create_multiple" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte(`{"data":[{"id":"c1","attributes":{"summary":"x","recurring":true}}]}`))
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			var err error
+			if tc.upForGrabs {
+				_, err = client.CreateUpForGrabsChore(context.Background(), "frame1", tc.input)
+			} else {
+				_, err = client.CreateChore(context.Background(), "frame1", tc.input)
+			}
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				if body != nil {
+					t.Error("expected no request for invalid input")
+				}
+				return
+			}
+			if got := body["recurrence_set"]; !reflect.DeepEqual(got, []any{tc.wantRule}) {
+				t.Errorf("recurrence_set: want [%s] got %v", tc.wantRule, got)
+			}
+			if got := body["category_ids"]; !reflect.DeepEqual(got, tc.wantCategory) && (got != nil || tc.wantCategory != nil) {
+				t.Errorf("category_ids: want %v got %v", tc.wantCategory, got)
+			}
+			if got := body["recurring_until"]; got != tc.wantUntil {
+				t.Errorf("recurring_until: want %v got %v", tc.wantUntil, got)
+			}
+			if got, ok := body["end_date"]; ok {
+				t.Errorf("end_date should not be sent, got %v", got)
+			}
+			if tc.upForGrabs && body["up_for_grabs"] != true {
+				t.Errorf("expected up_for_grabs=true, got %v", body["up_for_grabs"])
+			}
+		})
+	}
+}
+
+// Recurring on its own (bounty create --recurring, template apply) keeps using POST /chores.
+func TestCreateChoreRecurringFlagOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/frames/frame1/chores" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"data":{"id":"c1","attributes":{"summary":"x"}}}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.CreateChore(context.Background(), "frame1", ChoreData{Title: "x", Recurring: true}); err != nil {
+		t.Fatalf("CreateChore: %v", err)
+	}
+}
+
+func TestUpdateChoreRecurring(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     ChoreData
+		wantRule  any
+		wantUntil any
+		wantErr   bool
+	}{
+		{
+			name:     "new days replace the rule",
+			input:    ChoreData{Frequency: "weekly", RecurrenceDays: []string{"fri"}},
+			wantRule: []any{"RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=FR"},
+		},
+		{
+			name:      "one-off becomes daily with an end date",
+			input:     ChoreData{Frequency: "daily", Interval: 2, EndDate: "2026-12-31"},
+			wantRule:  []any{"RRULE:FREQ=DAILY;INTERVAL=2;WKST=SU"},
+			wantUntil: "2026-12-31",
+		},
+		{
+			name:  "title-only update sends no rule",
+			input: ChoreData{Title: "Renamed"},
+		},
+		{
+			name:    "interval alone",
+			input:   ChoreData{Interval: 2},
+			wantErr: true,
+		},
+		{
+			name:    "end date alone",
+			input:   ChoreData{EndDate: "2026-12-31"},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var body map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPut || r.URL.Path != "/api/frames/frame1/chores/c1" {
+					t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"data":{"id":"c1","attributes":{"summary":"x","recurring":true}}}`))
+			}))
+			defer srv.Close()
+
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+
+			client, _ := NewClientWithToken("u", "t")
+			_, err := client.UpdateChore(context.Background(), "frame1", "c1", tc.input)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				if body != nil {
+					t.Error("expected no request for invalid input")
+				}
+				return
+			}
+			if got := body["recurrence_set"]; !reflect.DeepEqual(got, tc.wantRule) {
+				t.Errorf("recurrence_set: want %v got %v", tc.wantRule, got)
+			}
+			if got := body["recurring_until"]; got != tc.wantUntil {
+				t.Errorf("recurring_until: want %v got %v", tc.wantUntil, got)
 			}
 		})
 	}

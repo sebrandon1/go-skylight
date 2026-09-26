@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -332,6 +333,38 @@ func TestChoreCreateCmd_Recurring(t *testing.T) {
 	})
 	if !strings.Contains(out, `"id"`) {
 		t.Errorf("expected chore JSON in output, got: %s", out)
+	}
+}
+
+func TestChoreCreateCmd_UpForGrabsRecurring(t *testing.T) {
+	var body map[string]any
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/create_multiple") {
+			_ = json.NewDecoder(r.Body).Decode(&body)
+		}
+		fmt.Fprint(w, `{"data":[{"id":"c1","attributes":{"summary":"Lunches","up_for_grabs":true}}]}`)
+	})
+	newCmdTestClient(t, handler)
+	origTitle, origUpForGrabs := choreTitle, choreUpForGrabs
+	choreTitle, choreUpForGrabs = "Lunches", true
+	if err := choreCreateCmd.Flags().Set("recurrence-days", "mon,fri"); err != nil {
+		t.Fatalf("setting recurrence-days flag: %v", err)
+	}
+	t.Cleanup(func() {
+		choreTitle, choreUpForGrabs = origTitle, origUpForGrabs
+		choreRecurrenceDays = nil
+		choreCreateCmd.Flags().Lookup("recurrence-days").Changed = false
+	})
+
+	captureStdout(func() {
+		if err := choreCreateCmd.RunE(choreCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	want := []any{"RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=MO,FR"}
+	if got := body["recurrence_set"]; !reflect.DeepEqual(got, want) {
+		t.Errorf("recurrence_set: want %v got %v", want, got)
 	}
 }
 

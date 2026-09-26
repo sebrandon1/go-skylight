@@ -2,8 +2,10 @@ package lib
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -147,8 +149,20 @@ func (c *Client) ListChores(ctx context.Context, frameID string, opts ChoreListO
 	return chores, nil
 }
 
-// CreateChore creates a new chore on a frame.
+// CreateChore creates a new chore on a frame. POST /chores ignores frequency, interval and
+// recurrence_days, so a chore with Frequency, RecurrenceDays or RecurrenceSet goes through
+// create_multiple with an RRULE instead.
 func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
+	if isRecurring(chore) {
+		if chore.AssigneeID != "" {
+			chore.CategoryIDs = []string{chore.AssigneeID}
+		}
+		return c.createMultiple(ctx, frameID, chore, "chore")
+	}
+	if chore.Interval != 0 || chore.EndDate != "" {
+		return nil, errRuleRequired
+	}
+
 	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/chores", c.effectiveURL(), pathSeg(frameID)), chore)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create chore request: %w", err)
@@ -167,14 +181,50 @@ func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreDat
 // create_multiple endpoint which accepts up_for_grabs without a category_id.
 func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
 	chore.UpForGrabs = true
+	return c.createMultiple(ctx, frameID, chore, "up-for-grabs chore")
+}
+
+var errRuleRequired = errors.New("interval and end date require a frequency or recurrence days: the API replaces the whole rule")
+
+func isRecurring(chore ChoreData) bool {
+	return chore.Frequency != "" || len(chore.RecurrenceDays) > 0 || len(chore.RecurrenceSet) > 0
+}
+
+// withRule fills RecurrenceSet (and RecurringUntil from EndDate) for a recurring chore.
+func withRule(chore ChoreData) (ChoreData, error) {
+	if !isRecurring(chore) {
+		if chore.Interval != 0 || chore.EndDate != "" {
+			return chore, errRuleRequired
+		}
+		return chore, nil
+	}
+	if len(chore.RecurrenceSet) > 0 {
+		return chore, nil
+	}
+	rrule, err := choreRRule(chore)
+	if err != nil {
+		return chore, err
+	}
+	chore.RecurrenceSet = []string{rrule}
+	chore.RecurringUntil = chore.EndDate
+	chore.EndDate = ""
+	return chore, nil
+}
+
+func (c *Client) createMultiple(ctx context.Context, frameID string, chore ChoreData, kind string) (*Chore, error) {
+	chore, err := withRule(chore)
+	if err != nil {
+		return nil, err
+	}
+
 	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/chores/create_multiple", c.effectiveURL(), pathSeg(frameID)), chore)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create up-for-grabs chore request: %w", err)
+		return nil, fmt.Errorf("failed to create %s request: %w", kind, err)
 	}
 
 	var apiResp choreAPIResponse
 	if err := c.post(req, &apiResp); err != nil {
-		return nil, fmt.Errorf("failed to create up-for-grabs chore: %w", err)
+		return nil, fmt.Errorf("failed to create %s: %w", kind, err)
 	}
 	if len(apiResp.Data) == 0 {
 		return nil, fmt.Errorf("no chore returned from create_multiple")
@@ -182,6 +232,55 @@ func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chor
 
 	result := apiResp.Data[0].toChore()
 	return &result, nil
+}
+
+const (
+	freqDaily   = "daily"
+	freqWeekly  = "weekly"
+	freqMonthly = "monthly"
+)
+
+var rruleDays = map[string]string{
+	"sun": "SU",
+	"mon": "MO",
+	"tue": "TU",
+	"wed": "WE",
+	"thu": "TH",
+	"fri": "FR",
+	"sat": "SA",
+}
+
+// choreRRule builds the rule in the form the Skylight app writes, e.g.
+// RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU;BYDAY=MO,WE. Days without a frequency imply weekly.
+func choreRRule(chore ChoreData) (string, error) {
+	freq := strings.ToLower(chore.Frequency)
+	if freq == "" {
+		freq = freqWeekly
+	}
+	if freq != freqDaily && freq != freqWeekly && freq != freqMonthly {
+		return "", fmt.Errorf("invalid frequency %q: must be daily, weekly, or monthly", chore.Frequency)
+	}
+	if len(chore.RecurrenceDays) > 0 && freq != freqWeekly {
+		return "", fmt.Errorf("recurrence days only apply to weekly chores, not %s", freq)
+	}
+	if chore.Interval < 0 {
+		return "", fmt.Errorf("invalid interval %d: must be 1 or more", chore.Interval)
+	}
+	rule := fmt.Sprintf("RRULE:FREQ=%s;INTERVAL=%d;WKST=SU", strings.ToUpper(freq), max(chore.Interval, 1))
+	var days []string
+	for _, d := range chore.RecurrenceDays {
+		day, ok := rruleDays[strings.ToLower(d)]
+		if !ok {
+			return "", fmt.Errorf("invalid recurrence day %q: use sun, mon, tue, wed, thu, fri, sat", d)
+		}
+		if !slices.Contains(days, day) {
+			days = append(days, day)
+		}
+	}
+	if len(days) > 0 {
+		rule += ";BYDAY=" + strings.Join(days, ",")
+	}
+	return rule, nil
 }
 
 // GetChore retrieves a single chore by ID. The Skylight API has no dedicated
@@ -222,8 +321,13 @@ func (c *Client) GetChore(ctx context.Context, frameID, choreID string) (*Chore,
 }
 
 // UpdateChore updates an existing chore. Composite instance IDs are normalized
-// to their base ID before the request.
+// to their base ID before the request. PUT ignores frequency, interval and recurrence_days
+// too, so a recurrence change is sent as a replacement RRULE, which replaces the whole schedule.
 func (c *Client) UpdateChore(ctx context.Context, frameID, choreID string, chore ChoreData) (*Chore, error) {
+	chore, err := withRule(chore)
+	if err != nil {
+		return nil, err
+	}
 	baseID, _, _ := parseChoreID(choreID)
 	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(baseID)), chore)
 	if err != nil {
