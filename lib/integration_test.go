@@ -30,17 +30,57 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// authenticateForTests attempts authentication using refresh token (preferred)
+// with fallback to email/password. Generates fingerprint from frameID if not provided.
+func authenticateForTests(refreshToken, fingerprint, email, password, frameID string) (*OAuthTokenResponse, error) {
+	// Try refresh token first (bypasses Cloudflare)
+	if refreshToken != "" {
+		if fingerprint == "" {
+			fingerprint = integrationTestPrefix + frameID
+		}
+		tok, err := RefreshOAuthToken(refreshToken, fingerprint)
+		if err == nil {
+			return tok, nil
+		}
+		// Log warning but continue to email/password fallback
+		fmt.Fprintf(os.Stderr, "refresh token auth failed: %v, trying email/password\n", err)
+	}
+
+	// Fall back to email/password (headless OAuth2 login)
+	if email != "" && password != "" {
+		fingerprint = integrationTestPrefix + frameID
+		tok, err := LoginHeadless(email, password, fingerprint)
+		if err != nil {
+			return nil, fmt.Errorf("%w. If running in CI, Cloudflare may be blocking headless login. Use SKYLIGHT_REFRESH_TOKEN instead", err)
+		}
+		return tok, nil
+	}
+
+	// No viable authentication method
+	if refreshToken != "" {
+		return nil, fmt.Errorf("refresh token invalid or expired. Set SKYLIGHT_EMAIL and SKYLIGHT_PASSWORD as fallback")
+	}
+	return nil, fmt.Errorf("no authentication credentials available")
+}
+
 func sweepIntegrationTestResources() {
-	email := os.Getenv("SKYLIGHT_EMAIL")
-	password := os.Getenv("SKYLIGHT_PASSWORD")
-	frameID := os.Getenv("SKYLIGHT_FRAME_ID")
-	loadSkylightConfig(&email, &password, &frameID)
-	if email == "" || password == "" || frameID == "" {
+	var email, password, frameID, refreshToken, deviceFingerprint string
+	email = os.Getenv("SKYLIGHT_EMAIL")
+	password = os.Getenv("SKYLIGHT_PASSWORD")
+	frameID = os.Getenv("SKYLIGHT_FRAME_ID")
+	refreshToken = os.Getenv("SKYLIGHT_REFRESH_TOKEN")
+	deviceFingerprint = os.Getenv("SKYLIGHT_DEVICE_FINGERPRINT")
+
+	loadSkylightConfig(&email, &password, &frameID, &refreshToken, &deviceFingerprint)
+
+	if frameID == "" {
+		return
+	}
+	if refreshToken == "" && (email == "" || password == "") {
 		return
 	}
 
-	fingerprint := integrationTestPrefix + frameID
-	tok, err := LoginHeadless(email, password, fingerprint)
+	tok, err := authenticateForTests(refreshToken, deviceFingerprint, email, password, frameID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sweep: auth failed: %v\n", err)
 		return
@@ -120,24 +160,26 @@ func sweepIntegrationTestResources() {
 func integrationClient(t *testing.T) (*Client, string) {
 	t.Helper()
 
-	email := os.Getenv("SKYLIGHT_EMAIL")
-	password := os.Getenv("SKYLIGHT_PASSWORD")
-	frameID := os.Getenv("SKYLIGHT_FRAME_ID")
+	var email, password, frameID, refreshToken, deviceFingerprint string
+	email = os.Getenv("SKYLIGHT_EMAIL")
+	password = os.Getenv("SKYLIGHT_PASSWORD")
+	frameID = os.Getenv("SKYLIGHT_FRAME_ID")
+	refreshToken = os.Getenv("SKYLIGHT_REFRESH_TOKEN")
+	deviceFingerprint = os.Getenv("SKYLIGHT_DEVICE_FINGERPRINT")
 
-	loadSkylightConfig(&email, &password, &frameID)
+	loadSkylightConfig(&email, &password, &frameID, &refreshToken, &deviceFingerprint)
 
 	if frameID == "" {
 		t.Skip("skipping: set SKYLIGHT_FRAME_ID or add it to ~/.skylight/config")
 	}
-	if email == "" || password == "" {
-		t.Skip("skipping: set SKYLIGHT_EMAIL and SKYLIGHT_PASSWORD or add them to ~/.skylight/config")
+	if refreshToken == "" && (email == "" || password == "") {
+		t.Skip("skipping: set SKYLIGHT_REFRESH_TOKEN or SKYLIGHT_EMAIL and SKYLIGHT_PASSWORD (or add to ~/.skylight/config)")
 	}
 
 	clientOnce.Do(func() {
-		fingerprint := integrationTestPrefix + frameID
-		tok, err := LoginHeadless(email, password, fingerprint)
+		tok, err := authenticateForTests(refreshToken, deviceFingerprint, email, password, frameID)
 		if err != nil {
-			clientErr = fmt.Errorf("LoginHeadless: %w", err)
+			clientErr = fmt.Errorf("authentication: %w", err)
 			return
 		}
 

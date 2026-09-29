@@ -130,6 +130,44 @@ make test           # go test ./... -v
 make lint           # golangci-lint run ./...
 make vet            # go vet ./...
 make clean          # remove built binaries
+make integration    # integration tests (requires credentials - see below)
 ```
 
 CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.1.
+
+### Running Integration Tests
+
+Integration tests require authentication credentials and run against the live Skylight API. These tests are **local-only** and do not run in CI.
+
+**Prerequisites:**
+- Valid Skylight account credentials
+- OAuth2 refresh token (recommended) or email/password
+
+**Setup:**
+
+1. Create `~/.skylight/config`:
+   ```
+   SKYLIGHT_REFRESH_TOKEN=your-refresh-token
+   SKYLIGHT_DEVICE_FINGERPRINT=your-device-uuid
+   SKYLIGHT_FRAME_ID=your-frame-id
+   ```
+
+2. Or set environment variables:
+   ```bash
+   export SKYLIGHT_REFRESH_TOKEN="your-refresh-token"
+   export SKYLIGHT_DEVICE_FINGERPRINT="your-device-uuid"
+   export SKYLIGHT_FRAME_ID="your-frame-id"
+   ```
+
+**Obtaining tokens:**
+1. Log in to https://app.ourskylight.com in your browser
+2. Open DevTools → Console
+3. Run: `JSON.parse(localStorage.getItem('mmkv.default\\auth-storage')).state`
+4. Copy `refreshToken` and `uniqueId` values
+
+**Run tests:**
+```bash
+make integration
+```
+
+**Note:** Refresh tokens rotate on each use. If tests fail with "invalid_grant", obtain fresh tokens following the steps above.
