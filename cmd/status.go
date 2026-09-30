@@ -159,12 +159,11 @@ var statusCmd = &cobra.Command{
 const statusListWorkerCount = 5
 
 // countIncompleteListItems fetches each list's full detail concurrently and
-// counts incomplete items. ListLists does not populate item data, so this
-// requires one GetList call per list. A failed list is excluded from the
-// count rather than failing the whole status command (this is supplementary
-// detail on top of the primary status fields), but the number of failures is
-// returned so callers can surface it instead of silently under-reporting.
-// Concurrency is capped (#271).
+// counts incomplete items. A failed list is excluded from the count rather
+// than failing the whole status command (this is supplementary detail on top
+// of the primary status fields), but the number of failures is returned so
+// callers can surface it instead of silently under-reporting. Concurrency is
+// capped (#271).
 func countIncompleteListItems(ctx context.Context, client *lib.Client, frameID string, lists []lib.List) (incomplete, errors int) {
 	var (
 		mu  sync.Mutex

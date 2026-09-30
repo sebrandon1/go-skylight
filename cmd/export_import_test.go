@@ -340,7 +340,7 @@ func exportMockHandler() http.HandlerFunc {
 		case strings.HasSuffix(r.URL.Path, "/rewards"):
 			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"Ice cream","point_value":5}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/lists"):
-			fmt.Fprint(w, `{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries"}}]}`)
+			fmt.Fprint(w, `{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries"}}],"included":[{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"completed","section":"Dairy","position":1},"relationships":{"list":{"data":{"id":"l1","type":"list"}}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/recipes"):
 			fmt.Fprint(w, `{"data":[{"id":"rc1","type":"meal_recipe","attributes":{"summary":"Tacos"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
@@ -388,6 +388,9 @@ func TestExportCmd_AllResourcesToStdout(t *testing.T) {
 	}
 	if len(data.Chores) > 0 && (data.Chores[0].StartTime != "19:00" || data.Chores[0].EmojiIcon != "🍽️") {
 		t.Errorf("expected chore start_time and emoji_icon exported, got: %+v", data.Chores[0])
+	}
+	if len(data.Lists) > 0 && (len(data.Lists[0].Items) != 1 || data.Lists[0].Items[0].Section != "Dairy" || !data.Lists[0].Items[0].Completed) {
+		t.Errorf("expected the list's item exported with section and completed, got: %+v", data.Lists[0].Items)
 	}
 	if len(data.Routines) != 1 {
 		t.Errorf("expected 1 routine, got %d", len(data.Routines))

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -72,6 +73,46 @@ func TestListLists(t *testing.T) {
 				t.Errorf("wantLen=%d got %d", tc.wantLen, len(lists))
 			}
 		})
+	}
+}
+
+func TestListLists_IncludedItems(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":[{"id":"1","type":"list","attributes":{"label":"Groceries","kind":"shopping"}},{"id":"2","type":"list","attributes":{"label":"Todo","kind":"to_do"}},{"id":"3","type":"list","attributes":{"label":"Empty","kind":"to_do"}}],"included":[` +
+			`{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"pending","section":null,"position":2},"relationships":{"list":{"data":{"id":"1","type":"list"}}}},` +
+			`{"id":"i2","type":"list_item","attributes":{"label":"Call plumber","status":"completed","section":"House","position":1},"relationships":{"list":{"data":{"id":"2","type":"list"}}}},` +
+			`{"id":"i3","type":"list_item","attributes":{"label":"Eggs","status":"pending","section":"Dairy","position":1},"relationships":{"list":{"data":{"id":"1","type":"list"}}}},` +
+			`{"id":"x1","type":"list_section","attributes":{"label":"Dairy"},"relationships":{"list":{"data":{"id":"1","type":"list"}}}}]}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	lists, err := client.ListLists(context.Background(), "frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := [][]ListItem{
+		{
+			{ID: "i1", Title: "Milk", Status: listItemStatusPending, Position: 2},
+			{ID: "i3", Title: "Eggs", Status: listItemStatusPending, Position: 1, Section: "Dairy"},
+		},
+		{{ID: "i2", Title: "Call plumber", Status: listItemStatusCompleted, Completed: true, Position: 1, Section: "House"}},
+		nil,
+	}
+	if len(lists) != len(want) {
+		t.Fatalf("want %d lists, got %d", len(want), len(lists))
+	}
+	for i, l := range lists {
+		if !reflect.DeepEqual(l.Items, want[i]) {
+			t.Errorf("list %s items:\n got %+v\nwant %+v", l.ID, l.Items, want[i])
+		}
 	}
 }
 
@@ -628,6 +669,37 @@ func TestAddListItem_Completed(t *testing.T) {
 	}
 }
 
+func TestAddListItem_Section(t *testing.T) {
+	var body listItemSendData
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if _, err := w.Write([]byte(`{"data":{"id":"i1","type":"list_item","attributes":{"label":"Eggs","status":"pending","section":"Dairy","position":1}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	item, err := client.AddListItem(context.Background(), "frame1", "l1", ListItemData{Title: "Eggs", Section: "Dairy"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if body.Section != "Dairy" {
+		t.Errorf("request section: want %q, got %q", "Dairy", body.Section)
+	}
+	if item.Section != "Dairy" {
+		t.Errorf("item.Section: want %q, got %q", "Dairy", item.Section)
+	}
+}
+
 func TestUpdateListItem_ExplicitPending(t *testing.T) {
 	var gotStatus string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -658,6 +730,32 @@ func TestUpdateListItem_ExplicitPending(t *testing.T) {
 	}
 	if gotStatus != listItemStatusPending {
 		t.Errorf("request status: want %q, got %q", listItemStatusPending, gotStatus)
+	}
+}
+
+func TestUpdateListItem_SectionOnly(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":{"id":"i1","type":"list_item","attributes":{"label":"Eggs","status":"` + listItemStatusCompleted + `","section":"Dairy","position":1}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.UpdateListItem(context.Background(), "frame1", "l1", "i1", ListItemData{Section: "Dairy"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if want := map[string]any{"section": "Dairy"}; !reflect.DeepEqual(body, want) {
+		t.Errorf("request body: want %v (no status, so a completed item stays completed), got %v", want, body)
 	}
 }
 

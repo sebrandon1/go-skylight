@@ -402,6 +402,54 @@ func TestImportLists(t *testing.T) {
 	})
 }
 
+// The API ignores position on create and appends to each section, so import
+// must create items in position order.
+func TestImportLists_ItemRequestBodies(t *testing.T) {
+	type itemBody struct {
+		Label   string `json:"label"`
+		Status  string `json:"status,omitempty"`
+		Section string `json:"section,omitempty"`
+	}
+	var bodies []itemBody
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if strings.HasSuffix(r.URL.Path, "/list_items") {
+			var body itemBody
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("decode body: %v", err)
+			}
+			bodies = append(bodies, body)
+			fmt.Fprint(w, `{"data":{"id":"i1","type":"list_item","attributes":{"label":"x"}}}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"l1","type":"list","attributes":{"label":"x"}}}`)
+	})
+
+	lists := []lib.List{{
+		Title: "Groceries",
+		Items: []lib.ListItem{
+			{Title: "Bread", Position: 2},
+			{Title: "Apples", Position: 1, Section: "Produce"},
+			{Title: "Milk", Position: 1},
+			{Title: "Pears", Position: 2, Section: "Produce", Completed: true, Status: "completed"},
+		},
+	}}
+	total, failed := importLists(context.Background(), client, lists)
+	if total != 5 || failed != 0 {
+		t.Fatalf("got total=%d failed=%d, want total=5 failed=0", total, failed)
+	}
+	want := []itemBody{
+		{Label: "Apples", Section: "Produce"},
+		{Label: "Milk"},
+		{Label: "Bread"},
+		{Label: "Pears", Status: "completed", Section: "Produce"},
+	}
+	if !reflect.DeepEqual(bodies, want) {
+		t.Errorf("item bodies:\n got %+v\nwant %+v", bodies, want)
+	}
+}
+
 func TestImportRecipes(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)

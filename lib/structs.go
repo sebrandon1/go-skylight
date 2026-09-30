@@ -279,6 +279,7 @@ type ListItem struct {
 	Completed bool   `json:"completed"`
 	Status    string `json:"status,omitempty"`
 	Position  int    `json:"position,omitempty"`
+	Section   string `json:"section,omitempty"`
 	CreatedAt string `json:"created_at,omitempty"`
 	UpdatedAt string `json:"updated_at,omitempty"`
 }
@@ -296,6 +297,7 @@ type ListItemData struct {
 	Title     string `json:"label,omitempty"`
 	Completed bool   `json:"-"`
 	Position  int    `json:"position,omitempty"`
+	Section   string `json:"section,omitempty"`
 }
 
 // listItemSendData is the internal struct used when sending list item requests to the API.
@@ -303,11 +305,13 @@ type listItemSendData struct {
 	Label    string `json:"label,omitempty"`
 	Status   string `json:"status,omitempty"`
 	Position int    `json:"position,omitempty"`
+	Section  string `json:"section,omitempty"`
 }
 
 // listAPIResponse wraps the JSON-API envelope for list responses.
 type listAPIResponse struct {
-	Data []listAPIEntry `json:"data"`
+	Data     []listAPIEntry     `json:"data"`
+	Included []listItemAPIEntry `json:"included"`
 }
 
 // listAPISingleResponse wraps the JSON-API envelope for single list responses.
@@ -349,8 +353,14 @@ type listItemAPIEntry struct {
 		Label     string `json:"label"`
 		Status    string `json:"status"`
 		Position  int    `json:"position"`
+		Section   string `json:"section"`
 		CreatedAt string `json:"created_at"`
 	} `json:"attributes"`
+	Relationships struct {
+		List struct {
+			Data apiRelationshipData `json:"data"`
+		} `json:"list"`
+	} `json:"relationships"`
 }
 
 // listItemAPISingleResponse wraps the JSON-API envelope for single list item responses.
@@ -365,6 +375,7 @@ func (e *listItemAPIEntry) toListItem() ListItem {
 		Status:    e.Attributes.Status,
 		Completed: e.Attributes.Status == listItemStatusCompleted,
 		Position:  e.Attributes.Position,
+		Section:   e.Attributes.Section,
 		CreatedAt: e.Attributes.CreatedAt,
 	}
 }

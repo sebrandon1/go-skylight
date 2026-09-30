@@ -11,7 +11,7 @@ const listItemStatusPending = "pending"
 // ListKindGrocery is the list kind value for grocery lists.
 const ListKindGrocery = "grocery"
 
-// ListLists retrieves all lists for a frame.
+// ListLists retrieves all lists for a frame, each with its items.
 func (c *Client) ListLists(ctx context.Context, frameID string) ([]List, error) {
 	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/lists", c.effectiveURL(), pathSeg(frameID)))
 	if err != nil {
@@ -24,8 +24,15 @@ func (c *Client) ListLists(ctx context.Context, frameID string) ([]List, error) 
 	}
 
 	lists := make([]List, len(apiResp.Data))
+	byID := make(map[string]*List, len(apiResp.Data))
 	for i := range apiResp.Data {
 		lists[i] = apiResp.Data[i].toList()
+		byID[lists[i].ID] = &lists[i]
+	}
+	for _, entry := range apiResp.Included {
+		if l, ok := byID[entry.Relationships.List.Data.ID]; ok && entry.Type == "list_item" {
+			l.Items = append(l.Items, entry.toListItem())
+		}
 	}
 	return lists, nil
 }
@@ -112,6 +119,7 @@ func (c *Client) AddListItem(ctx context.Context, frameID, listID string, item L
 	send := listItemSendData{
 		Label:    item.Title,
 		Position: item.Position,
+		Section:  item.Section,
 	}
 	if item.Completed {
 		send.Status = listItemStatusCompleted
@@ -137,10 +145,11 @@ func (c *Client) UpdateListItem(ctx context.Context, frameID, listID, itemID str
 	send := listItemSendData{
 		Label:    item.Title,
 		Position: item.Position,
+		Section:  item.Section,
 	}
 	if item.Completed {
 		send.Status = listItemStatusCompleted
-	} else if item.Title == "" && item.Position == 0 {
+	} else if item.Title == "" && item.Position == 0 && item.Section == "" {
 		// Explicit incomplete when only status is being changed
 		send.Status = listItemStatusPending
 	}

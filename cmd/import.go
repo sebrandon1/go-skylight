@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -301,6 +302,8 @@ func ruleUntil(set []string) string {
 // importLists parallelizes across lists, but each list's own items are
 // created sequentially after it (AddListItem depends on the parent list's
 // freshly assigned ID), so items are never parallelized against each other.
+// The API ignores position on create and appends each item to the end of its
+// section, so items are created in position order.
 func importLists(ctx context.Context, client *lib.Client, lists []lib.List) (total, failed int) {
 	return parallelImport(lists, func(l lib.List) (int, int) {
 		t, f := 1, 0
@@ -309,9 +312,11 @@ func importLists(ctx context.Context, client *lib.Client, lists []lib.List) (tot
 			fmt.Fprintf(os.Stderr, "Error creating list %q: %v\n", l.Title, err)
 			return t, 1
 		}
-		for _, item := range l.Items {
+		items := slices.Clone(l.Items)
+		slices.SortStableFunc(items, func(a, b lib.ListItem) int { return cmp.Compare(a.Position, b.Position) })
+		for _, item := range items {
 			t++
-			if _, err := client.AddListItem(ctx, frameID, created.ID, lib.ListItemData{Title: item.Title}); err != nil {
+			if _, err := client.AddListItem(ctx, frameID, created.ID, lib.ListItemData{Title: item.Title, Completed: item.Completed, Section: item.Section}); err != nil {
 				fmt.Fprintf(os.Stderr, "Error adding item %q to list %q: %v\n", item.Title, l.Title, err)
 				f++
 			}
