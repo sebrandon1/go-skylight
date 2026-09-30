@@ -345,15 +345,17 @@ func isDone(c lib.Chore) bool {
 
 func choreData(c lib.Chore) lib.ChoreData {
 	return lib.ChoreData{
-		Title:         c.Title,
-		Description:   c.Description,
-		DueDate:       c.DueDate,
-		StartTime:     c.StartTime,
-		EmojiIcon:     c.EmojiIcon,
-		Points:        c.Points,
-		AssigneeID:    c.AssigneeID,
-		UpForGrabs:    c.UpForGrabs,
-		RecurrenceSet: c.RecurrenceSet,
+		Title:           c.Title,
+		Description:     c.Description,
+		DueDate:         c.DueDate,
+		StartTime:       c.StartTime,
+		EmojiIcon:       c.EmojiIcon,
+		Points:          c.Points,
+		AssigneeID:      c.AssigneeID,
+		UpForGrabs:      c.UpForGrabs,
+		RecurrenceSet:   c.RecurrenceSet,
+		RenewalUnit:     c.RenewalUnit,
+		RenewalInterval: c.RenewalInterval,
 	}
 }
 

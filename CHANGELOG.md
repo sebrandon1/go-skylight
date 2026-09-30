@@ -7,9 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 - `Routine`/`RoutineData`: `EmojiIcon`, `Points` and `TrackHabit` (habit tracking), read from the API and sent on create
 - `Chore`/`ChoreData`: `TrackHabit` (routines only), read from the API and sent on create
+- `Chore`/`ChoreData`: `RenewalUnit` and `RenewalInterval` (repeat a set time after completion), read from the API and sent on create/update
 
 ### Fixed
 - `export`/`import`: routines lost their icon, points and habit tracking; now kept (#525, #526)
+- `import`: chores that repeat a set time after they're completed were recreated as one-off chores that never came back (#527, #528)
+- `export`: a chore's repeat-after-completion unit and interval were not captured; now included (#527, #528)
 
 ## [v0.2.6] - 2026-10-05
 

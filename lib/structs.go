@@ -149,25 +149,27 @@ func (e *sourceCalendarAPIEntry) toSourceCalendar() SourceCalendar {
 
 // Chore represents a chore/task (flattened from JSON-API response).
 type Chore struct {
-	ID             string   `json:"id,omitempty"`
-	Title          string   `json:"title,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	Status         string   `json:"status,omitempty"`
-	DueDate        string   `json:"due_date,omitempty"`
-	StartTime      string   `json:"start_time,omitempty"`
-	EmojiIcon      string   `json:"emoji_icon,omitempty"`
-	Points         int      `json:"points,omitempty"`
-	Recurring      bool     `json:"recurring"`
-	Frequency      string   `json:"frequency,omitempty"`
-	Interval       int      `json:"interval,omitempty"`
-	RecurrenceDays []string `json:"recurrence_days,omitempty"`
-	EndDate        string   `json:"end_date,omitempty"`
-	RecurFrom      string   `json:"recur_from,omitempty"`
-	AssigneeID     string   `json:"assignee_id,omitempty"`
-	UpForGrabs     bool     `json:"up_for_grabs,omitempty"`
-	Routine        bool     `json:"routine,omitempty"`
-	RecurrenceSet  []string `json:"recurrence_set,omitempty"`
-	TrackHabit     bool     `json:"track_habit,omitempty"`
+	ID              string   `json:"id,omitempty"`
+	Title           string   `json:"title,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	Status          string   `json:"status,omitempty"`
+	DueDate         string   `json:"due_date,omitempty"`
+	StartTime       string   `json:"start_time,omitempty"`
+	EmojiIcon       string   `json:"emoji_icon,omitempty"`
+	Points          int      `json:"points,omitempty"`
+	Recurring       bool     `json:"recurring"`
+	Frequency       string   `json:"frequency,omitempty"`
+	Interval        int      `json:"interval,omitempty"`
+	RecurrenceDays  []string `json:"recurrence_days,omitempty"`
+	EndDate         string   `json:"end_date,omitempty"`
+	RecurFrom       string   `json:"recur_from,omitempty"`
+	AssigneeID      string   `json:"assignee_id,omitempty"`
+	UpForGrabs      bool     `json:"up_for_grabs,omitempty"`
+	Routine         bool     `json:"routine,omitempty"`
+	RecurrenceSet   []string `json:"recurrence_set,omitempty"`
+	TrackHabit      bool     `json:"track_habit,omitempty"`
+	RenewalUnit     string   `json:"renewal_unit,omitempty"`
+	RenewalInterval int      `json:"renewal_interval,omitempty"`
 }
 
 // choreAPIResponse wraps the JSON-API envelope for chore list responses.
@@ -176,22 +178,24 @@ type choreAPIResponse struct {
 }
 
 type choreAPIAttributes struct {
-	Summary        string   `json:"summary"`
-	Description    string   `json:"description"`
-	Status         string   `json:"status"`
-	Start          string   `json:"start"`
-	StartTime      string   `json:"start_time"`
-	EmojiIcon      string   `json:"emoji_icon"`
-	RewardPoints   int      `json:"reward_points"`
-	Recurring      bool     `json:"recurring"`
-	Frequency      string   `json:"frequency"`
-	Interval       int      `json:"interval"`
-	RecurrenceDays []string `json:"recurrence_days"`
-	EndDate        string   `json:"end_date"`
-	RecurFrom      string   `json:"recur_from"`
-	UpForGrabs     bool     `json:"up_for_grabs"`
-	Routine        bool     `json:"routine"`
-	RecurrenceSet  []string `json:"recurrence_set"`
+	Summary         string   `json:"summary"`
+	Description     string   `json:"description"`
+	Status          string   `json:"status"`
+	Start           string   `json:"start"`
+	StartTime       string   `json:"start_time"`
+	EmojiIcon       string   `json:"emoji_icon"`
+	RewardPoints    int      `json:"reward_points"`
+	Recurring       bool     `json:"recurring"`
+	Frequency       string   `json:"frequency"`
+	Interval        int      `json:"interval"`
+	RecurrenceDays  []string `json:"recurrence_days"`
+	EndDate         string   `json:"end_date"`
+	RecurFrom       string   `json:"recur_from"`
+	UpForGrabs      bool     `json:"up_for_grabs"`
+	Routine         bool     `json:"routine"`
+	RecurrenceSet   []string `json:"recurrence_set"`
+	RenewalUnit     string   `json:"renewal_unit"`
+	RenewalInterval int      `json:"renewal_interval"`
 }
 
 // choreAPIEntry represents a single chore in JSON-API format.
@@ -216,24 +220,26 @@ type choreAPISingleResponse struct {
 // toChore converts a JSON-API chore entry to a flat Chore struct.
 func (e *choreAPIEntry) toChore() Chore {
 	c := Chore{
-		ID:             e.ID,
-		Title:          e.Attributes.Summary,
-		Description:    e.Attributes.Description,
-		Status:         e.Attributes.Status,
-		DueDate:        e.Attributes.Start,
-		StartTime:      e.Attributes.StartTime,
-		EmojiIcon:      e.Attributes.EmojiIcon,
-		Points:         e.Attributes.RewardPoints,
-		Recurring:      e.Attributes.Recurring,
-		Frequency:      e.Attributes.Frequency,
-		Interval:       e.Attributes.Interval,
-		RecurrenceDays: e.Attributes.RecurrenceDays,
-		EndDate:        e.Attributes.EndDate,
-		RecurFrom:      e.Attributes.RecurFrom,
-		UpForGrabs:     e.Attributes.UpForGrabs,
-		Routine:        e.Attributes.Routine,
-		RecurrenceSet:  e.Attributes.RecurrenceSet,
-		TrackHabit:     e.Relationships.HabitTracker.Data != nil,
+		ID:              e.ID,
+		Title:           e.Attributes.Summary,
+		Description:     e.Attributes.Description,
+		Status:          e.Attributes.Status,
+		DueDate:         e.Attributes.Start,
+		StartTime:       e.Attributes.StartTime,
+		EmojiIcon:       e.Attributes.EmojiIcon,
+		Points:          e.Attributes.RewardPoints,
+		Recurring:       e.Attributes.Recurring,
+		Frequency:       e.Attributes.Frequency,
+		Interval:        e.Attributes.Interval,
+		RecurrenceDays:  e.Attributes.RecurrenceDays,
+		EndDate:         e.Attributes.EndDate,
+		RecurFrom:       e.Attributes.RecurFrom,
+		UpForGrabs:      e.Attributes.UpForGrabs,
+		Routine:         e.Attributes.Routine,
+		RecurrenceSet:   e.Attributes.RecurrenceSet,
+		TrackHabit:      e.Relationships.HabitTracker.Data != nil,
+		RenewalUnit:     e.Attributes.RenewalUnit,
+		RenewalInterval: e.Attributes.RenewalInterval,
 	}
 	if e.Relationships.Category.Data != nil {
 		c.AssigneeID = e.Relationships.Category.Data.ID
@@ -244,26 +250,28 @@ func (e *choreAPIEntry) toChore() Chore {
 // ChoreData holds the chore fields for create/update requests.
 // JSON tags match the Skylight API field names.
 type ChoreData struct {
-	Title          string   `json:"summary,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	DueDate        string   `json:"start,omitempty"`
-	StartTime      string   `json:"start_time,omitempty"`
-	EmojiIcon      string   `json:"emoji_icon,omitempty"`
-	Points         int      `json:"reward_points,omitempty"`
-	Status         string   `json:"status,omitempty"`
-	AssigneeID     string   `json:"category_id,omitempty"`
-	Recurring      bool     `json:"recurring,omitempty"`
-	Frequency      string   `json:"frequency,omitempty"`
-	Interval       int      `json:"interval,omitempty"`
-	RecurrenceDays []string `json:"recurrence_days,omitempty"`
-	EndDate        string   `json:"end_date,omitempty"`
-	RecurFrom      string   `json:"recur_from,omitempty"`
-	UpForGrabs     bool     `json:"up_for_grabs,omitempty"`
-	CategoryIDs    []string `json:"category_ids,omitempty"`
-	RecurrenceSet  []string `json:"recurrence_set,omitempty"`
-	RecurringUntil string   `json:"recurring_until,omitempty"`
-	Routine        bool     `json:"routine,omitempty"`
-	TrackHabit     bool     `json:"track_habit,omitempty"`
+	Title           string   `json:"summary,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	DueDate         string   `json:"start,omitempty"`
+	StartTime       string   `json:"start_time,omitempty"`
+	EmojiIcon       string   `json:"emoji_icon,omitempty"`
+	Points          int      `json:"reward_points,omitempty"`
+	Status          string   `json:"status,omitempty"`
+	AssigneeID      string   `json:"category_id,omitempty"`
+	Recurring       bool     `json:"recurring,omitempty"`
+	Frequency       string   `json:"frequency,omitempty"`
+	Interval        int      `json:"interval,omitempty"`
+	RecurrenceDays  []string `json:"recurrence_days,omitempty"`
+	EndDate         string   `json:"end_date,omitempty"`
+	RecurFrom       string   `json:"recur_from,omitempty"`
+	UpForGrabs      bool     `json:"up_for_grabs,omitempty"`
+	CategoryIDs     []string `json:"category_ids,omitempty"`
+	RecurrenceSet   []string `json:"recurrence_set,omitempty"`
+	RecurringUntil  string   `json:"recurring_until,omitempty"`
+	Routine         bool     `json:"routine,omitempty"`
+	TrackHabit      bool     `json:"track_habit,omitempty"`
+	RenewalUnit     string   `json:"renewal_unit,omitempty"`
+	RenewalInterval int      `json:"renewal_interval,omitempty"`
 }
 
 // List represents a list (e.g., grocery list, todo list).

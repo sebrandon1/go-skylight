@@ -320,10 +320,31 @@ func TestChoresToImport(t *testing.T) {
 		{
 			name: "repeat-after-completion chore is created once from its open row",
 			chores: []lib.Chore{
-				{ID: "800", Title: "Water plants", Status: "pending"},
-				{ID: "800-2026-09-28", Title: "Water plants", Status: "complete", DueDate: "2026-09-28"},
+				{ID: "800", Title: "Water plants", Status: "pending", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 1},
+				{ID: "800-2026-09-28", Title: "Water plants", Status: "complete", DueDate: "2026-09-28", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 1},
+				{ID: "810-2026-09-20", Title: "Sweep deck", Status: "complete", DueDate: "2026-09-20", UpForGrabs: true, RenewalUnit: "week", RenewalInterval: 2},
+				{ID: "810", Title: "Sweep deck", Status: "pending", UpForGrabs: true, RenewalUnit: "week", RenewalInterval: 2},
 			},
-			want: []lib.ChoreData{{Title: "Water plants"}},
+			want: []lib.ChoreData{
+				{Title: "Water plants", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 1},
+				{Title: "Sweep deck", UpForGrabs: true, RenewalUnit: "week", RenewalInterval: 2},
+			},
+		},
+		{
+			name: "completed repeat-after-completion chore is created once from its next dated row",
+			chores: []lib.Chore{
+				{ID: "820-2026-09-27", Title: "Change towels", Status: "complete", DueDate: "2026-09-27", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 3},
+				{ID: "820-2026-09-30", Title: "Change towels", Status: "complete", DueDate: "2026-09-30", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 3},
+				{ID: "820-2026-10-03", Title: "Change towels", Status: "pending", DueDate: "2026-10-03", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 3},
+			},
+			want: []lib.ChoreData{{Title: "Change towels", DueDate: "2026-10-03", AssigneeID: "cat1", RenewalUnit: "day", RenewalInterval: 3}},
+		},
+		{
+			name: "deleted repeat-after-completion chore leaves only history and is not created",
+			chores: []lib.Chore{
+				{ID: "830-2026-09-25", Title: "Clean fish tank", Status: "complete", DueDate: "2026-09-25", RenewalUnit: "week", RenewalInterval: 1},
+				{ID: "830-2026-09-29", Title: "Clean fish tank", Status: "complete", DueDate: "2026-09-29", RenewalUnit: "week", RenewalInterval: 1},
+			},
 		},
 		{
 			name: "routine rows are skipped and reported once per series",
@@ -373,6 +394,10 @@ func mixedExportChores() []lib.Chore {
 		{ID: "1000-2026-10-07", Title: "Pack lunches", Status: "pending", DueDate: "2026-10-07", UpForGrabs: true, Recurring: true, RecurrenceSet: lunches},
 		{ID: "1000-2026-10-14", Title: "Pack lunches", Status: "pending", DueDate: "2026-10-14", UpForGrabs: true, Recurring: true, RecurrenceSet: lunches},
 		{ID: "1100", Title: "Wipe benches", Status: "pending", DueDate: "2026-10-02", UpForGrabs: true},
+		{ID: "1200-2026-09-29", Title: "Water plants", Status: "complete", DueDate: "2026-09-29", AssigneeID: "cat2", RenewalUnit: "day", RenewalInterval: 2},
+		{ID: "1200", Title: "Water plants", Status: "pending", AssigneeID: "cat2", RenewalUnit: "day", RenewalInterval: 2},
+		{ID: "1300", Title: "Sweep deck", Status: "pending", UpForGrabs: true, RenewalUnit: "week", RenewalInterval: 1},
+		{ID: "1300-2026-09-24", Title: "Sweep deck", Status: "complete", DueDate: "2026-09-24", UpForGrabs: true, RenewalUnit: "week", RenewalInterval: 1},
 	}
 }
 
@@ -403,14 +428,16 @@ func TestImportChores_RequestBodies(t *testing.T) {
 		total, failed = importChores(context.Background(), client, mixedExportChores(), importTestToday, nil)
 	})
 
-	if total != 4 || failed != 0 {
-		t.Fatalf("got total=%d failed=%d, want total=4 failed=0", total, failed)
+	if total != 6 || failed != 0 {
+		t.Fatalf("got total=%d failed=%d, want total=6 failed=0", total, failed)
 	}
 	wantEndpoints := map[string]string{
 		"Bins":         "POST create_multiple",
 		"Fix bike":     "POST chores",
 		"Pack lunches": "POST create_multiple",
 		"Wipe benches": "POST create_multiple",
+		"Water plants": "POST chores",
+		"Sweep deck":   "POST create_multiple",
 	}
 	if !reflect.DeepEqual(endpoints, wantEndpoints) {
 		t.Errorf("requests: got %v, want %v", endpoints, wantEndpoints)
@@ -424,6 +451,8 @@ func TestImportChores_RequestBodies(t *testing.T) {
 		"Fix bike":     {Title: "Fix bike", Description: "Back tire", DueDate: "2026-10-03", AssigneeID: "cat2"},
 		"Pack lunches": {Title: "Pack lunches", DueDate: "2026-10-07", UpForGrabs: true, RecurrenceSet: []string{"RRULE:FREQ=WEEKLY;BYDAY=WE"}},
 		"Wipe benches": {Title: "Wipe benches", DueDate: "2026-10-02", UpForGrabs: true},
+		"Water plants": {Title: "Water plants", AssigneeID: "cat2", RenewalUnit: "day", RenewalInterval: 2},
+		"Sweep deck":   {Title: "Sweep deck", UpForGrabs: true, RenewalUnit: "week", RenewalInterval: 1},
 	}
 	if !reflect.DeepEqual(bodies, wantBodies) {
 		t.Errorf("bodies:\n got %+v\nwant %+v", bodies, wantBodies)

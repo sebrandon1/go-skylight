@@ -196,6 +196,11 @@ func TestCreateChore(t *testing.T) {
 				if raw["summary"] != tc.input.Title {
 					t.Errorf("summary: want %q got %v", tc.input.Title, raw["summary"])
 				}
+				for _, k := range []string{"renewal_unit", "renewal_interval"} {
+					if _, ok := raw[k]; ok {
+						t.Errorf("%s sent for a chore without one", k)
+					}
+				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(tc.status)
 				if tc.response != "" {
@@ -1186,6 +1191,37 @@ func TestCreateChore_StartTimeAndEmoji(t *testing.T) {
 				t.Errorf("expected StartTime and EmojiIcon decoded, got %+v", chore)
 			}
 		})
+	}
+}
+
+func TestCreateChore_Renewal(t *testing.T) {
+	var raw map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/frames/frame1/chores" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"id":"c1","attributes":{"summary":"Water plants","start":null,"renewal_unit":"week","renewal_interval":2}}}`))
+	}))
+	defer srv.Close()
+
+	client, _ := NewClientWithToken("u", "t", WithBaseURL(srv.URL+"/api"))
+	chore, err := client.CreateChore(context.Background(), "frame1", ChoreData{Title: "Water plants", RenewalUnit: "week", RenewalInterval: 2})
+	if err != nil {
+		t.Fatalf("CreateChore: %v", err)
+	}
+	if raw["renewal_unit"] != "week" || raw["renewal_interval"] != float64(2) {
+		t.Errorf("expected renewal_unit and renewal_interval sent, got %v", raw)
+	}
+	if _, ok := raw["start"]; ok {
+		t.Errorf("expected no start for an undated chore, got %v", raw["start"])
+	}
+	if chore.RenewalUnit != "week" || chore.RenewalInterval != 2 || chore.DueDate != "" {
+		t.Errorf("expected RenewalUnit and RenewalInterval decoded, got %+v", chore)
 	}
 }
 
