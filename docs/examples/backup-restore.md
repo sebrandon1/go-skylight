@@ -32,5 +32,6 @@ skylight import --file skylight-backup.json --dry-run
 - One-off chores come back only if they were still pending. Completion history and streaks are not restored.
 - Lists come back with their items in order, including completed items and sections.
 - Rewards come back with their assignee, description and repeat-after-redeem setting. Backups from older versions don't record repeat-after-redeem, so their rewards come back as one-time.
+- Routines come back with their time of day, icon, points and habit tracking. Past habit check-ins are not restored.
 - Assignees are matched by ID, and categories are not imported, so restore into the frame the backup came from.
 - Import doesn't check what's already on the frame. Importing the same file twice creates everything twice.

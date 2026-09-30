@@ -440,6 +440,36 @@ func TestImportChores_RequestBodies(t *testing.T) {
 	}
 }
 
+func TestImportRoutines_RequestBody(t *testing.T) {
+	var body lib.ChoreData
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/chores/create_multiple") {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[{"id":"rt1","attributes":{"summary":"x"}}]}`)
+	})
+
+	total, failed := importRoutines(context.Background(), client, []lib.Routine{{
+		ID: "111", Title: "Brush teeth", TimeOfDay: lib.RoutineTODMorning, AssigneeID: "cat1",
+		NextOccurrenceDate: importTestToday, EmojiIcon: "🪥", Points: 1, TrackHabit: true,
+	}}, nil)
+	if total != 1 || failed != 0 {
+		t.Fatalf("got total=%d failed=%d, want total=1 failed=0", total, failed)
+	}
+	want := lib.ChoreData{
+		Title: "Brush teeth", DueDate: importTestToday, CategoryIDs: []string{"cat1"},
+		RecurrenceSet: []string{"RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"}, Routine: true,
+		EmojiIcon: "🪥", Points: 1, TrackHabit: true,
+	}
+	if !reflect.DeepEqual(body, want) {
+		t.Errorf("body:\n got %+v\nwant %+v", body, want)
+	}
+}
+
 func TestImportLists(t *testing.T) {
 	t.Run("list and items succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)

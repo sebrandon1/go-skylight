@@ -441,7 +441,10 @@ func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Rout
 			fmt.Fprintf(os.Stderr, "Skipping existing routine %q\n", r.Title)
 			return 0, 0
 		}
-		data := lib.RoutineData{Title: r.Title, TimeOfDay: r.TimeOfDay, CategoryID: r.AssigneeID, StartDate: r.NextOccurrenceDate}
+		data := lib.RoutineData{
+			Title: r.Title, TimeOfDay: r.TimeOfDay, CategoryID: r.AssigneeID, StartDate: r.NextOccurrenceDate,
+			EmojiIcon: r.EmojiIcon, Points: r.Points, TrackHabit: r.TrackHabit,
+		}
 		if _, err := client.CreateRoutine(ctx, frameID, data); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating routine %q: %v\n", r.Title, err)
 			return 1, 1

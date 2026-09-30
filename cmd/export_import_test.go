@@ -335,7 +335,7 @@ func exportMockHandler() http.HandlerFunc {
 		case strings.HasSuffix(r.URL.Path, "/chores"):
 			fmt.Fprint(w, `{"data":[
 				{"id":"c1","attributes":{"summary":"Dishes","start_time":"19:00","emoji_icon":"🍽️"}},
-				{"id":"rt1","attributes":{"summary":"Morning Routine","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}
+				{"id":"rt1","attributes":{"summary":"Morning Routine","emoji_icon":"🪥","reward_points":1,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}}
 			]}`)
 		case strings.HasSuffix(r.URL.Path, "/rewards"):
 			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"Ice cream","point_value":5,"description":"Two scoops","respawn_on_redemption":true}}]}`)
@@ -397,6 +397,8 @@ func TestExportCmd_AllResourcesToStdout(t *testing.T) {
 	}
 	if len(data.Routines) != 1 {
 		t.Errorf("expected 1 routine, got %d", len(data.Routines))
+	} else if r := data.Routines[0]; r.EmojiIcon != "🪥" || r.Points != 1 || !r.TrackHabit {
+		t.Errorf("expected routine emoji_icon, points and track_habit exported, got: %+v", r)
 	}
 	if len(data.Categories) != 1 {
 		t.Errorf("expected 1 category, got %d", len(data.Categories))

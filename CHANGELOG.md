@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `Routine`/`RoutineData`: `EmojiIcon`, `Points` and `TrackHabit` (habit tracking), read from the API and sent on create
+- `Chore`/`ChoreData`: `TrackHabit` (routines only), read from the API and sent on create
+
+### Fixed
+- `export`/`import`: routines lost their icon, points and habit tracking; now kept (#525, #526)
+
 ## [v0.2.6] - 2026-10-05
 
 ### Changed

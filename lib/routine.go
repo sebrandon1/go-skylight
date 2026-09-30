@@ -38,18 +38,25 @@ type Routine struct {
 	TimeOfDay          string `json:"time_of_day,omitempty"`
 	AssigneeID         string `json:"assignee_id,omitempty"`
 	NextOccurrenceDate string `json:"next_occurrence_date,omitempty"`
+	EmojiIcon          string `json:"emoji_icon,omitempty"`
+	Points             int    `json:"points,omitempty"`
+	TrackHabit         bool   `json:"track_habit,omitempty"`
 }
 
 // RoutineData holds the fields for creating a routine. CategoryID is a
 // single assignee: create_multiple fans out one chore record per category
 // ID with no server-provided key correlating the resulting siblings back
 // together, so multi-assignee routines aren't supported yet -- the type
-// only allows one.
+// only allows one. TrackHabit gives the routine a habit tracker; Points
+// alone don't.
 type RoutineData struct {
 	Title      string `json:"title,omitempty"`
 	TimeOfDay  string `json:"time_of_day,omitempty"`
 	CategoryID string `json:"category_id,omitempty"`
 	StartDate  string `json:"start_date,omitempty"`
+	EmojiIcon  string `json:"emoji_icon,omitempty"`
+	Points     int    `json:"points,omitempty"`
+	TrackHabit bool   `json:"track_habit,omitempty"`
 }
 
 // routineByHour maps the CLI/API's time-of-day vocabulary to the BYHOUR
@@ -83,6 +90,19 @@ func timeOfDayFromRecurrence(rules []string) string {
 	return ""
 }
 
+func routineFromChore(ch Chore, timeOfDay string) Routine {
+	return Routine{
+		ID:                 ch.ID,
+		Title:              ch.Title,
+		TimeOfDay:          timeOfDay,
+		AssigneeID:         ch.AssigneeID,
+		NextOccurrenceDate: ch.DueDate,
+		EmojiIcon:          ch.EmojiIcon,
+		Points:             ch.Points,
+		TrackHabit:         ch.TrackHabit,
+	}
+}
+
 // CreateRoutine creates a routine as a chore via create_multiple, with
 // routine:true and the time-of-day slot carried in the recurrence rule's
 // BYHOUR. There is no dedicated /routines resource on the Skylight API.
@@ -101,6 +121,9 @@ func (c *Client) CreateRoutine(ctx context.Context, frameID string, data Routine
 		CategoryIDs:   []string{data.CategoryID},
 		RecurrenceSet: []string{fmt.Sprintf("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=%d", hour)},
 		Routine:       true,
+		EmojiIcon:     data.EmojiIcon,
+		Points:        data.Points,
+		TrackHabit:    data.TrackHabit,
 	}
 
 	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/chores/create_multiple", c.effectiveURL(), pathSeg(frameID)), chore)
@@ -117,13 +140,8 @@ func (c *Client) CreateRoutine(ctx context.Context, frameID string, data Routine
 	}
 
 	ch := apiResp.Data[0].toChore()
-	return &Routine{
-		ID:                 ch.ID,
-		Title:              ch.Title,
-		TimeOfDay:          data.TimeOfDay,
-		AssigneeID:         ch.AssigneeID,
-		NextOccurrenceDate: ch.DueDate,
-	}, nil
+	r := routineFromChore(ch, data.TimeOfDay)
+	return &r, nil
 }
 
 // ListRoutines lists routines active or starting within the next
@@ -152,13 +170,9 @@ func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, e
 		}
 		seen[baseID] = true
 
-		routines = append(routines, Routine{
-			ID:                 baseID,
-			Title:              ch.Title,
-			TimeOfDay:          timeOfDayFromRecurrence(ch.RecurrenceSet),
-			AssigneeID:         ch.AssigneeID,
-			NextOccurrenceDate: ch.DueDate,
-		})
+		r := routineFromChore(ch, timeOfDayFromRecurrence(ch.RecurrenceSet))
+		r.ID = baseID
+		routines = append(routines, r)
 	}
 	return routines, nil
 }
@@ -176,13 +190,8 @@ func (c *Client) GetRoutine(ctx context.Context, frameID, routineID string) (*Ro
 	}
 
 	ch := apiResp.Data.toChore()
-	return &Routine{
-		ID:                 ch.ID,
-		Title:              ch.Title,
-		TimeOfDay:          timeOfDayFromRecurrence(ch.RecurrenceSet),
-		AssigneeID:         ch.AssigneeID,
-		NextOccurrenceDate: ch.DueDate,
-	}, nil
+	r := routineFromChore(ch, timeOfDayFromRecurrence(ch.RecurrenceSet))
+	return &r, nil
 }
 
 // RoutineUpdateData holds the fields that may be updated on an existing routine.
@@ -220,13 +229,8 @@ func (c *Client) UpdateRoutine(ctx context.Context, frameID, routineID string, d
 	if tod == "" {
 		tod = timeOfDayFromRecurrence(ch.RecurrenceSet)
 	}
-	return &Routine{
-		ID:                 ch.ID,
-		Title:              ch.Title,
-		TimeOfDay:          tod,
-		AssigneeID:         ch.AssigneeID,
-		NextOccurrenceDate: ch.DueDate,
-	}, nil
+	r := routineFromChore(ch, tod)
+	return &r, nil
 }
 
 // DeleteRoutine deletes a routine. apply_to=all is required by the API for

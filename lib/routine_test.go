@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -25,7 +26,7 @@ func TestCreateRoutine(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"data":[{"id":"97874955","attributes":{"summary":"Make bed","start":"2026-08-10","routine":true,"recurring":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"9740544","type":"category"}}}}]}`))
+		_, _ = w.Write([]byte(`{"data":[{"id":"97874955","attributes":{"summary":"Make bed","start":"2026-08-10","emoji_icon":"🛏️","reward_points":1,"routine":true,"recurring":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"9740544","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}}]}`))
 	}))
 	defer srv.Close()
 
@@ -39,6 +40,9 @@ func TestCreateRoutine(t *testing.T) {
 		TimeOfDay:  "morning",
 		CategoryID: "9740544",
 		StartDate:  "2026-08-10",
+		EmojiIcon:  "🛏️",
+		Points:     1,
+		TrackHabit: true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -59,6 +63,9 @@ func TestCreateRoutine(t *testing.T) {
 	if routine.NextOccurrenceDate != "2026-08-10" {
 		t.Errorf("NextOccurrenceDate: want %q got %q", "2026-08-10", routine.NextOccurrenceDate)
 	}
+	if routine.EmojiIcon != "🛏️" || routine.Points != 1 || !routine.TrackHabit {
+		t.Errorf("got EmojiIcon=%q Points=%d TrackHabit=%v, want 🛏️ 1 true", routine.EmojiIcon, routine.Points, routine.TrackHabit)
+	}
 
 	if capturedBody["routine"] != true {
 		t.Errorf("expected routine:true in request body, got %v", capturedBody["routine"])
@@ -70,6 +77,15 @@ func TestCreateRoutine(t *testing.T) {
 	recSet, _ := capturedBody["recurrence_set"].([]any)
 	if len(recSet) != 1 || recSet[0] != "RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6" {
 		t.Errorf("expected recurrence_set with BYHOUR=6, got %v", capturedBody["recurrence_set"])
+	}
+	if capturedBody["emoji_icon"] != "🛏️" {
+		t.Errorf("emoji_icon: want %q got %v", "🛏️", capturedBody["emoji_icon"])
+	}
+	if capturedBody["reward_points"] != float64(1) {
+		t.Errorf("reward_points: want 1 got %v", capturedBody["reward_points"])
+	}
+	if capturedBody["track_habit"] != true {
+		t.Errorf("track_habit: want true got %v", capturedBody["track_habit"])
 	}
 }
 
@@ -353,6 +369,59 @@ func TestListRoutines_MapsBYHOURToTimeOfDay(t *testing.T) {
 	}
 }
 
+func TestListRoutines_ParsesIconPointsAndHabitTracker(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"111-2026-08-10-0600","attributes":{"summary":"Brush teeth","start":"2026-08-10","emoji_icon":"🪥","reward_points":1,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}},
+			{"id":"222-2026-08-10-2000","attributes":{"summary":"Read","start":"2026-08-10","emoji_icon":"📚","reward_points":null,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":null}}}
+		]}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	routines, err := client.ListRoutines(context.Background(), "frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []Routine{
+		{ID: "111", Title: "Brush teeth", TimeOfDay: "morning", AssigneeID: "c1", NextOccurrenceDate: "2026-08-10", EmojiIcon: "🪥", Points: 1, TrackHabit: true},
+		{ID: "222", Title: "Read", TimeOfDay: "evening", AssigneeID: "c1", NextOccurrenceDate: "2026-08-10", EmojiIcon: "📚"},
+	}
+	if !reflect.DeepEqual(routines, want) {
+		t.Errorf("routines:\n got %+v\nwant %+v", routines, want)
+	}
+}
+
+func TestGetRoutine_ParsesIconPointsAndHabitTracker(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/frames/frame1/chores/111" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":{"id":"111","attributes":{"summary":"Brush teeth","start":"2026-08-10","emoji_icon":"🪥","reward_points":1,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}}}`)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	routine, err := client.GetRoutine(context.Background(), "frame1", "111")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if routine.EmojiIcon != "🪥" || routine.Points != 1 || !routine.TrackHabit {
+		t.Errorf("got EmojiIcon=%q Points=%d TrackHabit=%v, want 🪥 1 true", routine.EmojiIcon, routine.Points, routine.TrackHabit)
+	}
+}
+
 func TestListRoutines_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -436,7 +505,7 @@ func TestUpdateRoutine(t *testing.T) {
 		}
 		gotApplyTo = r.URL.Query().Get("apply_to")
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":{"id":"97874955","attributes":{"summary":"Evening Walk","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"9740544","type":"category"}}}}}`)
+		fmt.Fprint(w, `{"data":{"id":"97874955","attributes":{"summary":"Evening Walk","start":"2026-08-10","emoji_icon":"🚶","reward_points":1,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"9740544","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}}}`)
 	}))
 	defer srv.Close()
 	old := SkylightURL
@@ -452,6 +521,9 @@ func TestUpdateRoutine(t *testing.T) {
 	}
 	if routine.TimeOfDay != "evening" {
 		t.Errorf("TimeOfDay: want %q got %q", "evening", routine.TimeOfDay)
+	}
+	if routine.EmojiIcon != "🚶" || routine.Points != 1 || !routine.TrackHabit {
+		t.Errorf("got EmojiIcon=%q Points=%d TrackHabit=%v, want 🚶 1 true", routine.EmojiIcon, routine.Points, routine.TrackHabit)
 	}
 	if gotApplyTo != "all" {
 		t.Errorf("apply_to: want %q got %q", "all", gotApplyTo)
