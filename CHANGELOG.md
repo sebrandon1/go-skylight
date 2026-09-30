@@ -4,12 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.2.4] - 2026-09-30
+
 ### Added
 - `Chore`/`ChoreData`: `StartTime` (due time, `HH:MM`) and `EmojiIcon`, read from the API and sent on create/update
 
 ### Fixed
-- `import`: recurring chores were recreated as one one-off chore per exported occurrence; now each series is recreated once from its rule with its due time, icon, description and up-for-grabs flag. Ended series and completed one-offs are skipped, and the `--dry-run` count matches what is created
-- `export`: up-for-grabs chores were missing, and chore due time and icon were not captured; now included
+- Integration tests: add refresh token authentication to bypass Cloudflare blocks; remove CI integration workflow as tests require personal credentials (#487)
+- `import`: recurring chores were recreated as one one-off chore per exported occurrence; now each series is recreated once from its rule with its due time, icon, description and up-for-grabs flag. Ended series and completed one-offs are skipped, and the `--dry-run` count matches what is created (#488, #489)
+- `export`: up-for-grabs chores were missing, and chore due time and icon were not captured; now included (#488, #489)
 
 ## [v0.2.3] - 2026-09-29
 
