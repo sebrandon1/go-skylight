@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.2.5] - 2026-09-30
+
+### Changed
+- Default API version bumped from `2026-06-01` to `2026-08-05` to support upcoming linked tasks feature (multi-assignee chores) (#491)
+
 ## [v0.2.4] - 2026-09-30
 
 ### Added
