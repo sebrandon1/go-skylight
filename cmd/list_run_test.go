@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -81,7 +82,14 @@ func TestListCreateCmd(t *testing.T) {
 }
 
 func TestListCreateCmd_HideFromFrame(t *testing.T) {
-	newCmdTestClient(t, listMockHandler())
+	var body map[string]any
+	mock := listMockHandler()
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		mock(w, r)
+	})
 	origTitle := listTitle
 	listTitle = "Groceries"
 	t.Cleanup(func() { listTitle = origTitle })
@@ -99,6 +107,9 @@ func TestListCreateCmd_HideFromFrame(t *testing.T) {
 	})
 	if !strings.Contains(out, "Groceries") {
 		t.Errorf("expected created list in output, got: %s", out)
+	}
+	if body["hide_on_device"] != true {
+		t.Errorf("expected hide_on_device=true in request body, got: %v", body)
 	}
 }
 

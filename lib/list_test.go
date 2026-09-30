@@ -320,6 +320,71 @@ func TestUpdateList(t *testing.T) {
 	}
 }
 
+func TestListLists_HideOnDevice(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":[{"id":"1","type":"list","attributes":{"label":"Chores","hide_on_device":true}},{"id":"2","type":"list","attributes":{"label":"Groceries","hide_on_device":false}}]}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	lists, err := client.ListLists(context.Background(), "frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(lists) != 2 || !lists[0].HideFromFrame || lists[1].HideFromFrame {
+		t.Errorf("expected HideFromFrame true then false from hide_on_device, got %+v", lists)
+	}
+}
+
+func TestCreateUpdateList_HideOnDevice(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body = nil
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":{"id":"1","type":"list","attributes":{"label":"Chores","kind":"to_do","hide_on_device":true}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	hide := true
+	calls := map[string]func() (*List, error){
+		"create": func() (*List, error) {
+			return client.CreateList(context.Background(), "frame1", ListData{Title: "Chores", HideFromFrame: &hide})
+		},
+		"update": func() (*List, error) {
+			return client.UpdateList(context.Background(), "frame1", "1", ListData{HideFromFrame: &hide})
+		},
+	}
+	for name, call := range calls {
+		list, err := call()
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", name, err)
+		}
+		if body["hide_on_device"] != true {
+			t.Errorf("%s: request hide_on_device: want true, got %v (body %v)", name, body["hide_on_device"], body)
+		}
+		if !list.HideFromFrame {
+			t.Errorf("%s: expected HideFromFrame=true from hide_on_device", name)
+		}
+	}
+}
+
 func TestDeleteList(t *testing.T) {
 	tests := []struct {
 		name    string

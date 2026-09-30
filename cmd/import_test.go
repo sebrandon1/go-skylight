@@ -450,6 +450,31 @@ func TestImportLists_ItemRequestBodies(t *testing.T) {
 	}
 }
 
+func TestImportLists_HideOnDevice(t *testing.T) {
+	var mu sync.Mutex
+	hidden := map[string]any{}
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		mu.Lock()
+		hidden[body["label"].(string)] = body["hide_on_device"]
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"data":{"id":"l1","type":"list","attributes":{"label":"x"}}}`)
+	})
+
+	lists := []lib.List{{Title: "Chores", HideFromFrame: true}, {Title: "Groceries"}}
+	if total, failed := importLists(context.Background(), client, lists); total != 2 || failed != 0 {
+		t.Fatalf("got total=%d failed=%d, want total=2 failed=0", total, failed)
+	}
+	if want := map[string]any{"Chores": true, "Groceries": false}; !reflect.DeepEqual(hidden, want) {
+		t.Errorf("hide_on_device by list: got %v, want %v", hidden, want)
+	}
+}
+
 func TestImportRecipes(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)

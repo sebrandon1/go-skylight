@@ -307,7 +307,7 @@ func ruleUntil(set []string) string {
 func importLists(ctx context.Context, client *lib.Client, lists []lib.List) (total, failed int) {
 	return parallelImport(lists, func(l lib.List) (int, int) {
 		t, f := 1, 0
-		created, err := client.CreateList(ctx, frameID, lib.ListData{Title: l.Title, Color: l.Color, Kind: l.Kind})
+		created, err := client.CreateList(ctx, frameID, lib.ListData{Title: l.Title, Color: l.Color, Kind: l.Kind, HideFromFrame: &l.HideFromFrame})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating list %q: %v\n", l.Title, err)
 			return t, 1

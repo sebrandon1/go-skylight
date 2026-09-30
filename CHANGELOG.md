@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - `export`: lists were saved without their items; `ListLists` now returns each list's items, so the `list all`, `grocery list` and `home` ITEMS column is no longer always 0 and their JSON output includes `list_items` (#493, #494)
 - `import`: list items are recreated in their original order with their completed status and section (#493, #494)
+- `list create`/`list update --hide-from-frame` had no effect (the API field is `hide_on_device`); `export` now records it and `import` restores it (#495, #496)
 
 ## [v0.2.5] - 2026-09-30
 

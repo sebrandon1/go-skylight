@@ -266,7 +266,7 @@ type List struct {
 	Title         string     `json:"label,omitempty"`
 	Color         string     `json:"color,omitempty"`
 	Kind          string     `json:"kind,omitempty"`
-	HideFromFrame bool       `json:"hide_from_frame"`
+	HideFromFrame bool       `json:"hide_from_frame"` // export file key; the API field is hide_on_device
 	Items         []ListItem `json:"list_items,omitempty"`
 	CreatedAt     string     `json:"created_at,omitempty"`
 	UpdatedAt     string     `json:"updated_at,omitempty"`
@@ -289,7 +289,7 @@ type ListData struct {
 	Title         string `json:"label,omitempty"`
 	Color         string `json:"color,omitempty"`
 	Kind          string `json:"kind,omitempty"`
-	HideFromFrame *bool  `json:"hide_from_frame,omitempty"`
+	HideFromFrame *bool  `json:"hide_on_device,omitempty"`
 }
 
 // ListItemData holds the list item fields for create/update requests.
@@ -327,7 +327,7 @@ type listAPIEntry struct {
 		Label         string `json:"label"`
 		Color         string `json:"color"`
 		Kind          string `json:"kind"`
-		HideFromFrame bool   `json:"hide_from_frame"`
+		HideFromFrame bool   `json:"hide_on_device"`
 		CreatedAt     string `json:"created_at"`
 		UpdatedAt     string `json:"updated_at"`
 	} `json:"attributes"`
