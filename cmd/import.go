@@ -178,7 +178,21 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 
 func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward) (total, failed int) {
 	return parallelImport(rewards, func(r lib.Reward) (int, int) {
-		if _, err := client.CreateReward(ctx, frameID, lib.RewardData{Title: r.Title, Points: r.Points, EmojiIcon: r.EmojiIcon}); err != nil {
+		// The API requires a category and takes it as a number.
+		categoryID, err := strconv.Atoi(r.CategoryID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating reward %q: category ID %q is not a number\n", r.Title, r.CategoryID)
+			return 1, 1
+		}
+		data := lib.RewardData{
+			Title:               r.Title,
+			Points:              r.Points,
+			EmojiIcon:           r.EmojiIcon,
+			Description:         r.Description,
+			RespawnOnRedemption: &r.RespawnOnRedemption,
+			CategoryIDs:         []int{categoryID},
+		}
+		if _, err := client.CreateReward(ctx, frameID, data); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating reward %q: %v\n", r.Title, err)
 			return 1, 1
 		}

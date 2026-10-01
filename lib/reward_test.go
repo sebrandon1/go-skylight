@@ -10,14 +10,16 @@ import (
 
 func TestListRewards(t *testing.T) {
 	tests := []struct {
-		name       string
-		status     int
-		response   string
-		wantLen    int
-		wantPoints int
-		wantCatID  string
-		wantEmoji  string
-		wantErr    bool
+		name        string
+		status      int
+		response    string
+		wantLen     int
+		wantPoints  int
+		wantCatID   string
+		wantEmoji   string
+		wantDesc    string
+		wantRespawn bool
+		wantErr     bool
 	}{
 		{
 			name:       "returns rewards",
@@ -33,6 +35,14 @@ func TestListRewards(t *testing.T) {
 			wantLen:   1,
 			wantCatID: "cat456",
 			wantEmoji: "🍦",
+		},
+		{
+			name:        "parses description and respawn",
+			status:      http.StatusOK,
+			response:    `{"data":[{"id":"1","attributes":{"name":"Movie night","point_value":20,"description":"Pick the film","respawn_on_redemption":true}}]}`,
+			wantLen:     1,
+			wantDesc:    "Pick the film",
+			wantRespawn: true,
 		},
 		{
 			name:    "not found returns error",
@@ -90,6 +100,12 @@ func TestListRewards(t *testing.T) {
 				}
 				if tc.wantEmoji != "" && rewards[0].EmojiIcon != tc.wantEmoji {
 					t.Errorf("EmojiIcon: want %q got %q", tc.wantEmoji, rewards[0].EmojiIcon)
+				}
+				if rewards[0].Description != tc.wantDesc {
+					t.Errorf("Description: want %q got %q", tc.wantDesc, rewards[0].Description)
+				}
+				if rewards[0].RespawnOnRedemption != tc.wantRespawn {
+					t.Errorf("RespawnOnRedemption: want %v got %v", tc.wantRespawn, rewards[0].RespawnOnRedemption)
 				}
 			}
 		})

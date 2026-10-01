@@ -55,6 +55,7 @@ func TestCreateBounty(t *testing.T) {
 						Data: []rewardAPIEntry{{ID: "rw1", Attributes: struct {
 							Name                string  `json:"name"`
 							EmojiIcon           string  `json:"emoji_icon"`
+							Description         string  `json:"description"`
 							PointValue          int     `json:"point_value"`
 							RespawnOnRedemption bool    `json:"respawn_on_redemption"`
 							RedeemedAt          *string `json:"redeemed_at"`
@@ -98,6 +99,7 @@ func TestCreateBounty(t *testing.T) {
 						Data: []rewardAPIEntry{{ID: "rw1", Attributes: struct {
 							Name                string  `json:"name"`
 							EmojiIcon           string  `json:"emoji_icon"`
+							Description         string  `json:"description"`
 							PointValue          int     `json:"point_value"`
 							RespawnOnRedemption bool    `json:"respawn_on_redemption"`
 							RedeemedAt          *string `json:"redeemed_at"`
@@ -135,6 +137,7 @@ func TestCreateBounty(t *testing.T) {
 							Attributes: struct {
 								Name                string  `json:"name"`
 								EmojiIcon           string  `json:"emoji_icon"`
+								Description         string  `json:"description"`
 								PointValue          int     `json:"point_value"`
 								RespawnOnRedemption bool    `json:"respawn_on_redemption"`
 								RedeemedAt          *string `json:"redeemed_at"`
@@ -371,6 +374,7 @@ func TestListBounties(t *testing.T) {
 						Data: []rewardAPIEntry{{ID: "rw1", Attributes: struct {
 							Name                string  `json:"name"`
 							EmojiIcon           string  `json:"emoji_icon"`
+							Description         string  `json:"description"`
 							PointValue          int     `json:"point_value"`
 							RespawnOnRedemption bool    `json:"respawn_on_redemption"`
 							RedeemedAt          *string `json:"redeemed_at"`

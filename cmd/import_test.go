@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -83,7 +84,7 @@ func TestParallelImport_MixedPanicAndSuccess(t *testing.T) {
 func TestImportRewards(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A"}, {Title: "B"}})
+		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A", CategoryID: "1"}, {Title: "B", CategoryID: "1"}})
 		if total != 2 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=0", total, failed)
 		}
@@ -91,11 +92,66 @@ func TestImportRewards(t *testing.T) {
 
 	t.Run("partial failure", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/rewards": true})
-		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A"}})
+		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A", CategoryID: "1"}})
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
 	})
+}
+
+func TestImportRewards_RequestBodies(t *testing.T) {
+	var mu sync.Mutex
+	bodies := map[string]string{}
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+		}
+		var body lib.RewardData
+		if err := json.Unmarshal(raw, &body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		mu.Lock()
+		bodies[body.Title] = string(raw)
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"x"}}]}`)
+	})
+	rewards := []lib.Reward{
+		{ID: "1", Title: "Movie night", Points: 20, EmojiIcon: "🎬", Description: "Pick the film", CategoryID: "12", RespawnOnRedemption: true},
+		{ID: "2", Title: "Pizza", Points: 50, CategoryID: "13"},
+		{ID: "4", Title: "No owner", Points: 5},
+		{ID: "5", Title: "Bad owner", Points: 5, CategoryID: "cat1"},
+	}
+
+	var total, failed int
+	stderr := captureStderr(func() {
+		total, failed = importRewards(context.Background(), client, rewards)
+	})
+
+	if total != 4 || failed != 2 {
+		t.Fatalf("got total=%d failed=%d, want total=4 failed=2", total, failed)
+	}
+	wantBodies := map[string]string{
+		"Movie night": `{"name":"Movie night","point_value":20,"emoji_icon":"🎬","description":"Pick the film","respawn_on_redemption":true,"category_ids":[12]}`,
+		"Pizza":       `{"name":"Pizza","point_value":50,"respawn_on_redemption":false,"category_ids":[13]}`,
+	}
+	if !reflect.DeepEqual(bodies, wantBodies) {
+		t.Errorf("bodies:\n got %v\nwant %v", bodies, wantBodies)
+	}
+	for _, want := range []string{`"No owner"`, `"Bad owner"`} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("expected %s in stderr, got: %s", want, stderr)
+		}
+	}
+
+	out := captureStdout(func() {
+		runImportDryRun(ExportData{Rewards: rewards}, map[string]bool{exportResourceRewards: true}, importTestToday)
+	})
+	if want := fmt.Sprintf("rewards    %d items", total); !strings.Contains(out, want) {
+		t.Errorf("expected the dry run to count the %d creates, got: %s", total, out)
+	}
 }
 
 func TestImportChores(t *testing.T) {
@@ -532,7 +588,7 @@ func TestImportCalendarEvents(t *testing.T) {
 func TestRunImport_AllSuccess(t *testing.T) {
 	client := newImportTestClient(t, nil)
 	data := ExportData{
-		Rewards:        []lib.Reward{{Title: "Reward"}},
+		Rewards:        []lib.Reward{{Title: "Reward", CategoryID: "1"}},
 		Chores:         []lib.Chore{{Title: "Chore"}},
 		Lists:          []lib.List{{Title: "List"}},
 		Recipes:        []lib.Recipe{{Title: "Recipe"}},
@@ -562,7 +618,7 @@ func TestRunImport_AllSuccess(t *testing.T) {
 func TestRunImport_OnlyRequestedResourcesAreImported(t *testing.T) {
 	client := newImportTestClient(t, nil)
 	data := ExportData{
-		Rewards: []lib.Reward{{Title: "Reward"}},
+		Rewards: []lib.Reward{{Title: "Reward", CategoryID: "1"}},
 		Chores:  []lib.Chore{{Title: "Chore"}},
 	}
 	want := map[string]bool{exportResourceRewards: true}
@@ -619,7 +675,7 @@ func writeImportFixture(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "export.json")
-	data := []byte(`{"frame_id":"test-frame","rewards":[{"title":"Reward"}],"chores":[{"title":"Chore"}]}`)
+	data := []byte(`{"frame_id":"test-frame","rewards":[{"title":"Reward","category_id":"1"}],"chores":[{"title":"Chore"}]}`)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatalf("writing fixture: %v", err)
 	}

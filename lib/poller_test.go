@@ -32,6 +32,7 @@ func makePollerServer(t *testing.T, rewards []Reward, categories []Category) *ht
 					Attributes: struct {
 						Name                string  `json:"name"`
 						EmojiIcon           string  `json:"emoji_icon"`
+						Description         string  `json:"description"`
 						PointValue          int     `json:"point_value"`
 						RespawnOnRedemption bool    `json:"respawn_on_redemption"`
 						RedeemedAt          *string `json:"redeemed_at"`

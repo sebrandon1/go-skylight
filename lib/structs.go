@@ -399,12 +399,14 @@ type TaskBoxItemData struct {
 
 // Reward represents a reward (flattened from JSON-API response).
 type Reward struct {
-	ID         string `json:"id,omitempty"`
-	Title      string `json:"title,omitempty"`
-	Points     int    `json:"points,omitempty"`
-	EmojiIcon  string `json:"emoji_icon,omitempty"`
-	CategoryID string `json:"category_id,omitempty"`
-	Redeemed   bool   `json:"redeemed"`
+	ID                  string `json:"id,omitempty"`
+	Title               string `json:"title,omitempty"`
+	Points              int    `json:"points,omitempty"`
+	EmojiIcon           string `json:"emoji_icon,omitempty"`
+	CategoryID          string `json:"category_id,omitempty"`
+	Redeemed            bool   `json:"redeemed"`
+	Description         string `json:"description,omitempty"`
+	RespawnOnRedemption bool   `json:"respawn_on_redemption"`
 }
 
 // rewardAPIResponse wraps the JSON-API envelope for reward list responses.
@@ -423,6 +425,7 @@ type rewardAPIEntry struct {
 	Attributes struct {
 		Name                string  `json:"name"`
 		EmojiIcon           string  `json:"emoji_icon"`
+		Description         string  `json:"description"`
 		PointValue          int     `json:"point_value"`
 		RespawnOnRedemption bool    `json:"respawn_on_redemption"`
 		RedeemedAt          *string `json:"redeemed_at"`
@@ -437,11 +440,13 @@ type rewardAPIEntry struct {
 // toReward converts a JSON-API reward entry to a flat Reward struct.
 func (e *rewardAPIEntry) toReward() Reward {
 	r := Reward{
-		ID:        e.ID,
-		Title:     e.Attributes.Name,
-		Points:    e.Attributes.PointValue,
-		EmojiIcon: e.Attributes.EmojiIcon,
-		Redeemed:  e.Attributes.RedeemedAt != nil,
+		ID:                  e.ID,
+		Title:               e.Attributes.Name,
+		Points:              e.Attributes.PointValue,
+		EmojiIcon:           e.Attributes.EmojiIcon,
+		Redeemed:            e.Attributes.RedeemedAt != nil,
+		Description:         e.Attributes.Description,
+		RespawnOnRedemption: e.Attributes.RespawnOnRedemption,
 	}
 	if e.Relationships.Category.Data != nil {
 		r.CategoryID = e.Relationships.Category.Data.ID
@@ -455,6 +460,7 @@ type RewardData struct {
 	Title               string `json:"name,omitempty"`
 	Points              int    `json:"point_value,omitempty"`
 	EmojiIcon           string `json:"emoji_icon,omitempty"`
+	Description         string `json:"description,omitempty"`
 	RespawnOnRedemption *bool  `json:"respawn_on_redemption,omitempty"`
 	CategoryIDs         []int  `json:"category_ids,omitempty"`
 }

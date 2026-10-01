@@ -9,11 +9,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `ListItem`/`ListItemData`: `Section`, read from the API and sent by `AddListItem` and `UpdateListItem`
+- `Reward`: `Description` and `RespawnOnRedemption`, read from the API; `RewardData`: `Description`, sent on create/update
 
 ### Fixed
 - `export`: lists were saved without their items; `ListLists` now returns each list's items, so the `list all`, `grocery list` and `home` ITEMS column is no longer always 0 and their JSON output includes `list_items` (#493, #494)
 - `import`: list items are recreated in their original order with their completed status and section (#493, #494)
 - `list create`/`list update --hide-from-frame` had no effect (the API field is `hide_on_device`); `export` now records it and `import` restores it (#495, #496)
+- `import`: every reward failed to create because the API requires a category; rewards are now created for their exported assignee with their description and repeat-after-redeem setting (#497, #498)
+- `export`: reward description and repeat-after-redeem setting were not captured; now included (#497, #498)
 
 ## [v0.2.5] - 2026-09-30
 
