@@ -863,6 +863,85 @@ func (e *deviceAPIEntry) toDevice() Device {
 	}
 }
 
+// DeviceRoleBuddy is the Device.Role value reported for a Skylight Buddy.
+const DeviceRoleBuddy = "buddy"
+
+// Alarm represents an alarm configured on a Skylight Buddy device.
+// Sound and FiresOn are kept as raw JSON because their shape is undocumented.
+type Alarm struct {
+	ID        string          `json:"id,omitempty"`
+	Label     string          `json:"label,omitempty"`
+	Enabled   bool            `json:"enabled"`
+	Time      string          `json:"time,omitempty"`
+	Hour      int             `json:"hour"`
+	Minute    int             `json:"minute"`
+	RRule     string          `json:"rrule,omitempty"`
+	FiresOn   json.RawMessage `json:"fires_on,omitempty"`
+	Sound     json.RawMessage `json:"sound,omitempty"`
+	Volume    int             `json:"volume"`
+	Snoozable bool            `json:"snoozable"`
+}
+
+type alarmAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Label     string          `json:"label"`
+		Enabled   bool            `json:"enabled"`
+		Time      string          `json:"time"`
+		Hour      int             `json:"hour"`
+		Minute    int             `json:"minute"`
+		RRule     string          `json:"rrule"`
+		FiresOn   json.RawMessage `json:"fires_on"`
+		Sound     json.RawMessage `json:"sound"`
+		Volume    int             `json:"volume"`
+		Snoozable bool            `json:"snoozable"`
+	} `json:"attributes"`
+}
+
+type alarmAPIResponse struct {
+	Data []alarmAPIEntry `json:"data"`
+}
+
+type alarmAPISingleResponse struct {
+	Data alarmAPIEntry `json:"data"`
+}
+
+func (e *alarmAPIEntry) toAlarm() Alarm {
+	a := e.Attributes
+	return Alarm{
+		ID:        e.ID,
+		Label:     a.Label,
+		Enabled:   a.Enabled,
+		Time:      a.Time,
+		Hour:      a.Hour,
+		Minute:    a.Minute,
+		RRule:     a.RRule,
+		FiresOn:   nullToEmpty(a.FiresOn),
+		Sound:     nullToEmpty(a.Sound),
+		Volume:    a.Volume,
+		Snoozable: a.Snoozable,
+	}
+}
+
+func nullToEmpty(raw json.RawMessage) json.RawMessage {
+	if string(raw) == "null" {
+		return nil
+	}
+	return raw
+}
+
+// AlarmData holds the alarm fields for create/update requests. The API expects
+// these as a flat JSON body; nil fields are omitted so updates are partial.
+type AlarmData struct {
+	Label     *string `json:"label,omitempty"`
+	Enabled   *bool   `json:"enabled,omitempty"`
+	Time      *string `json:"time,omitempty"`
+	RRule     *string `json:"rrule,omitempty"`
+	Sound     *string `json:"sound,omitempty"`
+	Volume    *int    `json:"volume,omitempty"`
+	Snoozable *bool   `json:"snoozable,omitempty"`
+}
+
 // Album represents a photo album on a Skylight frame.
 type Album struct {
 	ID                   string `json:"id,omitempty"`

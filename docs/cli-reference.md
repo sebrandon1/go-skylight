@@ -193,6 +193,19 @@ skylight frame set-album --album-id ID   # -1 for all photos; use list-albums to
 skylight frame update [--screensaver-show-weather=true|false] [--screensaver-show-events=true|false]
 ```
 
+## Buddy Alarms
+
+Alarms live on a Skylight Buddy device. `--device-id` defaults to the frame's only Buddy (see `frame devices`).
+
+> **Unverified:** `alarm list` and `alarm update` match a working Buddy integration. `alarm create` and the accepted `--sound` values have not yet been tested on a real Buddy ([#361](https://github.com/sebrandon1/go-skylight/issues/361)).
+
+```bash
+skylight alarm list [--device-id ID]
+skylight alarm create --time HH:MM [--label L] [--days mon,tue,...|--rrule RULE] [--sound S] [--volume 0-100] [--snoozable] [--enabled=false]
+skylight alarm update --alarm-id ID [--time] [--label] [--days|--rrule] [--sound] [--volume] [--snoozable] [--enabled]
+skylight alarm delete --alarm-id ID [--dry-run] [--yes]
+```
+
 ## Add-ons
 
 ```bash

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -343,4 +344,44 @@ func printFeatureBundleTable(bundle map[string]lib.FeatureState) {
 		fmt.Fprintf(w, "%s\t%s\n", name, enabled)
 	}
 	w.Flush()
+}
+
+func printAlarmsTable(alarms []lib.Alarm) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "ID\tLABEL\tENABLED\tTIME\tDAYS\tSOUND\tVOLUME\tSNOOZABLE")
+	for _, a := range alarms {
+		enabled, snoozable := boolNo, boolNo
+		if a.Enabled {
+			enabled = boolYes
+		}
+		if a.Snoozable {
+			snoozable = boolYes
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\n",
+			a.ID, a.Label, enabled, a.Time, alarmDaysDisplay(a.RRule), rawJSONDisplay(a.Sound), a.Volume, snoozable)
+	}
+	w.Flush()
+}
+
+func alarmDaysDisplay(rrule string) string {
+	for part := range strings.SplitSeq(rrule, ";") {
+		if days, ok := strings.CutPrefix(part, "BYDAY="); ok {
+			return days
+		}
+	}
+	if rrule == "" {
+		return "-"
+	}
+	return rrule
+}
+
+func rawJSONDisplay(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return "-"
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
+	}
+	return string(raw)
 }

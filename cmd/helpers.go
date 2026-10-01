@@ -211,6 +211,8 @@ func printTableOutput(data any) bool {
 		printCalendarScheduleTable(v)
 	case []lib.Bounty:
 		printBountiesTable(v)
+	case []lib.Alarm:
+		printAlarmsTable(v)
 	default:
 		return printTableOutputMore(data)
 	}

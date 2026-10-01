@@ -267,20 +267,30 @@ func choreRRule(chore ChoreData) (string, error) {
 		return "", fmt.Errorf("invalid interval %d: must be 1 or more", chore.Interval)
 	}
 	rule := fmt.Sprintf("RRULE:FREQ=%s;INTERVAL=%d;WKST=SU", strings.ToUpper(freq), max(chore.Interval, 1))
-	var days []string
-	for _, d := range chore.RecurrenceDays {
-		day, ok := rruleDays[strings.ToLower(d)]
+	byDay, err := parseByDay(chore.RecurrenceDays)
+	if err != nil {
+		return "", err
+	}
+	if byDay != "" {
+		rule += ";BYDAY=" + byDay
+	}
+	return rule, nil
+}
+
+// parseByDay converts day names (sun..sat) into a deduplicated RRULE BYDAY
+// value such as "MO,WE".
+func parseByDay(days []string) (string, error) {
+	var out []string
+	for _, d := range days {
+		day, ok := rruleDays[strings.ToLower(strings.TrimSpace(d))]
 		if !ok {
 			return "", fmt.Errorf("invalid recurrence day %q: use sun, mon, tue, wed, thu, fri, sat", d)
 		}
-		if !slices.Contains(days, day) {
-			days = append(days, day)
+		if !slices.Contains(out, day) {
+			out = append(out, day)
 		}
 	}
-	if len(days) > 0 {
-		rule += ";BYDAY=" + strings.Join(days, ",")
-	}
-	return rule, nil
+	return strings.Join(out, ","), nil
 }
 
 // GetChore retrieves a single chore by ID. The Skylight API has no dedicated

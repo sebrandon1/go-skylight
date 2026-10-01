@@ -56,6 +56,7 @@ cmd/                           # Cobra command definitions
   bounty.go                    # bounty (chore + reward pair) create/list/update/delete
   rotation.go                  # chore rotation — generate rotating assignments across members
   addon.go                     # addon list — show frame add-ons and enabled state
+  alarm.go                     # alarm list, create, update, delete (Buddy device alarms)
   analytics.go                 # analytics — family activity stats over a time period
   export.go                    # export — dump frame data to JSON file
   import.go                    # import — restore frame data from export JSON file
@@ -86,6 +87,7 @@ lib/                           # API client library
   bounty.go                    # Bounty (chore + reward pair) create, list, update, delete
   rotation.go                  # Chore rotation generator (rotating assignments across members)
   photo.go                     # Photo list, upload, delete, download
+  alarm.go                     # Buddy alarm list/create/update/delete (flat JSON body; no single-alarm GET)
   routine.go                   # Routine create/list/get/update/delete (a routine is a chore with routine:true and a BYHOUR-encoded time slot)
   *_test.go                    # Unit tests using httptest mock servers
   integration_test.go          # Integration tests (build tag: integration)
@@ -165,6 +167,7 @@ SKYLIGHT_QUIET=false
 - `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
 - `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order` -- Grocery list management (Instacart ordering)
 - `addon list` -- Frame add-ons and enabled state
+- `alarm list|create|update|delete` -- Buddy device alarms (`--device-id` defaults to the frame's only Buddy)
 
 ### Legacy `get` Command
 

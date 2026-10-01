@@ -94,6 +94,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `category` | Family member category management (list/create/update/delete) |
 | `frame` | Frame info, devices, avatars, colors |
 | `addon` | Frame add-ons and enabled state |
+| `alarm` | Buddy alarm list/create/update/delete |
 | `bounty` | Chore + reward pair management |
 | `rotation` | Rotating chore assignments |
 | `template` | Save/apply named chore+reward templates (stored in `~/.skylight/templates/`) |
