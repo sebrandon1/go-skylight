@@ -235,7 +235,12 @@ var photoDownloadCmd = &cobra.Command{
 				continue
 			}
 			ext := photoAssetExt(p.AssetURL, p.AssetType)
-			filename := filepath.Join(photoOutputDir, p.ID+ext)
+			base := safePhotoFileBase(p.ID)
+			if base == "" {
+				fmt.Fprintf(os.Stderr, "Error: refusing unsafe photo id %q\n", p.ID)
+				continue
+			}
+			filename := filepath.Join(photoOutputDir, base+ext)
 			if err := os.WriteFile(filename, data, 0o600); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: writing %s: %v\n", filename, err)
 				continue
@@ -244,6 +249,25 @@ var photoDownloadCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+// safePhotoFileBase returns a single path segment for a photo ID, or "" if unsafe.
+// Prevents path traversal when IDs contain ".." or directory separators (#272).
+func safePhotoFileBase(id string) string {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return ""
+	}
+	base := filepath.Base(id)
+	// filepath.Base("..") == ".." on all platforms; reject dots-only and empty.
+	if base == "." || base == ".." || base == "" {
+		return ""
+	}
+	// If Base did not strip a multi-segment path (Windows vs clean inputs), reject separators.
+	if strings.ContainsAny(base, `/\`) {
+		return ""
+	}
+	return base
 }
 
 // photoAssetExt infers the file extension from the asset URL path, falling back to asset type.

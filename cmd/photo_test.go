@@ -27,3 +27,25 @@ func TestPhotoAssetExt(t *testing.T) {
 		}
 	}
 }
+
+func TestSafePhotoFileBase(t *testing.T) {
+	cases := []struct {
+		id   string
+		want string
+	}{
+		{"p1", "p1"},
+		{"abc-123", "abc-123"},
+		{"../../sensitive", "sensitive"},
+		{"..\\..\\sensitive", "sensitive"},
+		{"..", ""},
+		{".", ""},
+		{"", ""},
+		{"  p2  ", "p2"},
+	}
+	for _, c := range cases {
+		got := safePhotoFileBase(c.id)
+		if got != c.want {
+			t.Errorf("safePhotoFileBase(%q) = %q, want %q", c.id, got, c.want)
+		}
+	}
+}
