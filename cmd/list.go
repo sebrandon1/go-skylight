@@ -250,6 +250,7 @@ var listUpdateItemCmd = &cobra.Command{
 		}
 		if cmd.Flags().Changed("completed") {
 			data.Completed = listItemCompleted
+			data.CompletedSet = true
 		}
 		// only send position when flag is explicitly set — zero value is ambiguous
 		if cmd.Flags().Changed("position") {
