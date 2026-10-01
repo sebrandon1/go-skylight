@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -41,7 +39,6 @@ var statusCmd = &cobra.Command{
 			lists           []lib.List
 			routines        []lib.Routine
 			incompleteItems int
-			listErrors      int
 		)
 
 		if err := runConcurrent(
@@ -98,7 +95,7 @@ var statusCmd = &cobra.Command{
 				if err != nil {
 					return fmt.Errorf("listing lists: %w", err)
 				}
-				incompleteItems, listErrors = countIncompleteListItems(ctx, client, frameID, lists)
+				incompleteItems = countIncompleteListItems(lists)
 				return nil
 			},
 			func() error {
@@ -133,7 +130,6 @@ var statusCmd = &cobra.Command{
 				"meal_sittings_today":   len(sittings),
 				"active_lists":          len(lists),
 				"incomplete_list_items": incompleteItems,
-				"list_errors":           listErrors,
 				watchResourceRoutines:   len(routines),
 			})
 			return nil
@@ -143,57 +139,22 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("Chores:   %d pending today\n", len(chores))
 		fmt.Printf("Events:   %d today\n", len(events))
 		fmt.Printf("Meals:    %d today\n", len(sittings))
-		listsLine := fmt.Sprintf("%d active, %d incomplete items", len(lists), incompleteItems)
-		if listErrors > 0 {
-			listsLine += fmt.Sprintf(" (%d lists unavailable)", listErrors)
-		}
-		fmt.Printf("Lists:    %s\n", listsLine)
+		fmt.Printf("Lists:    %d active, %d incomplete items\n", len(lists), incompleteItems)
 		fmt.Printf("Routines: %d\n", len(routines))
 		fmt.Printf("Points:   %s\n", pointsStr)
 		return nil
 	},
 }
 
-// statusListWorkerCount bounds concurrent GetList calls in status (same idea
-// as importWorkerCount) so large frames do not open unbounded connections.
-const statusListWorkerCount = 5
-
-// countIncompleteListItems fetches each list's full detail concurrently and
-// counts incomplete items. A failed list is excluded from the count rather
-// than failing the whole status command (this is supplementary detail on top
-// of the primary status fields), but the number of failures is returned so
-// callers can surface it instead of silently under-reporting. Concurrency is
-// capped (#271).
-func countIncompleteListItems(ctx context.Context, client *lib.Client, frameID string, lists []lib.List) (incomplete, errors int) {
-	var (
-		mu  sync.Mutex
-		wg  sync.WaitGroup
-		sem = make(chan struct{}, statusListWorkerCount)
-	)
-	wg.Add(len(lists))
+func countIncompleteListItems(lists []lib.List) (incomplete int) {
 	for _, l := range lists {
-		go func(l lib.List) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			full, err := client.GetList(ctx, frameID, l.ID)
-
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil {
-				errors++
-				return
+		for _, item := range l.Items {
+			if !item.Completed {
+				incomplete++
 			}
-			for _, item := range full.Items {
-				if !item.Completed {
-					incomplete++
-				}
-			}
-		}(l)
+		}
 	}
-	wg.Wait()
-	return incomplete, errors
+	return incomplete
 }
 
 func init() {

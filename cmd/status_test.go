@@ -24,10 +24,8 @@ func statusMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"e1","type":"calendar_event","attributes":{"summary":"Meeting","starts_at":"2026-01-01T10:00:00Z","all_day":false},"relationships":{"categories":{"data":[]}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
 			fmt.Fprint(w, `{"data":[{"id":"s1","type":"meal_sitting","attributes":{"summary":"Dinner"}}]}`)
-		case strings.HasSuffix(r.URL.Path, "/lists/l1"):
-			fmt.Fprint(w, `{"data":{"id":"l1","attributes":{"label":"Groceries"}},"included":[{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"pending"}},{"id":"i2","type":"list_item","attributes":{"label":"Eggs","status":"completed"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/lists"):
-			fmt.Fprint(w, `{"data":[{"id":"l1","attributes":{"label":"Groceries"}}]}`)
+			fmt.Fprint(w, `{"data":[{"id":"l1","attributes":{"label":"Groceries"}}],"included":[{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"pending"},"relationships":{"list":{"data":{"id":"l1","type":"list"}}}},{"id":"i2","type":"list_item","attributes":{"label":"Eggs","status":"completed"},"relationships":{"list":{"data":{"id":"l1","type":"list"}}}},{"id":"i3","type":"list_item","attributes":{"label":"Bread","status":"completed"},"relationships":{"list":{"data":{"id":"l1","type":"list"}}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/test-frame"):
 			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
 		default:
@@ -128,44 +126,6 @@ func TestStatusCmd_NoPoints(t *testing.T) {
 
 	if !strings.Contains(out, "Points:   none") {
 		t.Errorf("expected 'none' for empty points, got: %s", out)
-	}
-}
-
-func TestStatusCmd_ListErrorsSurfaced(t *testing.T) {
-	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/categories"):
-			fmt.Fprint(w, `{"data":[]}`)
-		case strings.HasSuffix(r.URL.Path, "/reward_points"):
-			fmt.Fprint(w, `[]`)
-		case strings.HasSuffix(r.URL.Path, "/chores"):
-			fmt.Fprint(w, `{"data":[]}`)
-		case strings.HasSuffix(r.URL.Path, "/calendar_events"):
-			fmt.Fprint(w, `{"data":[]}`)
-		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
-			fmt.Fprint(w, `{"data":[]}`)
-		case strings.HasSuffix(r.URL.Path, "/routines"):
-			fmt.Fprint(w, `{"data":[]}`)
-		case strings.HasSuffix(r.URL.Path, "/lists/l1"):
-			w.WriteHeader(http.StatusInternalServerError)
-		case strings.HasSuffix(r.URL.Path, "/lists"):
-			fmt.Fprint(w, `{"data":[{"id":"l1","attributes":{"label":"Groceries"}}]}`)
-		default:
-			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
-		}
-	})
-	t.Cleanup(func() { outputFormat = "" })
-	outputFormat = ""
-
-	out := captureStdout(func() {
-		if err := statusCmd.RunE(statusCmd, nil); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-
-	if !strings.Contains(out, "Lists:    1 active, 0 incomplete items (1 lists unavailable)") {
-		t.Errorf("expected list-fetch failure to be surfaced, got: %s", out)
 	}
 }
 

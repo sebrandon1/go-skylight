@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- `status` counts list items from `ListLists` instead of one `GetList` per list; its JSON output no longer has `list_errors` (#494)
+
 ### Added
 - `ListItem`/`ListItemData`: `Section`, read from the API and sent by `AddListItem` and `UpdateListItem`
 
