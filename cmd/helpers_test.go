@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -894,5 +895,27 @@ func TestPrintDryRun(t *testing.T) {
 	out = captureStdout(func() { printDryRun("delete chore %s", "c1") })
 	if !strings.Contains(out, "Dry run: would delete chore c1") {
 		t.Errorf("expected dry run message even with --quiet, got: %q", out)
+	}
+}
+
+func TestPrintJSON_UnmarshalableData(t *testing.T) {
+	if os.Getenv("TEST_CRASH_PRINTJSON") == "1" {
+		// channels are not JSON-serializable; printJSON should exit(1), not panic
+		printJSON(make(chan int))
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestPrintJSON_UnmarshalableData") //nolint:gosec
+	cmd.Env = append(os.Environ(), "TEST_CRASH_PRINTJSON=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err == nil {
+		t.Fatal("expected non-zero exit, got nil error")
+	}
+	if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+		t.Fatalf("expected exit code 1, got: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "error formatting output") {
+		t.Errorf("expected stderr message, got: %q", stderr.String())
 	}
 }

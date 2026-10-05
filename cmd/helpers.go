@@ -175,7 +175,8 @@ func buildCatNames(categories []lib.Category) map[string]string {
 func printJSON(data any) {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		panic(fmt.Sprintf("marshaling JSON: %v", err))
+		fmt.Fprintf(os.Stderr, "error formatting output: %v\n", err)
+		os.Exit(1)
 	}
 	fmt.Println(string(output))
 }
