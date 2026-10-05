@@ -821,6 +821,105 @@ func TestImportPhotos(t *testing.T) {
 	}
 }
 
+func TestImportCmd_ResourcesFilter(t *testing.T) {
+	tests := []struct {
+		name          string
+		resources     string
+		wantPostPaths []string
+		noPostPaths   []string
+	}{
+		{
+			name:          "chores only: reward and list create not called",
+			resources:     "chores",
+			wantPostPaths: []string{"/chores"},
+			noPostPaths:   []string{"/rewards", "/lists", "/calendar_events"},
+		},
+		{
+			name:          "rewards only: chore and list create not called",
+			resources:     "rewards",
+			wantPostPaths: []string{"/rewards"},
+			noPostPaths:   []string{"/chores", "/lists", "/calendar_events"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var mu sync.Mutex
+			postPaths := map[string]int{}
+
+			newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodPost {
+					mu.Lock()
+					postPaths[r.URL.Path]++
+					mu.Unlock()
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				switch {
+				case strings.HasSuffix(r.URL.Path, "/rewards"):
+					fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"R","point_value":5}}]}`)
+				case strings.HasSuffix(r.URL.Path, "/chores"):
+					fmt.Fprint(w, `{"data":{"id":"c1","attributes":{"summary":"C"}}}`)
+				case strings.HasSuffix(r.URL.Path, "/lists"):
+					fmt.Fprint(w, `{"data":{"id":"l1","type":"list","attributes":{"label":"L","color":"","kind":"to_do"}}}`)
+				case strings.HasSuffix(r.URL.Path, "/calendar_events"):
+					fmt.Fprint(w, `{"data":{"id":"e1","type":"calendar_event","attributes":{"summary":"E","starts_at":"","ends_at":"","all_day":false},"relationships":{"categories":{"data":[]}}}}`)
+				default:
+					fmt.Fprint(w, `{}`)
+				}
+			})
+
+			dir := t.TempDir()
+			path := filepath.Join(dir, "export.json")
+			export := ExportData{
+				Rewards:        []lib.Reward{{Title: "Prize", CategoryID: "1"}},
+				Chores:         []lib.Chore{{Title: "Walk dog"}},
+				Lists:          []lib.List{{Title: "Groceries"}},
+				CalendarEvents: []lib.CalendarEvent{{Title: "Birthday"}},
+			}
+			raw, _ := json.Marshal(export)
+			if err := os.WriteFile(path, raw, 0o600); err != nil {
+				t.Fatalf("writing fixture: %v", err)
+			}
+
+			origFile, origResources, origDryRun := importFile, importResources, importDryRun
+			importFile = path
+			importResources = tc.resources
+			importDryRun = false
+			t.Cleanup(func() { importFile, importResources, importDryRun = origFile, origResources, origDryRun })
+
+			captureStdout(func() {
+				if err := importCmd.RunE(importCmd, nil); err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			})
+
+			mu.Lock()
+			defer mu.Unlock()
+
+			for _, wantPath := range tc.wantPostPaths {
+				found := false
+				for p := range postPaths {
+					if strings.HasSuffix(p, wantPath) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("expected POST to %s to be called, but it wasn't; got posts: %v", wantPath, postPaths)
+				}
+			}
+			for _, noPath := range tc.noPostPaths {
+				for p := range postPaths {
+					if strings.HasSuffix(p, noPath) {
+						t.Errorf("expected POST to %s NOT to be called, but it was; got posts: %v", noPath, postPaths)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestImportPhotos_BadBase64(t *testing.T) {
 	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
