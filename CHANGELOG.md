@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.2.6] - 2026-10-05
+
 ### Changed
 - `status` counts list items from `ListLists` instead of one `GetList` per list; its JSON output no longer has `list_errors` (#494)
 
@@ -17,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - `list create`/`list update --hide-from-frame` had no effect (the API field is `hide_on_device`); `export` now records it and `import` restores it (#495, #496)
 - `import`: every reward failed to create because the API requires a category; rewards are now created for their exported assignee with their description and repeat-after-redeem setting (#497, #498)
 - `export`: reward description and repeat-after-redeem setting were not captured; now included (#497, #498)
+- `import`: rewards with no category in the export now emit a clear "no category in export; skipping" message instead of a cryptic strconv error (#499)
 
 ## [v0.2.5] - 2026-09-30
 
