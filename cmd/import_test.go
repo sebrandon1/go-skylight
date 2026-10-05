@@ -137,12 +137,32 @@ func TestImportRewards_RequestBodies(t *testing.T) {
 		"Movie night": `{"name":"Movie night","point_value":20,"emoji_icon":"🎬","description":"Pick the film","respawn_on_redemption":true,"category_ids":[12]}`,
 		"Pizza":       `{"name":"Pizza","point_value":50,"respawn_on_redemption":false,"category_ids":[13]}`,
 	}
-	if !reflect.DeepEqual(bodies, wantBodies) {
-		t.Errorf("bodies:\n got %v\nwant %v", bodies, wantBodies)
+	if len(bodies) != len(wantBodies) {
+		t.Errorf("got %d request bodies, want %d: %v", len(bodies), len(wantBodies), bodies)
 	}
-	for _, want := range []string{`"No owner"`, `"Bad owner"`} {
-		if !strings.Contains(stderr, want) {
-			t.Errorf("expected %s in stderr, got: %s", want, stderr)
+	for title, wantJSON := range wantBodies {
+		rawGot, ok := bodies[title]
+		if !ok {
+			t.Errorf("missing request body for reward %q", title)
+			continue
+		}
+		var got, want map[string]any
+		_ = json.Unmarshal([]byte(rawGot), &got)
+		_ = json.Unmarshal([]byte(wantJSON), &want)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("body for %q:\n got  %s\n want %s", title, rawGot, wantJSON)
+		}
+	}
+	wantStderr := map[string]string{
+		`"No owner"`:  "no category in export",
+		`"Bad owner"`: "is not a number",
+	}
+	for title, wantMsg := range wantStderr {
+		if !strings.Contains(stderr, title) {
+			t.Errorf("expected %s in stderr, got: %s", title, stderr)
+		}
+		if !strings.Contains(stderr, wantMsg) {
+			t.Errorf("expected %q in stderr for %s, got: %s", wantMsg, title, stderr)
 		}
 	}
 

@@ -179,6 +179,10 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward) (total, failed int) {
 	return parallelImport(rewards, func(r lib.Reward) (int, int) {
 		// The API requires a category and takes it as a number.
+		if r.CategoryID == "" {
+			fmt.Fprintf(os.Stderr, "Error creating reward %q: no category in export; skipping\n", r.Title)
+			return 1, 1
+		}
 		categoryID, err := strconv.Atoi(r.CategoryID)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating reward %q: category ID %q is not a number\n", r.Title, r.CategoryID)
