@@ -212,3 +212,57 @@ func TestPrintRoutinesTable_ResolvesCatName(t *testing.T) {
 		t.Errorf("expected raw ID to be replaced by name, got: %s", out)
 	}
 }
+
+func TestPrintAlbumsTable(t *testing.T) {
+	albums := []lib.Album{
+		{ID: "al1", Title: "Vacation", Kind: "standard", PhotosCount: 10, VideosCount: 2},
+	}
+	out := captureStdout(func() { printAlbumsTable(albums) })
+	for _, want := range []string{"al1", "Vacation", "standard", "10", "2", "ID", "TITLE", "KIND", "PHOTOS", "VIDEOS"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in output, got: %s", want, out)
+		}
+	}
+}
+
+func TestPrintPointsTable(t *testing.T) {
+	entries := []pointEntry{
+		{Name: "Alice", Balance: 42},
+		{Name: "Bob", Balance: 0},
+	}
+	out := captureStdout(func() { printPointsTable(entries) })
+	for _, want := range []string{"Alice", "42", "Bob", "0", "NAME", "BALANCE"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in output, got: %s", want, out)
+		}
+	}
+}
+
+func TestPrintListItemsTable(t *testing.T) {
+	items := []lib.ListItem{
+		{ID: "i1", Title: "Eggs", Completed: false, Status: "pending", Position: 1},
+		{ID: "i2", Title: "Milk", Completed: true, Status: "completed", Position: 2},
+	}
+	out := captureStdout(func() { printListItemsTable(items) })
+	for _, want := range []string{"i1", "Eggs", boolNo, "i2", "Milk", boolYes, "ID", "TITLE", "COMPLETED", "STATUS", "POSITION"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in output, got: %s", want, out)
+		}
+	}
+}
+
+func TestPrintFeatureBundleTable(t *testing.T) {
+	bundle := map[string]lib.FeatureState{
+		"grocery":  {Enabled: true},
+		"routines": {Enabled: false},
+	}
+	out := captureStdout(func() { printFeatureBundleTable(bundle) })
+	for _, want := range []string{"grocery", "routines", "FEATURE", "ENABLED"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in output, got: %s", want, out)
+		}
+	}
+	if !strings.Contains(out, boolYes) || !strings.Contains(out, boolNo) {
+		t.Errorf("expected both yes/no values in output, got: %s", out)
+	}
+}

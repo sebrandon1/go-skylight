@@ -791,6 +791,30 @@ func TestImportCmd_FileErrors(t *testing.T) {
 	}
 }
 
+func TestImportBounties(t *testing.T) {
+	t.Run("all succeed", func(t *testing.T) {
+		client := newImportTestClient(t, nil)
+		bounties := []lib.Bounty{
+			{Chore: lib.Chore{Title: "Clean garage", Points: 10, DueDate: "2026-10-10"}, Reward: lib.Reward{Title: "Ice cream", Points: 10}},
+		}
+		total, failed := importBounties(context.Background(), client, bounties)
+		if total != 1 || failed != 0 {
+			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
+		}
+	})
+
+	t.Run("failure counted when chore create fails", func(t *testing.T) {
+		client := newImportTestClient(t, map[string]bool{"/chores": true})
+		bounties := []lib.Bounty{
+			{Chore: lib.Chore{Title: "Walk dog"}, Reward: lib.Reward{Title: "Movie night"}},
+		}
+		total, failed := importBounties(context.Background(), client, bounties)
+		if total != 1 || failed != 1 {
+			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
+		}
+	})
+}
+
 func TestImportPhotos(t *testing.T) {
 	imgBytes := []byte("fake-image-data")
 	encoded := base64.StdEncoding.EncodeToString(imgBytes)
