@@ -84,7 +84,7 @@ func TestParallelImport_MixedPanicAndSuccess(t *testing.T) {
 func TestImportRewards(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A", CategoryID: "1"}, {Title: "B", CategoryID: "1"}})
+		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A", CategoryID: "1"}, {Title: "B", CategoryID: "1"}}, nil)
 		if total != 2 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=0", total, failed)
 		}
@@ -92,7 +92,7 @@ func TestImportRewards(t *testing.T) {
 
 	t.Run("partial failure", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/rewards": true})
-		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A", CategoryID: "1"}})
+		total, failed := importRewards(context.Background(), client, []lib.Reward{{Title: "A", CategoryID: "1"}}, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -127,7 +127,7 @@ func TestImportRewards_RequestBodies(t *testing.T) {
 
 	var total, failed int
 	stderr := captureStderr(func() {
-		total, failed = importRewards(context.Background(), client, rewards)
+		total, failed = importRewards(context.Background(), client, rewards, nil)
 	})
 
 	if total != 4 || failed != 2 {
@@ -177,7 +177,7 @@ func TestImportRewards_RequestBodies(t *testing.T) {
 func TestImportChores(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importChores(context.Background(), client, []lib.Chore{{Title: "Walk dog"}, {Title: "Dishes"}}, importTestToday)
+		total, failed := importChores(context.Background(), client, []lib.Chore{{Title: "Walk dog"}, {Title: "Dishes"}}, importTestToday, nil)
 		if total != 2 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=0", total, failed)
 		}
@@ -185,7 +185,7 @@ func TestImportChores(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/chores": true})
-		total, failed := importChores(context.Background(), client, []lib.Chore{{Title: "Walk dog"}}, importTestToday)
+		total, failed := importChores(context.Background(), client, []lib.Chore{{Title: "Walk dog"}}, importTestToday, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -200,7 +200,7 @@ func TestImportChores(t *testing.T) {
 		total, failed := importChores(context.Background(), client, []lib.Chore{
 			{Title: "Walk dog"},
 			{Title: "Make bed", Routine: true},
-		}, importTestToday)
+		}, importTestToday, nil)
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0 (routine chore skipped)", total, failed)
 		}
@@ -213,7 +213,7 @@ func TestImportChores(t *testing.T) {
 	t.Run("warns on stderr when skipping a routine chore", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
 		stderr := captureStderr(func() {
-			importChores(context.Background(), client, []lib.Chore{{Title: "Make bed", Routine: true}}, importTestToday)
+			importChores(context.Background(), client, []lib.Chore{{Title: "Make bed", Routine: true}}, importTestToday, nil)
 		})
 		if !strings.Contains(stderr, "Make bed") {
 			t.Errorf("expected warning naming the skipped routine chore, got: %s", stderr)
@@ -400,7 +400,7 @@ func TestImportChores_RequestBodies(t *testing.T) {
 
 	var total, failed int
 	stderr := captureStderr(func() {
-		total, failed = importChores(context.Background(), client, mixedExportChores(), importTestToday)
+		total, failed = importChores(context.Background(), client, mixedExportChores(), importTestToday, nil)
 	})
 
 	if total != 4 || failed != 0 {
@@ -447,7 +447,7 @@ func TestImportLists(t *testing.T) {
 			Title: "Groceries",
 			Items: []lib.ListItem{{Title: "Eggs"}, {Title: "Milk"}},
 		}}
-		total, failed := importLists(context.Background(), client, lists)
+		total, failed := importLists(context.Background(), client, lists, nil)
 		if total != 3 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=3 (1 list + 2 items) failed=0", total, failed)
 		}
@@ -459,7 +459,7 @@ func TestImportLists(t *testing.T) {
 			Title: "Groceries",
 			Items: []lib.ListItem{{Title: "Eggs"}},
 		}}
-		total, failed := importLists(context.Background(), client, lists)
+		total, failed := importLists(context.Background(), client, lists, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1 (item creation skipped)", total, failed)
 		}
@@ -471,7 +471,7 @@ func TestImportLists(t *testing.T) {
 			Title: "Groceries",
 			Items: []lib.ListItem{{Title: "Eggs"}},
 		}}
-		total, failed := importLists(context.Background(), client, lists)
+		total, failed := importLists(context.Background(), client, lists, nil)
 		if total != 2 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=2 failed=1", total, failed)
 		}
@@ -511,7 +511,7 @@ func TestImportLists_ItemRequestBodies(t *testing.T) {
 			{Title: "Pears", Position: 2, Section: "Produce", Completed: true, Status: "completed"},
 		},
 	}}
-	total, failed := importLists(context.Background(), client, lists)
+	total, failed := importLists(context.Background(), client, lists, nil)
 	if total != 5 || failed != 0 {
 		t.Fatalf("got total=%d failed=%d, want total=5 failed=0", total, failed)
 	}
@@ -543,7 +543,7 @@ func TestImportLists_HideOnDevice(t *testing.T) {
 	})
 
 	lists := []lib.List{{Title: "Chores", HideFromFrame: true}, {Title: "Groceries"}}
-	if total, failed := importLists(context.Background(), client, lists); total != 2 || failed != 0 {
+	if total, failed := importLists(context.Background(), client, lists, nil); total != 2 || failed != 0 {
 		t.Fatalf("got total=%d failed=%d, want total=2 failed=0", total, failed)
 	}
 	if want := map[string]any{"Chores": true, "Groceries": false}; !reflect.DeepEqual(hidden, want) {
@@ -554,7 +554,7 @@ func TestImportLists_HideOnDevice(t *testing.T) {
 func TestImportRecipes(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importRecipes(context.Background(), client, []lib.Recipe{{Title: "Tacos"}})
+		total, failed := importRecipes(context.Background(), client, []lib.Recipe{{Title: "Tacos"}}, nil)
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -562,7 +562,7 @@ func TestImportRecipes(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/meals/recipes": true})
-		total, failed := importRecipes(context.Background(), client, []lib.Recipe{{Title: "Tacos"}})
+		total, failed := importRecipes(context.Background(), client, []lib.Recipe{{Title: "Tacos"}}, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -625,7 +625,7 @@ func TestRunImport_AllSuccess(t *testing.T) {
 	}
 
 	var err error
-	out := captureStdout(func() { err = runImport(context.Background(), client, data, want, importTestToday) })
+	out := captureStdout(func() { err = runImport(context.Background(), client, data, want, importTestToday, false) })
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -644,7 +644,7 @@ func TestRunImport_OnlyRequestedResourcesAreImported(t *testing.T) {
 	want := map[string]bool{exportResourceRewards: true}
 
 	var err error
-	out := captureStdout(func() { err = runImport(context.Background(), client, data, want, importTestToday) })
+	out := captureStdout(func() { err = runImport(context.Background(), client, data, want, importTestToday, false) })
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -666,7 +666,7 @@ func TestRunImport_ReturnsErrorOnPartialFailure(t *testing.T) {
 	}
 
 	var err error
-	_ = captureStdout(func() { err = runImport(context.Background(), client, data, want, importTestToday) })
+	_ = captureStdout(func() { err = runImport(context.Background(), client, data, want, importTestToday, false) })
 
 	if err == nil {
 		t.Fatal("expected error when some items fail, got nil")
@@ -681,7 +681,7 @@ func TestRunImport_EmptyWant(t *testing.T) {
 	data := ExportData{Rewards: []lib.Reward{{Title: "Reward"}}}
 
 	var err error
-	out := captureStdout(func() { err = runImport(context.Background(), client, data, map[string]bool{}, importTestToday) })
+	out := captureStdout(func() { err = runImport(context.Background(), client, data, map[string]bool{}, importTestToday, false) })
 
 	if err != nil {
 		t.Fatalf("expected no error for empty want, got: %v", err)
@@ -957,5 +957,165 @@ func TestImportPhotos_BadBase64(t *testing.T) {
 	total, failed := importPhotos(context.Background(), client, photos)
 	if total != 1 || failed != 1 {
 		t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
+	}
+}
+
+// newSkipExistingClient builds a mock server that serves list responses
+// pre-populated with existingTitle, and asserts that POST (create) is never
+// called for that title via the provided createCalled pointer.
+func newSkipExistingClient(t *testing.T, listPath, listBody, existingTitle string, createCalled *bool) *lib.Client {
+	t.Helper()
+	return newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, listPath) {
+			fmt.Fprint(w, listBody)
+			return
+		}
+		if r.Method == http.MethodPost {
+			// Decode to check the title field being created.
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			for _, key := range []string{"name", "summary", "label"} {
+				if v, ok := body[key].(string); ok && v == existingTitle {
+					*createCalled = true
+				}
+			}
+		}
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"data":{"id":"x1","attributes":{}}}`)
+	})
+}
+
+func TestImportSkipExisting_Rewards(t *testing.T) {
+	var createCalled bool
+	listBody := `{"data":[{"id":"r1","attributes":{"name":"Existing Reward","point_value":5}}]}`
+	client := newSkipExistingClient(t, "/rewards", listBody, "Existing Reward", &createCalled)
+
+	existing := map[string]bool{"Existing Reward": true}
+	rewards := []lib.Reward{
+		{Title: "Existing Reward", CategoryID: "1"},
+		{Title: "New Reward", CategoryID: "1"},
+	}
+	stderr := captureStderr(func() {
+		importRewards(context.Background(), client, rewards, existing)
+	})
+
+	if createCalled {
+		t.Error("Create was called for existing reward — should have been skipped")
+	}
+	if !strings.Contains(stderr, "Existing Reward") {
+		t.Errorf("expected skip log for existing reward, got: %s", stderr)
+	}
+}
+
+func TestImportSkipExisting_Chores(t *testing.T) {
+	var createCalled bool
+	client := newSkipExistingClient(t, "/chores", `{"data":[]}`, "Existing Chore", &createCalled)
+
+	existing := map[string]bool{"Existing Chore": true}
+	chores := []lib.Chore{
+		{Title: "Existing Chore"},
+		{Title: "New Chore"},
+	}
+	stderr := captureStderr(func() {
+		importChores(context.Background(), client, chores, importTestToday, existing)
+	})
+
+	if createCalled {
+		t.Error("Create was called for existing chore — should have been skipped")
+	}
+	if !strings.Contains(stderr, "Existing Chore") {
+		t.Errorf("expected skip log for existing chore, got: %s", stderr)
+	}
+}
+
+func TestImportSkipExisting_Lists(t *testing.T) {
+	var createCalled bool
+	listBody := `{"data":[{"id":"l1","type":"list","attributes":{"label":"Existing List","color":"","kind":"to_do"}}]}`
+	client := newSkipExistingClient(t, "/lists", listBody, "Existing List", &createCalled)
+
+	existing := map[string]bool{"Existing List": true}
+	lists := []lib.List{
+		{Title: "Existing List"},
+		{Title: "New List"},
+	}
+	stderr := captureStderr(func() {
+		importLists(context.Background(), client, lists, existing)
+	})
+
+	if createCalled {
+		t.Error("Create was called for existing list — should have been skipped")
+	}
+	if !strings.Contains(stderr, "Existing List") {
+		t.Errorf("expected skip log for existing list, got: %s", stderr)
+	}
+}
+
+func TestImportSkipExisting_Recipes(t *testing.T) {
+	var createCalled bool
+	listBody := `{"data":[{"id":"rc1","type":"meal_recipe","attributes":{"summary":"Existing Recipe","description":""}}]}`
+	client := newSkipExistingClient(t, "/meals/recipes", listBody, "Existing Recipe", &createCalled)
+
+	existing := map[string]bool{"Existing Recipe": true}
+	recipes := []lib.Recipe{
+		{Title: "Existing Recipe"},
+		{Title: "New Recipe"},
+	}
+	stderr := captureStderr(func() {
+		importRecipes(context.Background(), client, recipes, existing)
+	})
+
+	if createCalled {
+		t.Error("Create was called for existing recipe — should have been skipped")
+	}
+	if !strings.Contains(stderr, "Existing Recipe") {
+		t.Errorf("expected skip log for existing recipe, got: %s", stderr)
+	}
+}
+
+func TestImportSkipExisting_RunImport(t *testing.T) {
+	createCount := 0
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/rewards"):
+			fmt.Fprint(w, `{"data":[{"id":"r1","attributes":{"name":"Existing","point_value":5}}]}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/chores"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/lists"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/meals/recipes"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/routines"):
+			fmt.Fprint(w, `{"data":[]}`)
+		case r.Method == http.MethodPost:
+			createCount++
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprint(w, `{"data":[{"id":"r2","attributes":{"name":"New","point_value":5}}]}`)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	})
+
+	data := ExportData{
+		Rewards: []lib.Reward{
+			{Title: "Existing", CategoryID: "1"},
+			{Title: "New", CategoryID: "1"},
+		},
+	}
+	want := map[string]bool{exportResourceRewards: true}
+
+	var err error
+	out := captureStdout(func() {
+		err = runImport(context.Background(), client, data, want, importTestToday, true)
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if createCount != 1 {
+		t.Errorf("expected 1 create call (for New), got %d", createCount)
+	}
+	if !strings.Contains(out, "Imported 1/1") {
+		t.Errorf("expected 'Imported 1/1' in output, got: %s", out)
 	}
 }

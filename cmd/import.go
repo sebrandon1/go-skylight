@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	importFile      string
-	importDryRun    bool
-	importResources string
+	importFile         string
+	importDryRun       bool
+	importResources    string
+	importSkipExisting bool
 )
 
 // importWorkerCount bounds how many items within a single resource type are
@@ -109,7 +110,7 @@ creates everything twice.`,
 		if err != nil {
 			return err
 		}
-		return runImport(cmd.Context(), client, data, want, today)
+		return runImport(cmd.Context(), client, data, want, today, importSkipExisting)
 	},
 }
 
@@ -135,21 +136,65 @@ func runImportDryRun(data ExportData, want map[string]bool, today string) {
 	}
 }
 
-func runImport(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool, today string) error {
+// titlesOf builds a set of titles from a slice using the provided accessor.
+func titlesOf[T any](items []T, title func(T) string) map[string]bool {
+	m := make(map[string]bool, len(items))
+	for _, item := range items {
+		m[title(item)] = true
+	}
+	return m
+}
+
+type existingSets struct {
+	rewards  map[string]bool
+	chores   map[string]bool
+	lists    map[string]bool
+	recipes  map[string]bool
+	routines map[string]bool
+}
+
+func fetchExistingSets(ctx context.Context, client *lib.Client) existingSets {
+	var s existingSets
+	if rs, err := client.ListRewards(ctx, frameID); err == nil {
+		s.rewards = titlesOf(rs, func(r lib.Reward) string { return r.Title })
+	}
+	after := time.Now().Format(lib.DateFormat)
+	before := time.Now().AddDate(1, 0, 0).Format(lib.DateFormat)
+	if cs, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{After: after, Before: before}); err == nil {
+		s.chores = titlesOf(cs, func(c lib.Chore) string { return c.Title })
+	}
+	if ls, err := client.ListLists(ctx, frameID); err == nil {
+		s.lists = titlesOf(ls, func(l lib.List) string { return l.Title })
+	}
+	if rs, err := client.ListRecipes(ctx, frameID); err == nil {
+		s.recipes = titlesOf(rs, func(r lib.Recipe) string { return r.Title })
+	}
+	if rs, err := client.ListRoutines(ctx, frameID); err == nil {
+		s.routines = titlesOf(rs, func(r lib.Routine) string { return r.Title })
+	}
+	return s
+}
+
+func runImport(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool, today string, skipExisting bool) error {
+	var existing existingSets
+	if skipExisting {
+		existing = fetchExistingSets(ctx, client)
+	}
+
 	type importFn = func() (int, int)
 	var tasks []importFn
 
 	if want[exportResourceRewards] {
-		tasks = append(tasks, func() (int, int) { return importRewards(ctx, client, data.Rewards) })
+		tasks = append(tasks, func() (int, int) { return importRewards(ctx, client, data.Rewards, existing.rewards) })
 	}
 	if want[exportResourceChores] {
-		tasks = append(tasks, func() (int, int) { return importChores(ctx, client, data.Chores, today) })
+		tasks = append(tasks, func() (int, int) { return importChores(ctx, client, data.Chores, today, existing.chores) })
 	}
 	if want[exportResourceLists] {
-		tasks = append(tasks, func() (int, int) { return importLists(ctx, client, data.Lists) })
+		tasks = append(tasks, func() (int, int) { return importLists(ctx, client, data.Lists, existing.lists) })
 	}
 	if want[exportResourceRecipes] {
-		tasks = append(tasks, func() (int, int) { return importRecipes(ctx, client, data.Recipes) })
+		tasks = append(tasks, func() (int, int) { return importRecipes(ctx, client, data.Recipes, existing.recipes) })
 	}
 	if want[exportResourceSittings] {
 		tasks = append(tasks, func() (int, int) { return importSittings(ctx, client, data.MealSittings) })
@@ -158,7 +203,7 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 		tasks = append(tasks, func() (int, int) { return importCalendarEvents(ctx, client, data.CalendarEvents) })
 	}
 	if want[exportResourceRoutines] {
-		tasks = append(tasks, func() (int, int) { return importRoutines(ctx, client, data.Routines) })
+		tasks = append(tasks, func() (int, int) { return importRoutines(ctx, client, data.Routines, existing.routines) })
 	}
 	if want[exportResourceBounties] {
 		tasks = append(tasks, func() (int, int) { return importBounties(ctx, client, data.Bounties) })
@@ -176,8 +221,12 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 	return nil
 }
 
-func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward) (total, failed int) {
+func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward, existing map[string]bool) (total, failed int) {
 	return parallelImport(rewards, func(r lib.Reward) (int, int) {
+		if existing[r.Title] {
+			fmt.Fprintf(os.Stderr, "Skipping existing reward %q\n", r.Title)
+			return 0, 0
+		}
 		// The API requires a category and takes it as a number.
 		if r.CategoryID == "" {
 			fmt.Fprintf(os.Stderr, "Error creating reward %q: no category in export; skipping\n", r.Title)
@@ -209,12 +258,16 @@ func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward
 // importRoutines already handles it separately. Without this, a round-trip
 // export/import would create each routine twice -- once as a plain
 // non-recurring chore, once as the correct routine.
-func importChores(ctx context.Context, client *lib.Client, chores []lib.Chore, today string) (total, failed int) {
+func importChores(ctx context.Context, client *lib.Client, chores []lib.Chore, today string, existing map[string]bool) (total, failed int) {
 	creates, routines := choresToImport(chores, today)
 	for _, title := range routines {
 		fmt.Fprintf(os.Stderr, "Skipping routine chore %q (import routines separately with --resources routines)\n", title)
 	}
 	return parallelImport(creates, func(d lib.ChoreData) (int, int) {
+		if existing[d.Title] {
+			fmt.Fprintf(os.Stderr, "Skipping existing chore %q\n", d.Title)
+			return 0, 0
+		}
 		create := client.CreateChore
 		if d.UpForGrabs {
 			create = client.CreateUpForGrabsChore
@@ -322,8 +375,12 @@ func ruleUntil(set []string) string {
 // freshly assigned ID), so items are never parallelized against each other.
 // The API ignores position on create and appends each item to the end of its
 // section, so items are created in position order.
-func importLists(ctx context.Context, client *lib.Client, lists []lib.List) (total, failed int) {
+func importLists(ctx context.Context, client *lib.Client, lists []lib.List, existing map[string]bool) (total, failed int) {
 	return parallelImport(lists, func(l lib.List) (int, int) {
+		if existing[l.Title] {
+			fmt.Fprintf(os.Stderr, "Skipping existing list %q\n", l.Title)
+			return 0, 0
+		}
 		t, f := 1, 0
 		created, err := client.CreateList(ctx, frameID, lib.ListData{Title: l.Title, Color: l.Color, Kind: l.Kind, HideFromFrame: &l.HideFromFrame})
 		if err != nil {
@@ -343,8 +400,12 @@ func importLists(ctx context.Context, client *lib.Client, lists []lib.List) (tot
 	})
 }
 
-func importRecipes(ctx context.Context, client *lib.Client, recipes []lib.Recipe) (total, failed int) {
+func importRecipes(ctx context.Context, client *lib.Client, recipes []lib.Recipe, existing map[string]bool) (total, failed int) {
 	return parallelImport(recipes, func(r lib.Recipe) (int, int) {
+		if existing[r.Title] {
+			fmt.Fprintf(os.Stderr, "Skipping existing recipe %q\n", r.Title)
+			return 0, 0
+		}
 		if _, err := client.CreateRecipe(ctx, frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating recipe %q: %v\n", r.Title, err)
 			return 1, 1
@@ -374,8 +435,12 @@ func importCalendarEvents(ctx context.Context, client *lib.Client, events []lib.
 	})
 }
 
-func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Routine) (total, failed int) {
+func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Routine, existing map[string]bool) (total, failed int) {
 	return parallelImport(routines, func(r lib.Routine) (int, int) {
+		if existing[r.Title] {
+			fmt.Fprintf(os.Stderr, "Skipping existing routine %q\n", r.Title)
+			return 0, 0
+		}
 		data := lib.RoutineData{Title: r.Title, TimeOfDay: r.TimeOfDay, CategoryID: r.AssigneeID, StartDate: r.NextOccurrenceDate}
 		if _, err := client.CreateRoutine(ctx, frameID, data); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating routine %q: %v\n", r.Title, err)
@@ -421,5 +486,6 @@ func init() {
 	importCmd.Flags().StringVar(&importFile, "file", "", "Path to export JSON file")
 	importCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "Preview what would be imported without making API calls")
 	importCmd.Flags().StringVar(&importResources, "resources", resourceAll, "Comma-separated resource types to import")
+	importCmd.Flags().BoolVar(&importSkipExisting, "skip-existing", false, "Skip resources whose title already exists on the frame (photos are always created)")
 	markFlagRequired(importCmd, "file")
 }
