@@ -39,7 +39,7 @@ cmd/                           # Cobra command definitions
   config.go                    # Config file loading/saving (~/.skylight/config)
   configcmd.go                 # config show|get|set|unset|edit subcommands
   frame.go                     # frame list, info, devices, avatars, colors, list-albums, set-album
-  calendar.go                  # calendar list, get, create, create-countdown, day, week, update, delete, sources, source-enable/disable
+  calendar.go                  # calendar list, get, create, create-countdown, day, week, schedule, update, delete, sources, source-enable/disable
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
   chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim
   chore_streak.go              # chore streak — per-assignee completion streak stats
@@ -49,6 +49,8 @@ cmd/                           # Cobra command definitions
   list.go                      # list all, info, create, update, delete, add-item, update-item, delete-item, delete-section, reorder-item, clear-completed, task-box-item
   meal.go                      # meal categories (CRUD), recipes (create, update, delete), sittings (CRUD), plan, sitting-recipe, grocery list
   category.go                  # category list, create, update, delete
+  profile.go                   # profile list, create, update, delete (household member profiles)
+  label.go                     # label list, create, update, delete (event/task labels)
   template.go                  # template save|apply|list|delete (stored in ~/.skylight/templates/)
   photo.go                     # photo list, upload, delete, download
   routine.go                   # routine list, get, create, update, delete
@@ -77,7 +79,7 @@ lib/                           # API client library
   poller.go                    # RewardsPoller — background poll loop with persistent dedup state
   doc.go                       # Package-level godoc
   calendar.go                  # Calendar event CRUD, source calendars
-  category.go                  # Category CRUD (list, create, update, delete)
+  category.go                  # Category CRUD (list, create, update, delete), plus profile and label CRUD
   chore.go                     # Chore CRUD (JSON-API format)
   frame.go                     # Frame info, devices, avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
@@ -146,7 +148,7 @@ SKYLIGHT_QUIET=false
 - `analytics` -- Family activity statistics over a time period (with `--days` or `--start-date`/`--end-date`)
 - `watch` -- Poll for changes and print events as they happen (with `--interval`, `--resources`, `--persist`)
 - `export` -- Dump frame data to JSON file (with `--output-file`, `--resources`, `--days`)
-- `import` -- Restore frame data from export JSON file (with `--file`, `--dry-run`, `--resources`)
+- `import` -- Restore frame data from export JSON file (with `--file`, `--dry-run`, `--resources`, `--skip-existing`)
 - `bounty create|list|update|delete` -- Chore + reward pairs
 - `rotation create` -- Rotating chore assignments
 - `template save|apply|list|delete` -- Named chore+reward templates (stored in `~/.skylight/templates/`)
@@ -154,12 +156,14 @@ SKYLIGHT_QUIET=false
 
 ### Resource Commands
 
-- `calendar list|get|create|create-countdown|day|week|update|delete|sources|source-enable|source-disable` -- Calendar events and source calendars
+- `calendar list|get|create|create-countdown|day|week|schedule|update|delete|sources|source-enable|source-disable` -- Calendar events and source calendars
 - `chore list|get|search|create|update|delete|complete|skip|claim|streak` -- Chore management (list supports `--week` for weekly view)
 - `reward list|get|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
 - `list all|info|create|update|delete|add-item|update-item|delete-item|delete-section|reorder-item|clear-completed|task-box-item` -- List management
 - `meal categories|create-category|update-category|delete-category|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|get-sitting|create-sitting|update-sitting|delete-sitting|sitting-recipe|plan|add-to-grocery` -- Meal planning
 - `category list|create|update|delete` -- Family member category management
+- `profile list|create|update|delete` -- Household member profile management
+- `label list|create|update|delete` -- Event/task label management
 - `frame list|info|devices|avatars|colors|list-albums|set-album` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)

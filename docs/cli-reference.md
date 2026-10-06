@@ -63,6 +63,7 @@ skylight calendar source-enable --source-id ID
 skylight calendar source-disable --source-id ID
 skylight calendar create-countdown --title TITLE --date DATE
 skylight calendar week [--date DATE]
+skylight calendar schedule [--date DATE] [--days N]   # agenda view; default: today (UTC), 3 days
 ```
 
 ## Chores
@@ -263,8 +264,10 @@ skylight template delete --name NAME
 
 ```bash
 skylight export [--output-file PATH] [--resources chores,rewards,lists,recipes,sittings,calendar,routines,bounties,categories,photos] [--days N]
-skylight import --file PATH [--dry-run] [--resources all]
+skylight import --file PATH [--dry-run] [--resources all] [--skip-existing]
 ```
+
+`--skip-existing` skips resources whose title already exists on the frame, so re-running an import does not create duplicates. Photos are the exception: they are always uploaded again.
 
 ## Shell Completion
 
