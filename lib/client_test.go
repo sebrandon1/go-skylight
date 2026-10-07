@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -723,6 +725,87 @@ func TestNewRequestAttachesContext(t *testing.T) {
 	}
 	if req2.Context().Value(ctxKey{}) != "sentinel" {
 		t.Error("newRequestWithBody: context not attached to request")
+	}
+}
+
+func TestReadLimited(t *testing.T) {
+	// Exactly at limit: success.
+	data := bytes.Repeat([]byte("x"), int(maxResponseBytes))
+	got, err := readLimited(bytes.NewReader(data), maxResponseBytes)
+	if err != nil {
+		t.Fatalf("unexpected error at exact limit: %v", err)
+	}
+	if len(got) != len(data) {
+		t.Errorf("len mismatch: got %d want %d", len(got), len(data))
+	}
+
+	// One byte over limit: error containing "exceeds".
+	over := bytes.Repeat([]byte("x"), int(maxResponseBytes)+1)
+	_, err = readLimited(bytes.NewReader(over), maxResponseBytes)
+	if err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("expected 'exceeds' error for oversized body, got %v", err)
+	}
+
+	// Zero-byte body: success.
+	_, err = readLimited(bytes.NewReader(nil), maxResponseBytes)
+	if err != nil {
+		t.Fatalf("zero-byte body returned error: %v", err)
+	}
+}
+
+func TestHandleResponseBodyLimit(t *testing.T) {
+	// Server streams maxResponseBytes+1 bytes; client must return an error.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Write one byte past the limit without allocating a giant slice.
+		zeros := make([]byte, 4096)
+		remaining := int(maxResponseBytes) + 1
+		for remaining > 0 {
+			n := len(zeros)
+			if n > remaining {
+				n = remaining
+			}
+			w.Write(zeros[:n]) //nolint:errcheck
+			remaining -= n
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "tok")
+	_, err := client.GetFrame(context.Background(), "f1")
+	if err == nil {
+		t.Fatal("expected error for oversized body")
+	}
+	if !strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("error should mention 'exceeds', got: %v", err)
+	}
+}
+
+func TestHandleResponseNormalBodyDecodes(t *testing.T) {
+	// A normal-sized JSON API response must not trigger the body limit error.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Minimal JSON-API envelope for a frame; ID in attributes is what matters.
+		w.Write([]byte(`{"data":{"id":"f1","type":"frame","attributes":{"name":"Test Frame","timezone":"UTC"}}}`)) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "tok")
+	_, err := client.GetFrame(context.Background(), "f1")
+	// May return an error due to JSON shape mismatches in test; what matters is
+	// no "exceeds" error (i.e. the body limit was not hit).
+	if err != nil && strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("normal body should not hit body limit, got: %v", err)
 	}
 }
 

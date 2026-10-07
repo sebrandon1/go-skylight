@@ -130,7 +130,7 @@ func fetchCSRFToken(hc *http.Client) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readLimited(resp.Body, maxResponseBytes)
 	if err != nil {
 		return "", err
 	}
@@ -172,8 +172,7 @@ func postSession(hc *http.Client, email, password, csrfToken string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("login returned status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("login returned status %d: %s", resp.StatusCode, readErrorBody(resp.Body))
 	}
 
 	// A 302 back to the login page (rather than to a dashboard/welcome
@@ -232,8 +231,7 @@ func fetchAuthCode(hc *http.Client, fingerprint, codeChallenge string) (string, 
 
 	location := resp.Header.Get("Location")
 	if location == "" {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("oauth authorize returned status %d with no Location: %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("oauth authorize returned status %d with no Location: %s", resp.StatusCode, readErrorBody(resp.Body))
 	}
 
 	u, err := url.Parse(location)
@@ -278,13 +276,13 @@ func postOAuthToken(data url.Values) (*OAuthTokenResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading oauth response: %w", err)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("oauth token request failed (status %d): %s", resp.StatusCode, readErrorBody(resp.Body))
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("oauth token request failed (status %d): %s", resp.StatusCode, string(body))
+	body, err := readLimited(resp.Body, maxResponseBytes)
+	if err != nil {
+		return nil, fmt.Errorf("reading oauth response: %w", err)
 	}
 
 	var token OAuthTokenResponse

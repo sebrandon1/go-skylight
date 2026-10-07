@@ -90,11 +90,11 @@ func shouldRetry(status int) bool {
 // returns the appropriate error. It returns ctx.Err() if the context is
 // canceled while waiting.
 func drainAndError(ctx context.Context, resp *http.Response) error {
-	body, _ := io.ReadAll(resp.Body)
+	body := readErrorBody(resp.Body)
 	resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusTooManyRequests {
-		return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
+		return &HTTPError{StatusCode: resp.StatusCode, Body: body}
 	}
 
 	wait := parseRetryAfter(resp.Header.Get("Retry-After"))

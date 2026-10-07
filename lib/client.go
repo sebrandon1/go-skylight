@@ -19,6 +19,30 @@ import (
 // DateFormat is the standard date layout used across the Skylight API (YYYY-MM-DD).
 const DateFormat = "2006-01-02"
 
+const (
+	maxResponseBytes  = 32 << 20 // 32 MiB cap for JSON API success bodies
+	maxErrorBodyBytes = 64 << 10 // 64 KiB cap for error response bodies
+)
+
+// readLimited prevents unbounded memory growth from misbehaving servers.
+func readLimited(r io.Reader, limit int64) ([]byte, error) { //nolint:unparam
+	b, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > limit {
+		return nil, fmt.Errorf("response body exceeds %d bytes", limit)
+	}
+	return b, nil
+}
+
+// readErrorBody reads up to maxErrorBodyBytes from r, discarding any excess.
+// Always returns a string (empty on read error) suitable for error messages.
+func readErrorBody(r io.Reader) string {
+	b, _ := io.ReadAll(io.LimitReader(r, maxErrorBodyBytes))
+	return string(b)
+}
+
 var (
 	// SkylightURL is the default base URL for all API calls.
 	// Override via WithBaseURL or by assigning directly in tests.
@@ -212,7 +236,7 @@ func handleResponse(resp *http.Response, v any) error {
 	if resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := readLimited(resp.Body, maxResponseBytes)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
 	}

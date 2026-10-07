@@ -371,3 +371,35 @@ func TestDoWithRetry_ContextCancelledMidFlight(t *testing.T) {
 		}
 	}
 }
+
+func TestDrainAndError_LargeBodyTruncated(t *testing.T) {
+	// A 500 body larger than maxErrorBodyBytes must be truncated in HTTPError.Body.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		zeros := make([]byte, 4096)
+		remaining := int(maxErrorBodyBytes) + 1
+		for remaining > 0 {
+			n := len(zeros)
+			if n > remaining {
+				n = remaining
+			}
+			w.Write(zeros[:n]) //nolint:errcheck
+			remaining -= n
+		}
+	}))
+	defer srv.Close()
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	drainErr := drainAndError(context.Background(), resp)
+	var se *HTTPError
+	if !errors.As(drainErr, &se) {
+		t.Fatalf("expected *HTTPError, got %T: %v", drainErr, drainErr)
+	}
+	if int64(len(se.Body)) > maxErrorBodyBytes {
+		t.Errorf("HTTPError.Body length %d exceeds maxErrorBodyBytes %d", len(se.Body), maxErrorBodyBytes)
+	}
+}
