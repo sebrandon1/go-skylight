@@ -4,7 +4,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 
 ## Go Version
 
-Go 1.27.1 (see `go.mod`)
+Go 1.27.0 minimum, toolchain 1.27.1 (see `go.mod`)
 
 ## Dependencies
 
@@ -40,6 +40,7 @@ cmd/                           # Cobra command definitions
   configcmd.go                 # config show|get|set|unset|edit subcommands
   frame.go                     # frame list, info, devices, avatars, colors, list-albums, set-album
   calendar.go                  # calendar list, get, create, create-countdown, day, week, schedule, update, delete, sources, source-enable/disable
+  calendar_schedule.go         # `schedule` subcommand — agenda view builder
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
   chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim
   chore_streak.go              # chore streak — per-assignee completion streak stats

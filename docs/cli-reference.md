@@ -204,9 +204,9 @@ skylight addon list
 
 ```bash
 skylight bounty create --title TITLE --points N --reward-title R [--assignee-id ID] [--due-date DATE] [--emoji-icon EMOJI] [--recurring]
-skylight bounty list
+skylight bounty list [--after DATE] [--before DATE]
 skylight bounty update --chore-id ID --reward-id ID [--title T] [--reward-title R] [--points N] [--due-date DATE] [--emoji-icon EMOJI]
-skylight bounty delete --chore-id ID --reward-id ID
+skylight bounty delete (--chore-id ID --reward-id ID | --all) [--after DATE] [--before DATE] [--dry-run] [--yes]
 
 skylight rotation create --chores "Dishes,Vacuum" --assignee-ids "id1,id2" \
     --start-date DATE --weeks N --points N

@@ -4,7 +4,7 @@ Thank you for your interest in contributing!
 
 ## Prerequisites
 
-- Go 1.26.x (`go.mod` is the source of truth; currently 1.26.6)
+- Go 1.27.x (`go.mod` is the source of truth; currently 1.27.0, toolchain 1.27.1)
 - `golangci-lint` — install via `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - `make` — used for all dev workflows
 
@@ -88,13 +88,14 @@ Integration tests call the live Skylight API. They require credentials and a fra
 Add your credentials to `~/.skylight/config` (same file used by the CLI):
 
 ```
-SKYLIGHT_EMAIL=you@example.com
-SKYLIGHT_PASSWORD=yourpassword
+SKYLIGHT_REFRESH_TOKEN=your-refresh-token
+SKYLIGHT_DEVICE_FINGERPRINT=your-device-uuid
 SKYLIGHT_FRAME_ID=your-frame-id
 ```
 
-`SKYLIGHT_FRAME_ID` is already written by `skylight login --save`. You only need
-to add `SKYLIGHT_EMAIL` and `SKYLIGHT_PASSWORD`. Environment variables override
+`SKYLIGHT_FRAME_ID` is already written by `skylight login --save`. The recommended
+auth mode is the OAuth2 refresh token — see the README for how to obtain one.
+Email/password auth still works but is deprecated. Environment variables override
 the config file if set.
 
 ### Running
