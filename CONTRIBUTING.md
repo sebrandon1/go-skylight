@@ -4,7 +4,7 @@ Thank you for your interest in contributing!
 
 ## Prerequisites
 
-- Go 1.27.x (`go.mod` is the source of truth; currently 1.27.0, toolchain 1.27.1)
+- Go 1.27.x (`go.mod` is the source of truth; currently 1.27.0, toolchain 1.27.2)
 - `golangci-lint` — install via `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
 - `make` — used for all dev workflows
 

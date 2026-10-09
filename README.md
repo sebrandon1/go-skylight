@@ -133,7 +133,7 @@ make clean          # remove built binaries
 make integration    # integration tests (requires credentials - see below)
 ```
 
-CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.1.
+CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.2.
 
 ### Running Integration Tests
 
