@@ -4,10 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.2.8] - 2026-10-09
+
 ### Added
 - `Routine`/`RoutineData`: `EmojiIcon`, `Points` and `TrackHabit` (habit tracking), read from the API and sent on create
 - `Chore`/`ChoreData`: `TrackHabit` (routines only), read from the API and sent on create
 - `Chore`/`ChoreData`: `RenewalUnit` and `RenewalInterval` (repeat a set time after completion), read from the API and sent on create/update
+
+### Security
+- Bound HTTP response body reads in the client: success bodies are capped at 32 MiB and error bodies at 64 KiB (#513, #523)
+- Go toolchain bumped to 1.27.2 to fix eight standard-library vulnerabilities flagged by govulncheck (#530)
 
 ### Fixed
 - `export`/`import`: routines lost their icon, points and habit tracking; now kept (#525, #526)
