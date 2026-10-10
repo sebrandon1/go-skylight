@@ -90,6 +90,9 @@ func timeOfDayFromRecurrence(rules []string) string {
 	return ""
 }
 
+// routineFromChore flattens a routine's chore row into a Routine. timeOfDay is
+// passed in because callers get it from different places: the request, the
+// response's BYHOUR, or both.
 func routineFromChore(ch Chore, timeOfDay string) Routine {
 	return Routine{
 		ID:                 ch.ID,
@@ -195,16 +198,27 @@ func (c *Client) GetRoutine(ctx context.Context, frameID, routineID string) (*Ro
 }
 
 // RoutineUpdateData holds the fields that may be updated on an existing routine.
-// Only non-zero fields are sent to the API.
+// Only non-zero fields are sent to the API. TrackHabit is a pointer so it can
+// turn habit tracking off; nil leaves it unchanged.
 type RoutineUpdateData struct {
-	Title     string `json:"title,omitempty"`
-	TimeOfDay string `json:"time_of_day,omitempty"`
+	Title      string `json:"title,omitempty"`
+	TimeOfDay  string `json:"time_of_day,omitempty"`
+	EmojiIcon  string `json:"emoji_icon,omitempty"`
+	Points     int    `json:"points,omitempty"`
+	TrackHabit *bool  `json:"track_habit,omitempty"`
+}
+
+// routineUpdateBody shadows ChoreData.TrackHabit, which is omitempty and so
+// can't send false.
+type routineUpdateBody struct {
+	ChoreData
+	TrackHabit *bool `json:"track_habit,omitempty"`
 }
 
 // UpdateRoutine updates an existing routine. apply_to=all is required by the
 // API for any recurring chore. Only non-zero fields in data are sent.
 func (c *Client) UpdateRoutine(ctx context.Context, frameID, routineID string, data RoutineUpdateData) (*Routine, error) {
-	chore := ChoreData{Title: data.Title}
+	chore := ChoreData{Title: data.Title, EmojiIcon: data.EmojiIcon, Points: data.Points}
 	if data.TimeOfDay != "" {
 		hour, ok := routineByHour[data.TimeOfDay]
 		if !ok {
@@ -212,8 +226,9 @@ func (c *Client) UpdateRoutine(ctx context.Context, frameID, routineID string, d
 		}
 		chore.RecurrenceSet = []string{fmt.Sprintf("RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=%d", hour)}
 	}
+	body := routineUpdateBody{ChoreData: chore, TrackHabit: data.TrackHabit}
 
-	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)), chore)
+	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)), body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update routine request: %w", err)
 	}

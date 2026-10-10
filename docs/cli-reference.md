@@ -219,10 +219,12 @@ A routine is a recurring chore with a fixed time-of-day slot (morning, afternoon
 ```bash
 skylight routine list [--assignee-id ID]
 skylight routine get --routine-id ID
-skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-id ID --start-date DATE
-skylight routine update --routine-id ID [--title T] [--time-of-day morning|afternoon|evening]
+skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-id ID --start-date DATE [--emoji-icon E] [--points N] [--track-habit]
+skylight routine update --routine-id ID [--title T] [--time-of-day morning|afternoon|evening] [--emoji-icon E] [--points N] [--track-habit=true|false]
 skylight routine delete --routine-id ID
 ```
+
+`--points` sets the stars awarded each time the routine is done and must be greater than 0. `--track-habit=false` removes the routine's habit tracker; turning it back on starts a new one.
 
 ## Grocery
 
