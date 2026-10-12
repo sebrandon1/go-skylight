@@ -530,6 +530,42 @@ func TestUpdateRoutine(t *testing.T) {
 	}
 }
 
+func TestUpdateRoutine_SendsIconPointsAndHabit(t *testing.T) {
+	yes, no := true, false
+	tests := []struct {
+		name string
+		data RoutineUpdateData
+		want map[string]any
+	}{
+		{"icon and points, habit unchanged", RoutineUpdateData{EmojiIcon: "🪥", Points: 2}, map[string]any{"emoji_icon": "🪥", "reward_points": float64(2)}},
+		{"habit on", RoutineUpdateData{TrackHabit: &yes}, map[string]any{"track_habit": true}},
+		{"habit off", RoutineUpdateData{TrackHabit: &no}, map[string]any{"track_habit": false}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"data":{"id":"97874955","attributes":{"summary":"Brush teeth","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}}`)
+			}))
+			defer srv.Close()
+			old := SkylightURL
+			SkylightURL = srv.URL + "/api"
+			defer func() { SkylightURL = old }()
+			client, _ := NewClientWithToken("u", "t")
+			if _, err := client.UpdateRoutine(context.Background(), "frame1", "97874955", tt.data); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("body: got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUpdateRoutine_InvalidTimeOfDay(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

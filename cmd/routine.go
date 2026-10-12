@@ -16,6 +16,9 @@ var (
 	routineCategoryID      string
 	routineStartDate       string
 	routineListAssigneeID  string
+	routineEmojiIcon       string
+	routinePoints          int
+	routineTrackHabit      bool
 	routineUpdateTitle     string
 	routineUpdateTimeOfDay string
 )
@@ -118,6 +121,9 @@ var routineCreateCmd = &cobra.Command{
 			TimeOfDay:  routineTimeOfDay,
 			CategoryID: routineCategoryID,
 			StartDate:  routineStartDate,
+			EmojiIcon:  routineEmojiIcon,
+			Points:     routinePoints,
+			TrackHabit: routineTrackHabit,
 		})
 		if err != nil {
 			return fmt.Errorf("creating routine: %w", err)
@@ -146,6 +152,18 @@ var routineUpdateCmd = &cobra.Command{
 				return err
 			}
 			upd.TimeOfDay = routineUpdateTimeOfDay
+		}
+		if cmd.Flags().Changed("emoji-icon") {
+			upd.EmojiIcon = routineEmojiIcon
+		}
+		if cmd.Flags().Changed(subPoints) {
+			if routinePoints <= 0 {
+				return fmt.Errorf("--points must be greater than 0")
+			}
+			upd.Points = routinePoints
+		}
+		if cmd.Flags().Changed("track-habit") {
+			upd.TrackHabit = &routineTrackHabit
 		}
 
 		client, err := getClient()
@@ -209,6 +227,9 @@ func init() {
 	routineCreateCmd.Flags().StringVar(&routineTimeOfDay, "time-of-day", "", "Time of day: morning, afternoon, or evening")
 	routineCreateCmd.Flags().StringVar(&routineCategoryID, "category-id", "", "Assignee category ID")
 	routineCreateCmd.Flags().StringVar(&routineStartDate, "start-date", "", "Start date (YYYY-MM-DD)")
+	routineCreateCmd.Flags().StringVar(&routineEmojiIcon, "emoji-icon", "", "Emoji icon for the routine")
+	routineCreateCmd.Flags().IntVar(&routinePoints, subPoints, 0, "Stars awarded each time it's done")
+	routineCreateCmd.Flags().BoolVar(&routineTrackHabit, "track-habit", false, "Track it as a habit")
 	markFlagRequired(routineCreateCmd, subTitle)
 	markFlagRequired(routineCreateCmd, "time-of-day")
 	markFlagRequired(routineCreateCmd, "category-id")
@@ -220,6 +241,9 @@ func init() {
 	routineUpdateCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")
 	routineUpdateCmd.Flags().StringVar(&routineUpdateTitle, subTitle, "", "New title")
 	routineUpdateCmd.Flags().StringVar(&routineUpdateTimeOfDay, "time-of-day", "", "New time of day: morning, afternoon, or evening")
+	routineUpdateCmd.Flags().StringVar(&routineEmojiIcon, "emoji-icon", "", "New emoji icon")
+	routineUpdateCmd.Flags().IntVar(&routinePoints, subPoints, 0, "Stars awarded each time it's done (must be greater than 0)")
+	routineUpdateCmd.Flags().BoolVar(&routineTrackHabit, "track-habit", false, "Track it as a habit; false removes the habit tracker")
 	markFlagRequired(routineUpdateCmd, "routine-id")
 
 	routineDeleteCmd.Flags().StringVar(&routineID, "routine-id", "", "Routine ID")

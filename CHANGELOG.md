@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `routine create`/`routine update`: `--emoji-icon`, `--points` and `--track-habit` (#532)
+- `RoutineUpdateData`: `EmojiIcon`, `Points` and `TrackHabit`, sent by `UpdateRoutine`; `TrackHabit` is a `*bool` so `false` turns habit tracking off (#532)
+
 ## [v0.2.8] - 2026-10-09
 
 ### Added

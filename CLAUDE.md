@@ -184,6 +184,7 @@ All update commands use `cmd.Flags().Changed()` to only send fields that were ex
 - `list update --list-id ID [--title] [--color]`
 - `list update-item --list-id ID --item-id ID [--title] [--completed]`
 - `reward update --reward-id ID [--title] [--points] [--emoji-icon]`
+- `routine update --routine-id ID [--title] [--time-of-day] [--emoji-icon] [--points] [--track-habit]`
 - `meal update-recipe --recipe-id ID [--title] [--description] [--ingredients] [--url]`
 
 ### Delete/Mutate Commands

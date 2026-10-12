@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -272,5 +273,77 @@ func TestRoutineGetCmd(t *testing.T) {
 	})
 	if !strings.Contains(out, "Morning") {
 		t.Errorf("expected routine title in output, got: %s", out)
+	}
+}
+
+func TestRoutineCreateAndUpdateCmd_IconPointsHabit(t *testing.T) {
+	var bodies []map[string]any
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		bodies = append(bodies, body)
+		routineMockHandler()(w, r)
+	})
+	origTitle, origTimeOfDay, origCategoryID, origStartDate := routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate
+	origID, origEmoji, origPoints, origHabit := routineID, routineEmojiIcon, routinePoints, routineTrackHabit
+	routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate = "Morning", "morning", "a1", "2026-08-10"
+	routineID, routineEmojiIcon, routinePoints, routineTrackHabit = "routine1", "🪥", 1, true
+	t.Cleanup(func() {
+		routineTitle, routineTimeOfDay, routineCategoryID, routineStartDate = origTitle, origTimeOfDay, origCategoryID, origStartDate
+		routineID, routineEmojiIcon, routinePoints, routineTrackHabit = origID, origEmoji, origPoints, origHabit
+		for _, flag := range []string{"emoji-icon", subPoints, "track-habit"} {
+			routineUpdateCmd.Flags().Lookup(flag).Changed = false
+		}
+	})
+
+	captureStdout(func() {
+		if err := routineCreateCmd.RunE(routineCreateCmd, nil); err != nil {
+			t.Errorf("create: unexpected error: %v", err)
+		}
+	})
+
+	for flag, val := range map[string]string{"emoji-icon": "🦷", subPoints: "2", "track-habit": "false"} {
+		if err := routineUpdateCmd.Flags().Set(flag, val); err != nil {
+			t.Fatalf("setting %s flag: %v", flag, err)
+		}
+	}
+	captureStdout(func() {
+		if err := routineUpdateCmd.RunE(routineUpdateCmd, nil); err != nil {
+			t.Errorf("update: unexpected error: %v", err)
+		}
+	})
+
+	if len(bodies) != 2 {
+		t.Fatalf("got %d requests, want 2", len(bodies))
+	}
+	create, update := bodies[0], bodies[1]
+	if create["emoji_icon"] != "🪥" || create["reward_points"] != float64(1) || create["track_habit"] != true {
+		t.Errorf("create body: got %v, want emoji_icon 🪥, reward_points 1, track_habit true", create)
+	}
+	if update["emoji_icon"] != "🦷" || update["reward_points"] != float64(2) || update["track_habit"] != false {
+		t.Errorf("update body: got %v, want emoji_icon 🦷, reward_points 2, track_habit false", update)
+	}
+}
+
+func TestRoutineUpdateCmd_RejectsNonPositivePoints(t *testing.T) {
+	called := false
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) { called = true })
+	origID, origPoints := routineID, routinePoints
+	routineID = "routine1"
+	t.Cleanup(func() {
+		routineID, routinePoints = origID, origPoints
+		routineUpdateCmd.Flags().Lookup(subPoints).Changed = false
+	})
+
+	if err := routineUpdateCmd.Flags().Set(subPoints, "0"); err != nil {
+		t.Fatalf("setting points flag: %v", err)
+	}
+	if err := routineUpdateCmd.RunE(routineUpdateCmd, nil); err == nil {
+		t.Error("expected an error for --points 0, got nil")
+	}
+	if called {
+		t.Error("expected no API call for --points 0")
 	}
 }
