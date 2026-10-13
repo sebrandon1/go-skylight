@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - `routine create`/`routine update`: `--emoji-icon`, `--points` and `--track-habit` (#532)
 - `RoutineUpdateData`: `EmojiIcon`, `Points` and `TrackHabit`, sent by `UpdateRoutine`; `TrackHabit` is a `*bool` so `false` turns habit tracking off (#532)
 
+### Fixed
+- `routine get` now correctly fetches a routine by scanning the chore list (matching `GetChore`'s approach) rather than calling a non-existent single-item endpoint that the API rejects with "chore not found" (#533)
+
 ## [v0.2.8] - 2026-10-09
 
 ### Added

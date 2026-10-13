@@ -3,6 +3,7 @@ package lib
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -400,11 +401,14 @@ func TestListRoutines_ParsesIconPointsAndHabitTracker(t *testing.T) {
 
 func TestGetRoutine_ParsesIconPointsAndHabitTracker(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/frames/frame1/chores/111" {
+		if r.URL.Path != "/api/frames/frame1/chores" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
+		if r.URL.Query().Get("after") == "" || r.URL.Query().Get("before") == "" {
+			t.Errorf("expected after/before query params, got %s", r.URL.RawQuery)
+		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":{"id":"111","attributes":{"summary":"Brush teeth","start":"2026-08-10","emoji_icon":"🪥","reward_points":1,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}}}`)
+		fmt.Fprint(w, `{"data":[{"id":"111-2026-10-13-0600","attributes":{"summary":"Brush teeth","start":"2026-10-13","emoji_icon":"🪥","reward_points":1,"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}}]}`)
 	}))
 	defer srv.Close()
 
@@ -417,8 +421,72 @@ func TestGetRoutine_ParsesIconPointsAndHabitTracker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if routine.ID != "111" {
+		t.Errorf("ID: got %q, want %q", routine.ID, "111")
+	}
 	if routine.EmojiIcon != "🪥" || routine.Points != 1 || !routine.TrackHabit {
 		t.Errorf("got EmojiIcon=%q Points=%d TrackHabit=%v, want 🪥 1 true", routine.EmojiIcon, routine.Points, routine.TrackHabit)
+	}
+}
+
+func TestGetRoutine_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.GetRoutine(context.Background(), "frame1", "999")
+	if err == nil {
+		t.Fatal("expected error for missing routine, got nil")
+	}
+	var nfe *NotFoundError
+	if !errors.As(err, &nfe) {
+		t.Errorf("expected *NotFoundError, got %T: %v", err, err)
+	}
+}
+
+func TestGetRoutine_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.GetRoutine(context.Background(), "frame1", "111"); err == nil {
+		t.Fatal("expected error for server error response, got nil")
+	}
+}
+
+func TestGetRoutine_SkipsNonRoutineChores(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// routine:false chores must be invisible to GetRoutine even when their base ID matches.
+		fmt.Fprint(w, `{"data":[`+
+			`{"id":"111-2026-10-13-0600","attributes":{"summary":"Task","start":"2026-10-13","routine":false,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}}}},`+
+			`{"id":"999-2026-10-13-0600","attributes":{"summary":"Other Routine","start":"2026-10-13","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}}}}`+
+			`]}`)
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	_, err := client.GetRoutine(context.Background(), "frame1", "111")
+	var nfe *NotFoundError
+	if !errors.As(err, &nfe) {
+		t.Errorf("expected *NotFoundError when only non-routine chore matches ID, got %T: %v", err, err)
 	}
 }
 

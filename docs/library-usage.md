@@ -17,7 +17,12 @@ import (
 ## Creating a Client
 
 ```go
-// Basic client
+// Recommended: OAuth2 refresh token — auto-rotates and persists to config
+client, err := lib.NewClientWithRefreshToken("your-refresh-token", "your-device-fingerprint")
+```
+
+```go
+// Pre-existing bearer token
 client, err := lib.NewClientWithToken("user-id", "api-token")
 ```
 

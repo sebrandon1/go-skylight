@@ -160,7 +160,7 @@ Integration tests require authentication credentials and run against the live Sk
    ```
 
 **Obtaining tokens:**
-1. Log in to https://app.ourskylight.com in your browser
+1. Log in to https://ourskylight.com in your browser
 2. Open DevTools → Console
 3. Run: `JSON.parse(localStorage.getItem('mmkv.default\\auth-storage')).state`
 4. Copy `refreshToken` and `uniqueId` values
