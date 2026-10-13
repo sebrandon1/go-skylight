@@ -258,10 +258,7 @@ func TestRoutineUpdateCmd_InvalidTimeOfDay(t *testing.T) {
 }
 
 func TestRoutineGetCmd(t *testing.T) {
-	newCmdTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":{"id":"routine1","attributes":{"summary":"Morning","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}}}}}`)
-	}))
+	newCmdTestClient(t, routineMockHandler())
 	orig := routineID
 	routineID = "routine1"
 	t.Cleanup(func() { routineID = orig })

@@ -180,21 +180,31 @@ func (c *Client) ListRoutines(ctx context.Context, frameID string) ([]Routine, e
 	return routines, nil
 }
 
-// GetRoutine retrieves a single routine by its chore ID.
+// GetRoutine retrieves a single routine by its base chore ID. The Skylight API
+// has no single-item GET endpoint for chores; this mirrors GetChore by fetching
+// the lookahead window and matching on base ID.
 func (c *Client) GetRoutine(ctx context.Context, frameID, routineID string) (*Routine, error) {
-	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(routineID)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create get routine request: %w", err)
-	}
+	now := time.Now()
+	today := now.Format(DateFormat)
+	until := now.AddDate(0, 0, routineLookaheadDays).Format(DateFormat)
 
-	var apiResp choreAPISingleResponse
-	if err := c.get(req, &apiResp); err != nil {
+	chores, err := c.ListChores(ctx, frameID, ChoreListOptions{After: today, Before: until})
+	if err != nil {
 		return nil, fmt.Errorf("failed to get routine: %w", err)
 	}
 
-	ch := apiResp.Data.toChore()
-	r := routineFromChore(ch, timeOfDayFromRecurrence(ch.RecurrenceSet))
-	return &r, nil
+	for _, ch := range chores {
+		if !ch.Routine {
+			continue
+		}
+		baseID, _, _ := parseChoreID(ch.ID)
+		if baseID == routineID {
+			r := routineFromChore(ch, timeOfDayFromRecurrence(ch.RecurrenceSet))
+			r.ID = baseID
+			return &r, nil
+		}
+	}
+	return nil, &NotFoundError{Resource: "routine", ID: routineID}
 }
 
 // RoutineUpdateData holds the fields that may be updated on an existing routine.
