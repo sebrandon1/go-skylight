@@ -2,7 +2,7 @@ module github.com/sebrandon1/go-skylight
 
 go 1.27.0
 
-toolchain go1.27.2
+toolchain go1.27.3
 
 require (
 	github.com/spf13/cobra v1.10.2
