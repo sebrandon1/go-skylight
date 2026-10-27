@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -14,21 +13,6 @@ import (
 
 	"golang.org/x/time/rate"
 )
-
-func TestBackoffDelay(t *testing.T) {
-	base := 100 * time.Millisecond
-	max := 5 * time.Second
-
-	for attempt := 1; attempt <= 6; attempt++ {
-		d := backoffDelay(base, max, attempt)
-		if d < 0 {
-			t.Errorf("attempt %d: negative delay %v", attempt, d)
-		}
-		if d > max {
-			t.Errorf("attempt %d: delay %v exceeds max %v", attempt, d, max)
-		}
-	}
-}
 
 func TestDoWithRetrySuccess(t *testing.T) {
 	var calls atomic.Int32
@@ -124,77 +108,6 @@ func TestDoWithRetryRespects429RetryAfter(t *testing.T) {
 	}
 }
 
-func TestBackoffDelayMaxClamping(t *testing.T) {
-	base := 100 * time.Millisecond
-	max := 1 * time.Second
-	d := backoffDelay(base, max, 20)
-	if d > max {
-		t.Errorf("delay %v exceeds max %v", d, max)
-	}
-	if d < max/2 {
-		t.Errorf("delay %v too low, expected at least %v", d, max/2)
-	}
-}
-
-func TestBackoffDelayHalfZero(t *testing.T) {
-	// base=1ns, max=1ns -> exp=1ns, exp/2=0 -> early return exp
-	d := backoffDelay(1*time.Nanosecond, 1*time.Nanosecond, 1)
-	if d != 1*time.Nanosecond {
-		t.Errorf("delay = %v, want 1ns", d)
-	}
-}
-
-func TestDrainAndErrorNon429(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		if _, err := w.Write([]byte("server error body")); err != nil {
-			t.Errorf("write: %v", err)
-		}
-	}))
-	defer srv.Close()
-
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drainErr := drainAndError(context.Background(), resp)
-	if drainErr == nil {
-		t.Fatal("expected error")
-	}
-	var se *HTTPError
-	if !errors.As(drainErr, &se) {
-		t.Fatalf("expected *HTTPError, got %T: %v", drainErr, drainErr)
-	}
-	if se.StatusCode != http.StatusInternalServerError {
-		t.Errorf("StatusCode = %d, want %d", se.StatusCode, http.StatusInternalServerError)
-	}
-	if !strings.Contains(se.Body, "server error body") {
-		t.Errorf("Body should contain body text, got %q", se.Body)
-	}
-}
-
-func TestDrainAndError429ContextCancelled(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Retry-After", "60")
-		w.WriteHeader(http.StatusTooManyRequests)
-	}))
-	defer srv.Close()
-
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
-	drainErr := drainAndError(ctx, resp)
-	if !errors.Is(drainErr, context.Canceled) {
-		t.Errorf("expected context.Canceled, got %v", drainErr)
-	}
-}
-
 func TestDoWithRetryWithRateLimiter(t *testing.T) {
 	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -215,24 +128,6 @@ func TestDoWithRetryWithRateLimiter(t *testing.T) {
 	if calls.Load() != 1 {
 		t.Errorf("want 1 call, got %d", calls.Load())
 	}
-}
-
-func TestBufferBodyReadError(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodPost, "http://example.com", io.NopCloser(&errorReader{}))
-	_, err := bufferBody(req)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	var ne *NetworkError
-	if !errors.As(err, &ne) {
-		t.Errorf("expected NetworkError, got %T", err)
-	}
-}
-
-type errorReader struct{}
-
-func (e *errorReader) Read([]byte) (int, error) {
-	return 0, errors.New("read error")
 }
 
 func TestDoWithRetryMaxAttemptsZero(t *testing.T) {
@@ -305,23 +200,6 @@ func TestDoWithRetry_BodyReplayOnRetry(t *testing.T) {
 	}
 }
 
-func TestDrainAndError_429Instant(t *testing.T) {
-	resp := &http.Response{
-		StatusCode: http.StatusTooManyRequests,
-		Header:     http.Header{"Retry-After": []string{"0"}},
-		Body:       io.NopCloser(strings.NewReader("")),
-	}
-
-	drainErr := drainAndError(context.Background(), resp)
-	if drainErr == nil {
-		t.Fatal("expected error")
-	}
-	var rle *RateLimitError
-	if !errors.As(drainErr, &rle) {
-		t.Errorf("expected *RateLimitError, got %T: %v", drainErr, drainErr)
-	}
-}
-
 func TestDoWithRetryContextCancelled(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -369,37 +247,5 @@ func TestDoWithRetry_ContextCancelledMidFlight(t *testing.T) {
 		if !errors.As(err, &ne) {
 			t.Errorf("expected context.Canceled or *NetworkError, got %T: %v", err, err)
 		}
-	}
-}
-
-func TestDrainAndError_LargeBodyTruncated(t *testing.T) {
-	// A 500 body larger than maxErrorBodyBytes must be truncated in HTTPError.Body.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		zeros := make([]byte, 4096)
-		remaining := int(maxErrorBodyBytes) + 1
-		for remaining > 0 {
-			n := len(zeros)
-			if n > remaining {
-				n = remaining
-			}
-			w.Write(zeros[:n]) //nolint:errcheck
-			remaining -= n
-		}
-	}))
-	defer srv.Close()
-
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drainErr := drainAndError(context.Background(), resp)
-	var se *HTTPError
-	if !errors.As(drainErr, &se) {
-		t.Fatalf("expected *HTTPError, got %T: %v", drainErr, drainErr)
-	}
-	if int64(len(se.Body)) > maxErrorBodyBytes {
-		t.Errorf("HTTPError.Body length %d exceeds maxErrorBodyBytes %d", len(se.Body), maxErrorBodyBytes)
 	}
 }

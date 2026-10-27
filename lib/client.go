@@ -1,18 +1,14 @@
 package lib
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
-	"net/url"
-	"time"
 
+	"github.com/sebrandon1/go-toolbox/httpx"
 	"golang.org/x/time/rate"
 )
 
@@ -20,27 +16,18 @@ import (
 const DateFormat = "2006-01-02"
 
 const (
-	maxResponseBytes  = 32 << 20 // 32 MiB cap for JSON API success bodies
-	maxErrorBodyBytes = 64 << 10 // 64 KiB cap for error response bodies
+	maxResponseBytes  = httpx.DefaultMaxResponseBytes
+	maxErrorBodyBytes = httpx.DefaultMaxErrorBodyBytes
 )
 
 // readLimited prevents unbounded memory growth from misbehaving servers.
-func readLimited(r io.Reader, limit int64) ([]byte, error) { //nolint:unparam
-	b, err := io.ReadAll(io.LimitReader(r, limit+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(b)) > limit {
-		return nil, fmt.Errorf("response body exceeds %d bytes", limit)
-	}
-	return b, nil
+func readLimited(r io.Reader, limit int64) ([]byte, error) { //nolint:unparam // general helper used by tests with custom limits
+	return httpx.ReadLimited(r, limit)
 }
 
 // readErrorBody reads up to maxErrorBodyBytes from r, discarding any excess.
-// Always returns a string (empty on read error) suitable for error messages.
 func readErrorBody(r io.Reader) string {
-	b, _ := io.ReadAll(io.LimitReader(r, maxErrorBodyBytes))
-	return string(b)
+	return httpx.ReadErrorBody(r, maxErrorBodyBytes)
 }
 
 var (
@@ -67,15 +54,7 @@ type Client struct {
 }
 
 func newHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: 10 * time.Second,
-			}).DialContext,
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-	}
+	return httpx.NewHTTPClient(httpx.Options{})
 }
 
 // NewClient authenticates via email/password using the legacy /api/sessions
@@ -194,7 +173,7 @@ func (c *Client) effectiveURL() string {
 // interpolation so values containing '/', '..', or percent sequences cannot
 // rewrite the request path.
 func pathSeg(s string) string {
-	return url.PathEscape(s)
+	return httpx.PathSeg(s)
 }
 
 func (c *Client) do(req *http.Request) (*http.Response, error) {
@@ -232,21 +211,7 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 // and unmarshals into v when v is non-nil. 204 No Content returns immediately
 // without reading the body.
 func handleResponse(resp *http.Response, v any) error {
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-	body, err := readLimited(resp.Body, maxResponseBytes)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-	if err := checkStatus(resp, body); err != nil {
-		return err
-	}
-	if v != nil {
-		return json.Unmarshal(body, v)
-	}
-	return nil
+	return httpx.HandleResponse(resp, v, maxResponseBytes)
 }
 
 func (c *Client) get(req *http.Request, v any) error {
@@ -290,25 +255,13 @@ func (c *Client) doDelete(req *http.Request) error {
 }
 
 func addQueryParams(req *http.Request, params map[string]string) {
-	q := req.URL.Query()
-	for key, value := range params {
-		q.Add(key, value)
-	}
-	req.URL.RawQuery = q.Encode()
+	httpx.AddQueryParams(req, params)
 }
 
 func newRequest(ctx context.Context, method, url string) (*http.Request, error) {
-	return http.NewRequestWithContext(ctx, method, url, nil)
+	return httpx.NewRequest(ctx, method, url)
 }
 
 func newRequestWithBody(ctx context.Context, method, url string, body any) (*http.Request, error) {
-	var bodyReader io.Reader
-	if body != nil {
-		data, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-		bodyReader = bytes.NewReader(data)
-	}
-	return http.NewRequestWithContext(ctx, method, url, bodyReader)
+	return httpx.NewRequestWithBody(ctx, method, url, body)
 }
