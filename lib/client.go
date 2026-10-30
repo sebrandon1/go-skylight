@@ -62,7 +62,7 @@ func newHTTPClient() *http.Client {
 //
 // Deprecated: Skylight no longer supports the legacy sessions endpoint. Use
 // NewClientWithRefreshToken instead, with a refresh token obtained via
-// LoginHeadless or the "skylight auth login --save" command.
+// LoginHeadless or the "skylight login --save" command.
 func NewClient(email, password string, opts ...ClientOption) (*Client, error) {
 	if email == "" || password == "" {
 		return nil, errors.New("email and password are required")

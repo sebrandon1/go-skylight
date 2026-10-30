@@ -29,7 +29,7 @@ Config is loaded automatically from `~/.skylight/config` (refresh token, frame I
 Always resolve family member names to category IDs dynamically — never hardcode them:
 
 ```bash
-skylight category -o json
+skylight category list -o json
 ```
 
 Returns an array with `id`, `name`, `color`, and `avatar_url` per member. Use the `id` field when commands require `--assignee-id`.
@@ -100,12 +100,12 @@ Cross-reference balances with reward costs to show what each member can afford.
 ### Grocery
 
 ```bash
-skylight grocery show               # current grocery list with items
-skylight grocery add --title "Milk" --title "Eggs"
+skylight grocery list                          # list all grocery lists (to find list ID)
+skylight grocery show --list-id ID             # grocery list with items
+skylight grocery add --list-id ID --items "Milk,Eggs"
 skylight grocery add-recipe --recipe-id ID
-skylight grocery clear              # remove completed items
-skylight grocery organize           # deduplicate and sort by aisle
-skylight grocery list               # list all grocery lists (to find list ID)
+skylight grocery clear --list-id ID            # remove completed items
+skylight grocery organize --list-id ID         # deduplicate and sort by aisle
 ```
 
 ### Meals
@@ -146,7 +146,7 @@ Prints new completions and upcoming events as they happen. Ctrl+C to stop.
 
 ```bash
 skylight bounty list
-skylight bounty create --title "Clean Room" --points 5 --assignee-id ID --reward-title "Extra Screen Time" --date YYYY-MM-DD
+skylight bounty create --title "Clean Room" --points 5 --assignee-id ID --reward-title "Extra Screen Time" --due-date YYYY-MM-DD
 ```
 
 ### Rotation (Rotating Chore Assignments)
@@ -164,7 +164,7 @@ skylight import --file backup.json [--dry-run] [--resources chores,rewards]
 
 ## Output Format
 
-Use `-o json` when you need to parse data programmatically. Use `-o table` (or omit `-o`) for human-readable display. Default is `json`.
+Use `-o json` when you need to parse data programmatically. Use `-o table` for human-readable display. Default is `json`.
 
 ## Notes
 

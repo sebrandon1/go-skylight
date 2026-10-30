@@ -5,8 +5,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- `message list|send|update|delete`: household text messages, sent now or scheduled with optional recurrence (#542)
+- `ListMessages`, `SendMessage`, `UpdateMessage`, `DeleteMessage` and the `Message`/`MessageData` types (#542)
 - `routine create`/`routine update`: `--emoji-icon`, `--points` and `--track-habit` (#532)
 - `RoutineUpdateData`: `EmojiIcon`, `Points` and `TrackHabit`, sent by `UpdateRoutine`; `TrackHabit` is a `*bool` so `false` turns habit tracking off (#532)
+
+### Changed
+- HTTP helpers, typed errors and retry now come from `github.com/sebrandon1/go-toolbox`; the exported error types are now type aliases of `httpx` types, so existing code still compiles (#540, #541)
+- Go toolchain bumped to 1.27.3 to fix GO-2026-6809 (#536)
 
 ### Fixed
 - `routine get` now correctly fetches a routine by scanning the chore list (matching `GetChore`'s approach) rather than calling a non-existent single-item endpoint that the API rejects with "chore not found" (#533)

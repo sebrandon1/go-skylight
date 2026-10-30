@@ -35,4 +35,4 @@ skylight import --file skylight-backup.json --dry-run
 - Routines come back with their time of day, icon, points and habit tracking. Past habit check-ins are not restored.
 - Chores that repeat a set time after they're completed come back once, waiting to be done, with the same repeat. Backups made before `export` recorded the repeat bring them back as one-off chores.
 - Assignees are matched by ID, and categories are not imported, so restore into the frame the backup came from.
-- Import doesn't check what's already on the frame. Importing the same file twice creates everything twice.
+- By default, import doesn't check what's already on the frame, so importing the same file twice creates everything twice. Pass `--skip-existing` to skip resources whose title already exists (photos are always uploaded again).
