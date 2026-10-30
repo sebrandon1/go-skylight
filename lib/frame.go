@@ -3,6 +3,8 @@ package lib
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 )
 
 // ListFrames retrieves all frames accessible to the authenticated user.
@@ -57,6 +59,69 @@ func (c *Client) ListDevices(ctx context.Context, frameID string) ([]Device, err
 		devices[i] = apiResp.Data[i].toDevice()
 	}
 	return devices, nil
+}
+
+// tabAttrSuffix is appended to a tab name to form its device_config attribute
+// (e.g. "meals" -> "meals_tab").
+const tabAttrSuffix = "_tab"
+
+// hideableTabs lists the navigation tabs a device can show or hide, in the
+// order the Skylight app lists them.
+var hideableTabs = []string{"home", "calendar", "lists", "tasks", "rewards", "meals", "recipes", "photos", "sleep"}
+
+// HideableTabs returns the tab names accepted by UpdateDeviceTabs, in the order
+// the Skylight app lists them.
+func HideableTabs() []string {
+	return slices.Clone(hideableTabs)
+}
+
+// GetDeviceConfig retrieves the navigation tab visibility of a device.
+func (c *Client) GetDeviceConfig(ctx context.Context, frameID, deviceID string) (*DeviceConfig, error) {
+	req, err := newRequest(ctx, "GET", c.deviceConfigURL(frameID, deviceID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create get device config request: %w", err)
+	}
+
+	var apiResp deviceConfigAPIResponse
+	if err := c.get(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to get device config: %w", err)
+	}
+
+	cfg := apiResp.toDeviceConfig(deviceID)
+	return &cfg, nil
+}
+
+// UpdateDeviceTabs shows (true) or hides (false) navigation tabs on a device.
+// Keys are tab names from HideableTabs; tabs not in the map are left unchanged.
+// Hiding a tab does not delete any of its data.
+func (c *Client) UpdateDeviceTabs(ctx context.Context, frameID, deviceID string, tabs map[string]bool) (*DeviceConfig, error) {
+	if len(tabs) == 0 {
+		return nil, fmt.Errorf("no tabs to update")
+	}
+	body := make(map[string]bool, len(tabs))
+	for name, shown := range tabs {
+		if !slices.Contains(hideableTabs, name) {
+			return nil, fmt.Errorf("unknown tab %q: must be one of %s", name, strings.Join(hideableTabs, ", "))
+		}
+		body[name+tabAttrSuffix] = shown
+	}
+
+	req, err := newRequestWithBody(ctx, "PATCH", c.deviceConfigURL(frameID, deviceID), body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create update device config request: %w", err)
+	}
+
+	var apiResp deviceConfigAPIResponse
+	if err := c.patch(req, &apiResp); err != nil {
+		return nil, fmt.Errorf("failed to update device tabs: %w", err)
+	}
+
+	cfg := apiResp.toDeviceConfig(deviceID)
+	return &cfg, nil
+}
+
+func (c *Client) deviceConfigURL(frameID, deviceID string) string {
+	return fmt.Sprintf("%s/frames/%s/devices/%s/device_config", c.effectiveURL(), pathSeg(frameID), pathSeg(deviceID))
 }
 
 // GetAvatars retrieves available avatars.

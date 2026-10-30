@@ -214,6 +214,8 @@ func printTableOutput(data any) bool {
 		printBountiesTable(v)
 	case []lib.Message:
 		printMessagesTable(v)
+	case []lib.DeviceConfig:
+		printDeviceTabsTable(v)
 	default:
 		return printTableOutputMore(data)
 	}

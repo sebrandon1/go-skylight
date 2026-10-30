@@ -229,6 +229,30 @@ func printDevicesTable(devices []lib.Device) {
 	w.Flush()
 }
 
+// printDeviceTabsTable prints one row per device and one column per tab,
+// in the order the Skylight app lists them.
+func printDeviceTabsTable(configs []lib.DeviceConfig) {
+	tabs := lib.HideableTabs()
+	w := newTableWriter()
+	fmt.Fprintln(w, "DEVICE\t"+strings.ToUpper(strings.Join(tabs, "\t")))
+	for _, c := range configs {
+		row := make([]string, len(tabs))
+		for i, t := range tabs {
+			shown, ok := c.Tabs[t]
+			switch {
+			case !ok:
+				row[i] = "-"
+			case shown:
+				row[i] = "shown"
+			default:
+				row[i] = "hidden"
+			}
+		}
+		fmt.Fprintf(w, "%s\t%s\n", c.DeviceID, strings.Join(row, "\t"))
+	}
+	w.Flush()
+}
+
 func printAvatarsTable(avatars []lib.Avatar) {
 	w := newTableWriter()
 	fmt.Fprintln(w, "ID\tNAME\tIMAGE URL")

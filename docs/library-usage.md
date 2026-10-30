@@ -114,7 +114,7 @@ if lib.IsValidation(err) { /* bad request */ }
 | Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |
 | Categories | ✓ | ✓ | ✓ | ✓ | profiles & labels |
 | Messages | ✓ | ✓ | ✓ | ✓ | household text messages (`/nudges`); scheduled and recurring |
-| Frame | ✓ | — | — | — | info, devices, avatars, colors |
+| Frame | ✓ | — | ✓ | — | info, devices, avatars, colors, per-device tab visibility |
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
 | Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |
 | Rotations | — | ✓ | — | — | rotating chore assignments |

@@ -38,7 +38,7 @@ cmd/                           # Cobra command definitions
   session.go                   # login command (with --save flag for config file)
   config.go                    # Config file loading/saving (~/.skylight/config)
   configcmd.go                 # config show|get|set|unset|edit subcommands
-  frame.go                     # frame list, info, devices, avatars, colors, list-albums, set-album, update
+  frame.go                     # frame list, info, devices, tabs, avatars, colors, list-albums, set-album, update
   calendar.go                  # calendar list, get, create, create-countdown, day, week, schedule, update, delete, sources, source-enable/disable
   calendar_schedule.go         # `schedule` subcommand — agenda view builder
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
@@ -84,7 +84,7 @@ lib/                           # API client library
   category.go                  # Category CRUD (list, create, update, delete), plus profile and label CRUD
   message.go                   # Household messages (API "nudges"): list, send, update, delete
   chore.go                     # Chore CRUD (JSON-API format)
-  frame.go                     # Frame info, devices, avatars, colors
+  frame.go                     # Frame info, devices, device tab visibility (device_config), avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
   meal.go                      # Recipes, meal sittings, meal categories, grocery list
   reward.go                    # Reward CRUD, redeem/unredeem, points, remove-stars (JSON-API format)
@@ -168,7 +168,7 @@ SKYLIGHT_QUIET=false
 - `profile list|create|update|delete` -- Household member profile management
 - `label list|create|update|delete` -- Event/task label management
 - `message list|send|update|delete` -- Household text messages, sent now or scheduled and recurring (Calendar Plus)
-- `frame list|info|devices|avatars|colors|list-albums|set-album|update` -- Frame info and settings
+- `frame list|info|devices|tabs|avatars|colors|list-albums|set-album|update` -- Frame info and settings (`update --hide-tabs/--show-tabs` sets per-device tab visibility)
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
 - `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order|clear` -- Grocery list management (Instacart ordering)

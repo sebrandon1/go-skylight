@@ -1,6 +1,9 @@
 package lib
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // apiRelationshipData is the JSON-API "data" object inside a to-one relationship.
 type apiRelationshipData struct {
@@ -892,6 +895,34 @@ func (e *deviceAPIEntry) toDevice() Device {
 		Nightlight:           e.Attributes.Nightlight,
 		NightlightBrightness: e.Attributes.NightlightBrightness,
 	}
+}
+
+// DeviceConfig holds the navigation tab visibility of a single Skylight
+// device. Tab visibility is per device, not per frame.
+type DeviceConfig struct {
+	DeviceID string `json:"device_id"`
+	// Tabs maps each tab name (see HideableTabs) to whether it is shown.
+	Tabs map[string]bool `json:"tabs"`
+}
+
+// deviceConfigAPIResponse wraps the JSON-API envelope for device_config
+// responses. Attributes are kept raw so tabs added by Skylight later are
+// surfaced without a code change.
+type deviceConfigAPIResponse struct {
+	Data struct {
+		Attributes map[string]any `json:"attributes"`
+	} `json:"data"`
+}
+
+func (r *deviceConfigAPIResponse) toDeviceConfig(deviceID string) DeviceConfig {
+	cfg := DeviceConfig{DeviceID: deviceID, Tabs: map[string]bool{}}
+	for k, v := range r.Data.Attributes {
+		name, ok := strings.CutSuffix(k, tabAttrSuffix)
+		if b, isBool := v.(bool); ok && isBool {
+			cfg.Tabs[name] = b
+		}
+	}
+	return cfg
 }
 
 // Album represents a photo album on a Skylight frame.
