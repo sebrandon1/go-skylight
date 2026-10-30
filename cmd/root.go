@@ -80,6 +80,7 @@ func init() {
 	rootCmd.AddCommand(categoryCmd)
 	rootCmd.AddCommand(profileCmd)
 	rootCmd.AddCommand(labelCmd)
+	rootCmd.AddCommand(messageCmd)
 	rootCmd.AddCommand(frameCmd)
 	rootCmd.AddCommand(photoCmd)
 	rootCmd.AddCommand(configCmd)

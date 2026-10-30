@@ -1115,3 +1115,74 @@ type photoUploadURLResponse struct {
 type photoDeleteRequest struct {
 	MessageIDs []int `json:"message_ids"`
 }
+
+// Message is a household text message (the API calls it a "nudge") sent to
+// one or more family member categories, optionally scheduled and recurring.
+// ListMessages returns only messages that have not been delivered yet, with
+// one entry per occurrence for recurring messages.
+type Message struct {
+	ID          string   `json:"id"`
+	Body        string   `json:"body"`
+	DeliverAt   string   `json:"deliver_at,omitempty"`
+	RRule       string   `json:"rrule,omitempty"`
+	Recurring   bool     `json:"recurring"`
+	VoiceKind   string   `json:"voice_kind,omitempty"`
+	AudioURL    string   `json:"audio_url,omitempty"`
+	CategoryIDs []string `json:"category_ids"`
+}
+
+// MessageData holds the fields for message create/update requests.
+// CategoryIDs is required on create. DeliverAt (RFC 3339) schedules the
+// message; SendMessage fills in the current time when it is empty. RRule (e.g.
+// "FREQ=WEEKLY;BYDAY=SA") makes a scheduled message repeat.
+type MessageData struct {
+	Body        string   `json:"body,omitempty"`
+	DeliverAt   string   `json:"deliver_at,omitempty"`
+	RRule       string   `json:"rrule,omitempty"`
+	CategoryIDs []string `json:"category_ids,omitempty"`
+}
+
+// messageAPIResponse wraps the JSON-API envelope for message list responses.
+type messageAPIResponse struct {
+	Data []messageAPIEntry `json:"data"`
+}
+
+// messageAPISingleResponse wraps the JSON-API envelope for single message responses.
+type messageAPISingleResponse struct {
+	Data messageAPIEntry `json:"data"`
+}
+
+// messageAPIEntry represents a single nudge in JSON-API format.
+type messageAPIEntry struct {
+	ID         string `json:"id"`
+	Attributes struct {
+		Body      string `json:"body"`
+		DeliverAt string `json:"deliver_at"`
+		RRule     string `json:"rrule"`
+		Recurring bool   `json:"recurring"`
+		VoiceKind string `json:"voice_kind"`
+		AudioURL  string `json:"audio_url"`
+	} `json:"attributes"`
+	Relationships struct {
+		Categories struct {
+			Data []apiRelationshipData `json:"data"`
+		} `json:"categories"`
+	} `json:"relationships"`
+}
+
+func (e *messageAPIEntry) toMessage() Message {
+	m := Message{
+		ID:          e.ID,
+		Body:        e.Attributes.Body,
+		DeliverAt:   e.Attributes.DeliverAt,
+		RRule:       e.Attributes.RRule,
+		Recurring:   e.Attributes.Recurring,
+		VoiceKind:   e.Attributes.VoiceKind,
+		AudioURL:    e.Attributes.AudioURL,
+		CategoryIDs: make([]string, len(e.Relationships.Categories.Data)),
+	}
+	for i, c := range e.Relationships.Categories.Data {
+		m.CategoryIDs[i] = c.ID
+	}
+	return m
+}

@@ -344,3 +344,23 @@ func printFeatureBundleTable(bundle map[string]lib.FeatureState) {
 	}
 	w.Flush()
 }
+
+func printMessagesTable(messages []lib.Message) {
+	w := newTableWriter()
+	fmt.Fprintln(w, "ID\tDELIVER AT\tTO\tREPEATS\tTEXT")
+	for _, m := range messages {
+		to := make([]string, len(m.CategoryIDs))
+		for i, id := range m.CategoryIDs {
+			to[i] = resolveCatName(id)
+		}
+		deliverAt, repeats := m.DeliverAt, "-"
+		if t, err := time.Parse(time.RFC3339, m.DeliverAt); err == nil {
+			deliverAt = t.Local().Format("2006-01-02 15:04")
+		}
+		if m.RRule != "" {
+			repeats = m.RRule
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", m.ID, deliverAt, strings.Join(to, ","), repeats, m.Body)
+	}
+	w.Flush()
+}

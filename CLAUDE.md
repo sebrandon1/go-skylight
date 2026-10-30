@@ -1,6 +1,6 @@
 # go-skylight
 
-Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.com/) API. Provides command-line access to manage frames, calendars, chores, rewards, lists, meals, photos, routines, groceries, and family member categories on Skylight devices.
+Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.com/) API. Provides command-line access to manage frames, calendars, chores, rewards, lists, meals, messages, photos, routines, groceries, and family member categories on Skylight devices.
 
 ## Go Version
 
@@ -52,6 +52,7 @@ cmd/                           # Cobra command definitions
   category.go                  # category list, create, update, delete
   profile.go                   # profile list, create, update, delete (household member profiles)
   label.go                     # label list, create, update, delete (event/task labels)
+  message.go                   # message list, send, update, delete (household text messages)
   template.go                  # template save|apply|list|delete (stored in ~/.skylight/templates/)
   photo.go                     # photo list, upload, delete, download
   routine.go                   # routine list, get, create, update, delete
@@ -81,6 +82,7 @@ lib/                           # API client library
   doc.go                       # Package-level godoc
   calendar.go                  # Calendar event CRUD, source calendars
   category.go                  # Category CRUD (list, create, update, delete), plus profile and label CRUD
+  message.go                   # Household messages (API "nudges"): list, send, update, delete
   chore.go                     # Chore CRUD (JSON-API format)
   frame.go                     # Frame info, devices, avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
@@ -165,6 +167,7 @@ SKYLIGHT_QUIET=false
 - `category list|create|update|delete` -- Family member category management
 - `profile list|create|update|delete` -- Household member profile management
 - `label list|create|update|delete` -- Event/task label management
+- `message list|send|update|delete` -- Household text messages, sent now or scheduled and recurring (Calendar Plus)
 - `frame list|info|devices|avatars|colors|list-albums|set-album` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
