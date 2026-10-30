@@ -38,4 +38,7 @@ const (
 	// Frame update flag names
 	flagScreensaverShowWeather = "screensaver-show-weather"
 	flagScreensaverShowEvents  = "screensaver-show-events"
+	flagHideTabs               = "hide-tabs"
+	flagShowTabs               = "show-tabs"
+	flagDeviceID               = "device-id"
 )

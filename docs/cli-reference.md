@@ -204,12 +204,20 @@ skylight message delete --message-id ID [--dry-run] [--yes]
 skylight frame list
 skylight frame info
 skylight frame devices
+skylight frame tabs [--device-id ID]     # which navigation tabs each device shows
 skylight frame avatars
 skylight frame colors
 skylight frame list-albums
 skylight frame set-album --album-id ID   # -1 for all photos; use list-albums to find IDs
 skylight frame update [--screensaver-show-weather=true|false] [--screensaver-show-events=true|false]
+                      [--hide-tabs TABS] [--show-tabs TABS] [--device-id ID]
 ```
+
+Show and hide tabs:
+
+- Tabs: `home`, `calendar`, `lists`, `tasks`, `rewards`, `meals`, `recipes`, `photos`, `sleep`. Pass several as a comma-separated list, e.g. `--hide-tabs meals,recipes`.
+- Tab visibility is set per device, not per frame. `--device-id` is needed only when the frame has more than one device; `frame devices` lists their IDs.
+- Hiding a tab does not delete any of its data. Tabs you don't name are left unchanged.
 
 ## Add-ons
 

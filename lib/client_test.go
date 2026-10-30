@@ -427,6 +427,7 @@ func TestBadURLNewRequestErrors(t *testing.T) {
 		}},
 		{"GetFrame", func(c *Client) error { _, err := c.GetFrame(context.Background(), "f"); return err }},
 		{"ListDevices", func(c *Client) error { _, err := c.ListDevices(context.Background(), "f"); return err }},
+		{"GetDeviceConfig", func(c *Client) error { _, err := c.GetDeviceConfig(context.Background(), "f", "d"); return err }},
 		{"GetAvatars", func(c *Client) error { _, err := c.GetAvatars(context.Background()); return err }},
 		{"GetColors", func(c *Client) error { _, err := c.GetColors(context.Background()); return err }},
 		{"ListLists", func(c *Client) error { _, err := c.ListLists(context.Background(), "f"); return err }},
@@ -462,6 +463,10 @@ func TestBadURLNewRequestErrors(t *testing.T) {
 		}},
 		{"CreateChore", func(c *Client) error {
 			_, err := c.CreateChore(context.Background(), "f", ChoreData{Title: "T"})
+			return err
+		}},
+		{"UpdateDeviceTabs", func(c *Client) error {
+			_, err := c.UpdateDeviceTabs(context.Background(), "f", "d", map[string]bool{"meals": false})
 			return err
 		}},
 		{"UpdateChore", func(c *Client) error {

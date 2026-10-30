@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- `frame tabs` and `frame update --hide-tabs/--show-tabs/--device-id`: show and hide navigation tabs on a device (#537)
+- `GetDeviceConfig`, `UpdateDeviceTabs`, `HideableTabs` and the `DeviceConfig` type (#537)
 - `message list|send|update|delete`: household text messages, sent now or scheduled with optional recurrence (#542)
 - `ListMessages`, `SendMessage`, `UpdateMessage`, `DeleteMessage` and the `Message`/`MessageData` types (#542)
 - `routine create`/`routine update`: `--emoji-icon`, `--points` and `--track-habit` (#532)

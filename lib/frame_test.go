@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -590,5 +591,147 @@ func TestGetColors(t *testing.T) {
 				t.Errorf("colors[0].Hex: want %q got %q", tc.wantHex, colors[0].Hex)
 			}
 		})
+	}
+}
+
+const deviceConfigResponse = `{"data":{"id":"d1","type":"device_config","attributes":{"home_tab":true,"calendar_tab":true,"meals_tab":false,"recipes_tab":false,"future_tab":true,"not_a_tab":"x"}}}`
+
+func TestGetDeviceConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   int
+		response string
+		want     map[string]bool
+		wantErr  bool
+	}{
+		{
+			name:     "parses tab booleans",
+			status:   http.StatusOK,
+			response: deviceConfigResponse,
+			want:     map[string]bool{"home": true, "calendar": true, "meals": false, "recipes": false, "future": true},
+		},
+		{
+			name:     "no attributes",
+			status:   http.StatusOK,
+			response: `{"data":{"id":"d1","type":"device_config","attributes":{}}}`,
+			want:     map[string]bool{},
+		},
+		{
+			name:    "not found",
+			status:  http.StatusNotFound,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/f1/devices/d1/device_config" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				w.WriteHeader(tc.status)
+				fmt.Fprint(w, tc.response)
+			}))
+			defer srv.Close()
+
+			client, _ := NewClientWithToken("u", "t", WithBaseURL(srv.URL+"/api"))
+			cfg, err := client.GetDeviceConfig(context.Background(), "f1", "d1")
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if tc.wantErr {
+				return
+			}
+			if cfg.DeviceID != "d1" {
+				t.Errorf("DeviceID: want d1 got %q", cfg.DeviceID)
+			}
+			if !maps.Equal(cfg.Tabs, tc.want) {
+				t.Errorf("Tabs: want %v got %v", tc.want, cfg.Tabs)
+			}
+		})
+	}
+}
+
+func TestUpdateDeviceTabs(t *testing.T) {
+	tests := []struct {
+		name     string
+		tabs     map[string]bool
+		status   int
+		wantBody map[string]bool
+		wantCall bool
+		wantErr  bool
+	}{
+		{
+			name:     "sends only the given tabs with _tab suffix",
+			tabs:     map[string]bool{"meals": false, "photos": true},
+			status:   http.StatusOK,
+			wantBody: map[string]bool{"meals_tab": false, "photos_tab": true},
+			wantCall: true,
+		},
+		{
+			name:    "unknown tab rejected before request",
+			tabs:    map[string]bool{"chores": false},
+			wantErr: true,
+		},
+		{
+			name:    "empty map rejected before request",
+			tabs:    map[string]bool{},
+			wantErr: true,
+		},
+		{
+			name:     "server error",
+			tabs:     map[string]bool{"meals": false},
+			status:   http.StatusUnprocessableEntity,
+			wantCall: true,
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			called := false
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				if r.Method != http.MethodPatch {
+					t.Errorf("expected PATCH, got %s", r.Method)
+				}
+				if r.URL.Path != "/api/frames/f1/devices/d1/device_config" {
+					t.Errorf("unexpected path: %s", r.URL.Path)
+				}
+				var body map[string]bool
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				if tc.wantBody != nil && !maps.Equal(body, tc.wantBody) {
+					t.Errorf("body: want %v got %v", tc.wantBody, body)
+				}
+				w.WriteHeader(tc.status)
+				fmt.Fprint(w, deviceConfigResponse)
+			}))
+			defer srv.Close()
+
+			client, _ := NewClientWithToken("u", "t", WithBaseURL(srv.URL+"/api"))
+			cfg, err := client.UpdateDeviceTabs(context.Background(), "f1", "d1", tc.tabs)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
+			}
+			if called != tc.wantCall {
+				t.Errorf("request sent: want %v got %v", tc.wantCall, called)
+			}
+			if !tc.wantErr && cfg.Tabs["meals"] {
+				t.Errorf("expected returned config to have meals hidden, got %v", cfg.Tabs)
+			}
+		})
+	}
+}
+
+func TestHideableTabsReturnsCopy(t *testing.T) {
+	tabs := HideableTabs()
+	tabs[0] = "changed"
+	if HideableTabs()[0] != "home" {
+		t.Error("HideableTabs must return a copy")
 	}
 }
