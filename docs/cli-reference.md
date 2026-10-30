@@ -181,6 +181,23 @@ skylight label update --label-id ID [--name NAME] [--color COLOR]
 skylight label delete --label-id ID [--yes]
 ```
 
+## Messages
+
+Household text messages (Calendar Plus). `--to` takes family member category IDs from `skylight profile list`.
+
+```bash
+skylight message list [--start-date YYYY-MM-DD] [--end-date YYYY-MM-DD]   # default: today + 30 days
+skylight message send --text TEXT --to ID[,ID...] [--send-at YYYY-MM-DDTHH:MM] [--repeat RRULE]
+skylight message update --message-id ID [--text TEXT] [--to ID[,ID...]] [--send-at TIME] [--repeat RRULE]
+skylight message delete --message-id ID [--dry-run] [--yes]
+```
+
+- With no `--send-at`, the message is delivered now. `--send-at` takes local time (`2026-11-07T08:00`) or RFC 3339.
+- `--text` is capped at 220 characters, the same as the app.
+- `--repeat` takes an RFC 5545 rule without the `RRULE:` prefix (e.g. `FREQ=WEEKLY;BYDAY=SA`) and needs `--send-at`.
+- `list` prints one row per delivery, so a recurring message shows once for each occurrence, all with the same ID.
+- Recurring deliveries keep a fixed UTC time, so the local delivery time moves an hour across a daylight saving change. This is server behavior.
+
 ## Frame
 
 ```bash

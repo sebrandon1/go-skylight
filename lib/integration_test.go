@@ -143,6 +143,18 @@ func sweepIntegrationTestResources() {
 	}
 
 	// Sweep calendar events (past year through next 30 days)
+	messages, err := c.ListMessages(ctx, frameID,
+		now.Format(DateFormat),
+		now.AddDate(2, 0, 0).Format(DateFormat),
+	)
+	if err == nil {
+		for _, m := range messages {
+			if strings.HasPrefix(m.Body, integrationTestPrefix) {
+				_ = c.DeleteMessage(ctx, frameID, m.ID)
+			}
+		}
+	}
+
 	events, err := c.ListCalendarEvents(ctx, frameID,
 		now.AddDate(-1, 0, 0).Format(DateFormat),
 		now.AddDate(0, 0, 30).Format(DateFormat),

@@ -55,6 +55,14 @@ bounty, err := client.CreateBounty(ctx, "frame-id", lib.BountyData{
     EmojiIcon:   "🍦",
 })
 
+// Send a household message to two family members on Saturday morning, every week
+msg, err := client.SendMessage(ctx, "frame-id", lib.MessageData{
+    Body:        "Soccer practice at 9!",
+    CategoryIDs: []string{"cat-1", "cat-2"},
+    DeliverAt:   "2026-11-07T08:00:00-06:00", // empty = deliver now
+    RRule:       "FREQ=WEEKLY;BYDAY=SA",
+})
+
 // Stream reward redemptions
 poller := lib.NewRewardsPoller(client, "frame-id", 60*time.Second, "")
 poller.Start(ctx)
@@ -105,6 +113,7 @@ if lib.IsValidation(err) { /* bad request */ }
 | Lists | ✓ | ✓ | ✓ | ✓ | items CRUD, task box |
 | Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |
 | Categories | ✓ | ✓ | ✓ | ✓ | profiles & labels |
+| Messages | ✓ | ✓ | ✓ | ✓ | household text messages (`/nudges`); scheduled and recurring |
 | Frame | ✓ | — | — | — | info, devices, avatars, colors |
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
 | Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |

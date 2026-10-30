@@ -634,3 +634,97 @@ func assertWeekdays(ctx context.Context, t *testing.T, client *Client, frameID, 
 	}
 	t.Errorf("occurrence weekdays: want %v got %v", want, got)
 }
+
+// TestIntegration_MessagesCRUD exercises the household messages (nudges)
+// endpoints. It only creates messages scheduled a year out so nothing is
+// delivered to the household's devices before cleanup deletes it.
+func TestIntegration_MessagesCRUD(t *testing.T) {
+	client, frameID := integrationClient(t)
+	ctx := context.Background()
+
+	profiles, err := client.ListProfiles(ctx, frameID)
+	if err != nil {
+		t.Fatalf("ListProfiles: %v", err)
+	}
+	if len(profiles) == 0 {
+		t.Skip("no profiles available — cannot address a message")
+	}
+
+	deliverAt := time.Now().AddDate(1, 0, 0).UTC().Truncate(time.Minute)
+	body := testPrefix() + "-message"
+
+	// Create
+	msg, err := client.SendMessage(ctx, frameID, MessageData{
+		Body:        body,
+		DeliverAt:   deliverAt.Format(time.RFC3339),
+		CategoryIDs: []string{profiles[0].ID},
+	})
+	if err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+	if msg.ID == "" {
+		t.Fatal("created message has empty ID")
+	}
+	t.Logf("created message %s for %s", msg.ID, deliverAt)
+
+	t.Cleanup(func() {
+		if err := client.DeleteMessage(context.Background(), frameID, msg.ID); err != nil && !IsNotFound(err) {
+			t.Errorf("cleanup DeleteMessage: %v", err)
+		}
+	})
+
+	got, err := time.Parse(time.RFC3339, msg.DeliverAt)
+	if err != nil || !got.Equal(deliverAt) {
+		t.Errorf("DeliverAt = %q (err %v), want %s", msg.DeliverAt, err, deliverAt)
+	}
+	if len(msg.CategoryIDs) != 1 || msg.CategoryIDs[0] != profiles[0].ID {
+		t.Errorf("CategoryIDs = %v, want [%s]", msg.CategoryIDs, profiles[0].ID)
+	}
+
+	after := deliverAt.AddDate(0, 0, -1).Format(DateFormat)
+	before := deliverAt.AddDate(0, 0, 15).Format(DateFormat)
+	findMessage := func() []Message {
+		t.Helper()
+		msgs, err := client.ListMessages(ctx, frameID, after, before)
+		if err != nil {
+			t.Fatalf("ListMessages: %v", err)
+		}
+		var matches []Message
+		for _, m := range msgs {
+			if m.ID == msg.ID {
+				matches = append(matches, m)
+			}
+		}
+		return matches
+	}
+
+	// Verify in list
+	if n := len(findMessage()); n != 1 {
+		t.Fatalf("expected 1 listed occurrence of %s, got %d", msg.ID, n)
+	}
+
+	// Update: new text and a weekly repeat
+	updated, err := client.UpdateMessage(ctx, frameID, msg.ID, MessageData{
+		Body:  body + "-updated",
+		RRule: "FREQ=WEEKLY",
+	})
+	if err != nil {
+		t.Fatalf("UpdateMessage: %v", err)
+	}
+	if updated.Body != body+"-updated" || !updated.Recurring {
+		t.Errorf("unexpected updated message: %+v", updated)
+	}
+
+	// A weekly message lists once per occurrence in the window (16 days → 2-3).
+	if n := len(findMessage()); n < 2 {
+		t.Errorf("expected recurring message to list multiple occurrences, got %d", n)
+	}
+
+	// Delete
+	if err := client.DeleteMessage(ctx, frameID, msg.ID); err != nil {
+		t.Fatalf("DeleteMessage: %v", err)
+	}
+	if n := len(findMessage()); n != 0 {
+		t.Errorf("expected message %s gone after delete, got %d occurrences", msg.ID, n)
+	}
+}
