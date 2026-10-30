@@ -4,7 +4,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 
 ## Go Version
 
-Go 1.27.0 minimum, toolchain 1.27.2 (see `go.mod`)
+Go 1.27.0 minimum, toolchain 1.27.3 (see `go.mod`)
 
 ## Dependencies
 
@@ -38,7 +38,7 @@ cmd/                           # Cobra command definitions
   session.go                   # login command (with --save flag for config file)
   config.go                    # Config file loading/saving (~/.skylight/config)
   configcmd.go                 # config show|get|set|unset|edit subcommands
-  frame.go                     # frame list, info, devices, avatars, colors, list-albums, set-album
+  frame.go                     # frame list, info, devices, avatars, colors, list-albums, set-album, update
   calendar.go                  # calendar list, get, create, create-countdown, day, week, schedule, update, delete, sources, source-enable/disable
   calendar_schedule.go         # `schedule` subcommand — agenda view builder
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
@@ -56,7 +56,7 @@ cmd/                           # Cobra command definitions
   template.go                  # template save|apply|list|delete (stored in ~/.skylight/templates/)
   photo.go                     # photo list, upload, delete, download
   routine.go                   # routine list, get, create, update, delete
-  grocery.go                   # grocery list, create, show, delete, add, add-recipe, update-item, delete-item, organize, order
+  grocery.go                   # grocery list, create, show, delete, add, add-recipe, update-item, delete-item, organize, order, clear
   bounty.go                    # bounty (chore + reward pair) create/list/update/delete
   rotation.go                  # chore rotation — generate rotating assignments across members
   addon.go                     # addon list — show frame add-ons and enabled state
@@ -168,10 +168,10 @@ SKYLIGHT_QUIET=false
 - `profile list|create|update|delete` -- Household member profile management
 - `label list|create|update|delete` -- Event/task label management
 - `message list|send|update|delete` -- Household text messages, sent now or scheduled and recurring (Calendar Plus)
-- `frame list|info|devices|avatars|colors|list-albums|set-album` -- Frame info and settings
+- `frame list|info|devices|avatars|colors|list-albums|set-album|update` -- Frame info and settings
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
-- `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order` -- Grocery list management (Instacart ordering)
+- `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order|clear` -- Grocery list management (Instacart ordering)
 - `addon list` -- Frame add-ons and enabled state
 
 ### Legacy `get` Command

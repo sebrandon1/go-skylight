@@ -9,7 +9,7 @@ All commands output JSON by default. Pipe to `jq` to extract what you need:
 skylight chore list | jq '[.[] | select(.assignee_id == "6750876" and .status == "pending")]'
 
 # Total stars across all profiles
-skylight reward points | jq '[.[].current_point_balance] | add'
+skylight reward points | jq '[.[].balance] | add'
 
 # Names of all profiles
 skylight category list | jq '[.[].name]'
@@ -34,10 +34,11 @@ SKYLIGHT_REFRESH_TOKEN=your_token SKYLIGHT_FRAME_ID=3136444 skylight chore list
 
 ## Watch for live changes
 
-Prints a diff to stdout whenever chores, rewards, or calendar events change:
+Prints a diff to stdout whenever rewards, chores, calendar events, lists, routines, meals, or photos change. Narrow it with `--resources`:
 
 ```bash
 skylight watch
+skylight watch --resources chores,rewards
 ```
 
 ## Table output

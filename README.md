@@ -6,13 +6,14 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sebrandon1/go-skylight)](https://go.dev/)
 [![License](https://img.shields.io/github/license/sebrandon1/go-skylight)](LICENSE)
 
-Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.com) API. Manage frames, calendars, chores, rewards, lists, meals, and family member categories from the terminal or from Go code.
+Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.com) API. Manage frames, calendars, chores, rewards, lists, meals, household messages, and family member profiles and labels from the terminal or from Go code.
 
 > **Disclaimer:** This is an unofficial, community-built tool and is not affiliated with or endorsed by Skylight. It interacts with Skylight's undocumented API — behavior may change without notice. Use at your own risk.
 
 ## Key Features
 
-- Full CRUD for calendar events, chores, rewards, lists, recipes, categories, photos, and grocery lists, plus create/get/list/update/delete for routines
+- Full CRUD for calendar events, chores, rewards, lists, recipes, categories, profiles, labels, photos, and grocery lists, plus create/get/list/update/delete for routines
+- Household messages: send now or schedule, with recurring delivery (Calendar Plus)
 - OAuth2 login with automatic token rotation and config file persistence
 - Table and JSON output formats (`--output json|table`), quiet mode (`--quiet`)
 - Family activity analytics and chore completion streaks
@@ -92,7 +93,10 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `routine` | Routine create/get/list/update/delete (a routine is a recurring chore with a morning/afternoon/evening slot) |
 | `grocery` | Grocery list management, Instacart ordering, recipe import |
 | `category` | Family member category management (list/create/update/delete) |
-| `frame` | Frame info, devices, avatars, colors |
+| `profile` | Household member profile management (list/create/update/delete) |
+| `label` | Event/task label management (list/create/update/delete) |
+| `message` | Household text messages: list, send now or scheduled/recurring, update, delete |
+| `frame` | Frame info, devices, avatars, colors, albums, screensaver settings |
 | `addon` | Frame add-ons and enabled state |
 | `bounty` | Chore + reward pair management |
 | `rotation` | Rotating chore assignments |
@@ -131,9 +135,10 @@ make lint           # golangci-lint run ./...
 make vet            # go vet ./...
 make clean          # remove built binaries
 make integration    # integration tests (requires credentials - see below)
+make integration-read  # read-only integration tests
 ```
 
-CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.2.
+CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.3.
 
 ### Running Integration Tests
 

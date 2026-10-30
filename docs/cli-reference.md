@@ -21,7 +21,7 @@ All commands accept these persistent flags:
 
 ```bash
 skylight config show
-skylight config get <key>
+skylight config get <key> [--reveal]   # sensitive values are masked unless --reveal
 skylight config set <key> <value>
 skylight config unset <key>
 skylight config edit
@@ -56,7 +56,7 @@ skylight calendar list [--start-date DATE] [--end-date DATE]
 skylight calendar get --event-id ID
 skylight calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR]
 skylight calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR]
-skylight calendar delete --event-id ID
+skylight calendar delete --event-id ID [--dry-run] [--yes]
 skylight calendar day [--date DATE]           # default: today
 skylight calendar sources
 skylight calendar source-enable --source-id ID
@@ -76,7 +76,7 @@ skylight chore create --title TITLE [--description D] [--points N] [--assignee-i
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
 skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE] [--up-for-grabs] \
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
-skylight chore delete --chore-id ID
+skylight chore delete --chore-id ID [--recurring] [--dry-run] [--yes]   # --recurring deletes every instance
 skylight chore complete --chore-id ID
 skylight chore skip --chore-id ID [--defer-until DATE]
 skylight chore claim --chore-id ID --assignee-id ID
@@ -99,11 +99,11 @@ skylight reward list [--assignee-id ID] [--points-min N] [--points-max N] [--sta
 skylight reward get --reward-id ID
 skylight reward create --title TITLE --points N [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
 skylight reward update --reward-id ID [--title T] [--points N] [--emoji-icon EMOJI] [--no-respawn] [--category-ids 1,2]
-skylight reward delete --reward-id ID
-skylight reward redeem   --reward-id ID
-skylight reward unredeem --reward-id ID
+skylight reward delete --reward-id ID [--dry-run] [--yes]
+skylight reward redeem   --reward-id ID [--dry-run] [--yes]
+skylight reward unredeem --reward-id ID [--dry-run] [--yes]
 skylight reward points
-skylight reward remove-stars --assignee-id ID --points N
+skylight reward remove-stars --assignee-id ID --points N [--dry-run] [--yes]
 ```
 
 ## Lists
@@ -148,9 +148,9 @@ skylight meal plan --recipes ID,ID --start-date DATE [--categories ID,ID]
 ## Photos
 
 ```bash
-skylight photo list [--page-token TOKEN]
+skylight photo list [--page-token TOKEN] [--limit N]
 skylight photo upload --file PATH [--caption TEXT]
-skylight photo delete --photo-id ID [--photo-id ID ...]
+skylight photo delete --photo-id ID [--photo-id ID ...] [--dry-run] [--yes]
 skylight photo download [--photo-id ID ...] [--all] [--output-dir DIR]
 ```
 
@@ -160,16 +160,16 @@ skylight photo download [--photo-id ID ...] [--all] [--output-dir DIR]
 skylight category list
 skylight category create --name NAME [--color COLOR]
 skylight category update --category-id ID [--name NAME] [--color COLOR]
-skylight category delete --category-id ID
+skylight category delete --category-id ID [--dry-run] [--yes]
 ```
 
 ## Profiles
 
 ```bash
 skylight profile list
-skylight profile create --name NAME [--color COLOR] [--emoji EMOJI] [--avatar-id ID]
-skylight profile update --profile-id ID [--name NAME] [--color COLOR] [--emoji EMOJI] [--avatar-id ID]
-skylight profile delete --profile-id ID [--yes]
+skylight profile create --name NAME [--color COLOR]
+skylight profile update --profile-id ID [--name NAME] [--color COLOR]
+skylight profile delete --profile-id ID [--dry-run] [--yes]
 ```
 
 ## Labels
@@ -178,7 +178,7 @@ skylight profile delete --profile-id ID [--yes]
 skylight label list
 skylight label create --name NAME [--color COLOR]
 skylight label update --label-id ID [--name NAME] [--color COLOR]
-skylight label delete --label-id ID [--yes]
+skylight label delete --label-id ID [--dry-run] [--yes]
 ```
 
 ## Messages
@@ -238,7 +238,7 @@ skylight routine list [--assignee-id ID]
 skylight routine get --routine-id ID
 skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-id ID --start-date DATE [--emoji-icon E] [--points N] [--track-habit]
 skylight routine update --routine-id ID [--title T] [--time-of-day morning|afternoon|evening] [--emoji-icon E] [--points N] [--track-habit=true|false]
-skylight routine delete --routine-id ID
+skylight routine delete --routine-id ID [--dry-run] [--yes]
 ```
 
 `--points` sets the stars awarded each time the routine is done and must be greater than 0. `--track-habit=false` removes the routine's habit tracker; turning it back on starts a new one.
@@ -276,7 +276,7 @@ Templates are stored locally in `~/.skylight/templates/` as JSON files. Use `tem
 skylight template save  --name NAME [--resources chores,rewards]
 skylight template apply --name NAME [--start-date DATE] [--resources chores,rewards] [--dry-run]
 skylight template list
-skylight template delete --name NAME
+skylight template delete --name NAME [--yes]
 ```
 
 ## Export & Import
