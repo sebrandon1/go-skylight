@@ -23,7 +23,9 @@ func listAllPhotos(ctx context.Context, client *lib.Client, fid string) ([]lib.P
 			return nil, err
 		}
 		all = append(all, photos...)
-		if next == "" {
+		// The API keeps returning a next_page_token after the last page, so an
+		// empty page is the real end of the list.
+		if next == "" || len(photos) == 0 {
 			break
 		}
 		pageToken = next
@@ -214,9 +216,14 @@ var photoDownloadCmd = &cobra.Command{
 		}
 		var toDownload []lib.Photo
 		for _, p := range all {
-			if photoDownloadAll || wantIDs[p.ID] {
-				toDownload = append(toDownload, p)
+			if !photoDownloadAll && !wantIDs[p.ID] {
+				continue
 			}
+			if p.AssetURL == "" {
+				fmt.Fprintf(os.Stderr, "warning: skipping %s: no asset URL\n", p.ID)
+				continue
+			}
+			toDownload = append(toDownload, p)
 		}
 
 		if len(toDownload) == 0 {
@@ -228,27 +235,51 @@ var photoDownloadCmd = &cobra.Command{
 			return fmt.Errorf("creating output directory: %w", err)
 		}
 
+		failed := 0
 		for _, p := range toDownload {
-			data, err := client.DownloadPhoto(ctx, p.AssetURL)
+			filename, err := downloadPhotoFile(ctx, client, p, photoOutputDir)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "warning: downloading %s: %v\n", p.ID, err)
-				continue
-			}
-			ext := photoAssetExt(p.AssetURL, p.AssetType)
-			base := safePhotoFileBase(p.ID)
-			if base == "" {
-				fmt.Fprintf(os.Stderr, "warning: refusing unsafe photo id %q\n", p.ID)
-				continue
-			}
-			filename := filepath.Join(photoOutputDir, base+ext)
-			if err := os.WriteFile(filename, data, 0o600); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: writing %s: %v\n", filename, err)
+				fmt.Fprintf(os.Stderr, "warning: %s: %v\n", p.ID, err)
+				failed++
 				continue
 			}
 			printSuccessf("Saved %s\n", filename)
 		}
+		if failed > 0 {
+			return fmt.Errorf("%d of %d photo downloads failed", failed, len(toDownload))
+		}
 		return nil
 	},
+}
+
+// downloadPhotoFile streams a photo into a temp file in dir and renames it to
+// its final name, so a failed download never leaves a partial file behind.
+func downloadPhotoFile(ctx context.Context, client *lib.Client, p lib.Photo, dir string) (filename string, err error) {
+	base := safePhotoFileBase(p.ID)
+	if base == "" {
+		return "", fmt.Errorf("refusing unsafe photo id %q", p.ID)
+	}
+	tmp, err := os.CreateTemp(dir, base+".*.part")
+	if err != nil {
+		return "", fmt.Errorf("creating temp file: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tmp.Close()
+			os.Remove(tmp.Name())
+		}
+	}()
+	if _, err = client.DownloadPhotoTo(ctx, p.AssetURL, tmp); err != nil {
+		return "", err
+	}
+	if err = tmp.Close(); err != nil {
+		return "", fmt.Errorf("writing %s: %w", tmp.Name(), err)
+	}
+	filename = filepath.Join(dir, base+photoAssetExt(p.AssetURL, p.AssetType))
+	if err = os.Rename(tmp.Name(), filename); err != nil {
+		return "", fmt.Errorf("saving %s: %w", filename, err)
+	}
+	return filename, nil
 }
 
 // safePhotoFileBase returns a single path segment for a photo ID, or "" if unsafe.

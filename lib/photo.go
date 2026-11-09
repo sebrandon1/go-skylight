@@ -100,23 +100,33 @@ func (c *Client) UploadPhoto(ctx context.Context, frameID string, ext string, im
 // DownloadPhoto fetches the raw bytes of a photo from its CDN asset URL.
 // The URL is a pre-signed CloudFront URL returned by ListPhotos — no auth header is needed.
 func (c *Client) DownloadPhoto(ctx context.Context, assetURL string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", assetURL, nil)
+	var buf bytes.Buffer
+	if _, err := c.DownloadPhotoTo(ctx, assetURL, &buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// DownloadPhotoTo streams the asset at assetURL into w and returns the number
+// of bytes written. Use it instead of DownloadPhoto for large assets.
+func (c *Client) DownloadPhotoTo(ctx context.Context, assetURL string, w io.Writer) (int64, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, assetURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create download request: %w", err)
+		return 0, fmt.Errorf("failed to create download request: %w", err)
 	}
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download photo: %w", err)
+		return 0, fmt.Errorf("failed to download photo: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+		return 0, fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
-	data, err := io.ReadAll(resp.Body)
+	n, err := io.Copy(w, resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read photo data: %w", err)
+		return n, fmt.Errorf("failed to read photo data: %w", err)
 	}
-	return data, nil
+	return n, nil
 }
 
 // DeletePhotos deletes one or more photos by their message IDs.

@@ -1,8 +1,10 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -426,5 +428,50 @@ func TestUploadPhoto_S3Error(t *testing.T) {
 	_, err := client.UploadPhoto(context.Background(), "frame1", "jpg", []byte("test data"), "")
 	if err == nil {
 		t.Fatal("expected error for S3 failure, got nil")
+	}
+}
+
+func TestDownloadPhotoTo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/missing" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte("image-bytes"))
+	}))
+	defer srv.Close()
+	client := &Client{HTTPClient: srv.Client()}
+
+	var buf bytes.Buffer
+	n, err := client.DownloadPhotoTo(context.Background(), srv.URL+"/photo.jpg", &buf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != int64(len("image-bytes")) || buf.String() != "image-bytes" {
+		t.Errorf("got n=%d body=%q", n, buf.String())
+	}
+
+	buf.Reset()
+	if _, err := client.DownloadPhotoTo(context.Background(), srv.URL+"/missing", &buf); err == nil {
+		t.Error("expected an error for a non-200 response")
+	}
+	if buf.Len() != 0 {
+		t.Errorf("nothing should be written on a non-200 response, got %q", buf.String())
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("disk full") }
+
+func TestDownloadPhotoTo_WriteFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("image-bytes"))
+	}))
+	defer srv.Close()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.DownloadPhotoTo(context.Background(), srv.URL, failingWriter{}); err == nil {
+		t.Error("expected the write failure to be returned")
 	}
 }

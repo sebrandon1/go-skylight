@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebrandon1/go-skylight/lib"
 )
 
 func TestPhotoListCmd(t *testing.T) {
@@ -403,4 +406,113 @@ func TestPhotoDeleteCmd_InvalidID(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "invalid photo ID") {
 		t.Errorf("expected 'invalid photo ID' error, got: %v", err)
 	}
+}
+
+func photoDownloadMixedServer(t *testing.T) string {
+	t.Helper()
+	var base string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/good.jpg", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("image-bytes"))
+	})
+	mux.HandleFunc("/bad.jpg", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"data":[
+			{"id":"good","attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":%q}},
+			{"id":"bad","attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":%q}},
+			{"id":"..","attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":%q}},
+			{"id":"pending","attributes":{"status":"processing","asset_type":"image/jpeg","asset_url":""}}
+		]}`, base+"/good.jpg", base+"/bad.jpg", base+"/good.jpg")
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base = srv.URL
+	pointClientAt(t, clientAtURL(t, srv.URL))
+	return t.TempDir()
+}
+
+func TestPhotoDownloadCmd_PartialFailure(t *testing.T) {
+	dir := photoDownloadMixedServer(t)
+
+	origAll, origIDs, origDir := photoDownloadAll, photoID, photoOutputDir
+	photoDownloadAll, photoID, photoOutputDir = true, nil, dir
+	t.Cleanup(func() { photoDownloadAll, photoID, photoOutputDir = origAll, origIDs, origDir })
+
+	var runErr error
+	captureStdout(func() { runErr = photoDownloadCmd.RunE(photoDownloadCmd, nil) })
+
+	// Three photos have an asset URL: one saves, one 500s, one has an unsafe ID.
+	if runErr == nil || !strings.Contains(runErr.Error(), "2 of 3 photo downloads failed") {
+		t.Fatalf("error = %v, want 2 of 3 failed", runErr)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "good.jpg" {
+		t.Errorf("want only good.jpg and no .part files, got %v", entries)
+	}
+	info, err := entries[0].Info()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("mode = %04o, want 0600", perm)
+	}
+}
+
+func TestListAllPhotos_StopsOnEmptyPageWithToken(t *testing.T) {
+	requests := 0
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("page_token") != "more" {
+			fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{"status":"ready"}}],"meta":{"next_page_token":"more"}}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"more"}}`)
+	})
+	photos, err := listAllPhotos(context.Background(), client, "f1")
+	if err != nil {
+		t.Fatalf("listAllPhotos: %v", err)
+	}
+	if len(photos) != 1 || requests != 2 {
+		t.Errorf("got %d photos in %d requests, want 1 in 2", len(photos), requests)
+	}
+}
+
+func TestDownloadPhotoFile_Errors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("image-bytes"))
+	}))
+	defer srv.Close()
+	client := clientAtURL(t, srv.URL)
+	photo := lib.Photo{ID: "p1", AssetURL: srv.URL + "/a.jpg", AssetType: "image/jpeg"}
+
+	t.Run("missing directory", func(t *testing.T) {
+		missing := filepath.Join(t.TempDir(), "missing")
+		if _, err := downloadPhotoFile(context.Background(), client, photo, missing); err == nil {
+			t.Error("expected a temp file error")
+		}
+	})
+
+	t.Run("rename failure removes the part file", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, "p1.jpg", "child"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := downloadPhotoFile(context.Background(), client, photo, dir); err == nil {
+			t.Fatal("expected a rename error")
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 1 {
+			t.Errorf("part file left behind: %v", entries)
+		}
+	})
 }
