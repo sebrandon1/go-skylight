@@ -25,6 +25,9 @@ type clientConfig struct {
 	logger     *slog.Logger
 	limiter    *rate.Limiter
 	retry      retryConfig
+
+	tokenExchange  TokenExchangeFunc
+	onTokenRefresh func(refreshToken string) error
 }
 
 type retryConfig struct {
@@ -77,6 +80,24 @@ func WithAPIVersion(version string) ClientOption {
 // client makes exactly one attempt. maxAttempts is the total number of tries
 // (1 = no retry), baseDelay is the initial wait before the second attempt,
 // and maxDelay caps the per-attempt wait.
+// TokenExchangeFunc exchanges a refresh token for new tokens.
+type TokenExchangeFunc func(refreshToken, fingerprint string) (*OAuthTokenResponse, error)
+
+// WithTokenExchange replaces RefreshOAuthToken as the way a client built with
+// NewClientWithRefreshToken renews its tokens. Use it when tokens are shared
+// between processes and the exchange must be coordinated with their storage.
+func WithTokenExchange(fn TokenExchangeFunc) ClientOption {
+	return func(c *clientConfig) { c.tokenExchange = fn }
+}
+
+// WithTokenRefreshHandler registers fn to receive each refresh token issued to
+// the client, including the one from NewClientWithRefreshToken. Refresh tokens
+// are single-use, so a caller that keeps tokens across restarts must save each
+// one. An error from fn is logged and does not fail the request.
+func WithTokenRefreshHandler(fn func(refreshToken string) error) ClientOption {
+	return func(c *clientConfig) { c.onTokenRefresh = fn }
+}
+
 func WithRetry(maxAttempts int, baseDelay, maxDelay time.Duration) ClientOption {
 	return func(c *clientConfig) {
 		c.retry = retryConfig{

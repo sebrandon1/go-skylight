@@ -108,6 +108,9 @@ Press Ctrl+C to stop.`,
 		state.seeding = true
 		poll(ctx, client, state, pollResources)
 		state.seeding = false
+		if err := client.RefreshFailure(); err != nil {
+			return fmt.Errorf("watch stopped: %w", err)
+		}
 
 		// nil channel is never selected in a select statement — used when poller is inactive.
 		var pollerEvents <-chan lib.RedemptionEvent
@@ -127,6 +130,9 @@ Press Ctrl+C to stop.`,
 				return nil
 			case <-ticker.C:
 				poll(ctx, client, state, pollResources)
+				if err := client.RefreshFailure(); err != nil {
+					return fmt.Errorf("watch stopped: %w", err)
+				}
 			case e := <-pollerEvents:
 				printRedemptionEvent(e)
 			}

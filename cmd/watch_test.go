@@ -1,8 +1,13 @@
 package cmd
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/sebrandon1/go-skylight/lib"
 )
 
 func TestParseWatchResources_All(t *testing.T) {
@@ -155,5 +160,101 @@ func TestWatchState_TracksSeenPhotos(t *testing.T) {
 	state.seenPhotoIDs["p1"] = struct{}{}
 	if _, seen := state.seenPhotoIDs["p1"]; !seen {
 		t.Error("expected p1 to be seen after marking")
+	}
+}
+
+func TestWatchCmd_ExitsWhenTokenRefreshIsRejected(t *testing.T) {
+	oauthCalls := 0
+	oauth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		oauthCalls++
+		w.Header().Set("Content-Type", "application/json")
+		if oauthCalls == 1 {
+			fmt.Fprint(w, `{"access_token":"a1","refresh_token":"r1"}`)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"error":"invalid_grant"}`)
+	}))
+	defer oauth.Close()
+	origOAuth := lib.OAuthURL
+	lib.OAuthURL = oauth.URL
+	t.Cleanup(func() { lib.OAuthURL = origOAuth })
+
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/chores") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"timezone":"UTC"}}}`)
+	}))
+	defer api.Close()
+
+	client, err := lib.NewClientWithRefreshToken("r0", "fp", lib.WithBaseURL(api.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pointClientAt(t, client)
+	origInterval, origResources, origPersist := watchInterval, watchResources, watchPersist
+	watchInterval, watchResources, watchPersist = 1, "chores", false
+	t.Cleanup(func() { watchInterval, watchResources, watchPersist = origInterval, origResources, origPersist })
+
+	var runErr error
+	captureStderr(func() {
+		captureStdout(func() { runErr = watchCmd.RunE(watchCmd, nil) })
+	})
+	if !lib.IsAuthError(runErr) {
+		t.Errorf("error = %v, want an AuthError", runErr)
+	}
+}
+
+func TestWatchCmd_ExitsWhenRefreshIsRejectedAfterStartup(t *testing.T) {
+	oauthCalls := 0
+	oauth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		oauthCalls++
+		w.Header().Set("Content-Type", "application/json")
+		if oauthCalls == 1 {
+			fmt.Fprint(w, `{"access_token":"a1","refresh_token":"r1"}`)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"error":"invalid_grant"}`)
+	}))
+	defer oauth.Close()
+	origOAuth := lib.OAuthURL
+	lib.OAuthURL = oauth.URL
+	t.Cleanup(func() { lib.OAuthURL = origOAuth })
+
+	polls := 0
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if !strings.HasSuffix(r.URL.Path, "/chores") {
+			fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"timezone":"UTC"}}}`)
+			return
+		}
+		polls++
+		if polls > 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+	defer api.Close()
+
+	client, err := lib.NewClientWithRefreshToken("r0", "fp", lib.WithBaseURL(api.URL))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pointClientAt(t, client)
+	origInterval, origResources, origPersist := watchInterval, watchResources, watchPersist
+	watchInterval, watchResources, watchPersist = 1, "chores", false
+	t.Cleanup(func() { watchInterval, watchResources, watchPersist = origInterval, origResources, origPersist })
+
+	var runErr error
+	captureStderr(func() {
+		captureStdout(func() { runErr = watchCmd.RunE(watchCmd, nil) })
+	})
+	if !lib.IsAuthError(runErr) {
+		t.Errorf("error = %v, want an AuthError", runErr)
 	}
 }

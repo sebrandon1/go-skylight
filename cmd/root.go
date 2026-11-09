@@ -144,10 +144,34 @@ func tryRefreshTokenAuth() (handled bool, err error) {
 	return true, nil
 }
 
-// rotateRefreshToken exchanges a refresh token and saves its replacement while
-// holding the config lock. Refresh tokens are single-use, so a run that waited
-// on the lock must use the token the previous holder saved.
+// rotateRefreshToken builds a client from a refresh token. The client renews
+// through the same locked exchange on any later 401.
 func rotateRefreshToken(token, fingerprint string, preferFile bool) (*lib.Client, error) {
+	generated := false
+	if fingerprint == "" {
+		if saved, err := readConfigValues(); err == nil {
+			fingerprint = saved[cfgDeviceFingerprint]
+		}
+	}
+	if fingerprint == "" {
+		fingerprint, generated = newUUID(), true
+	}
+
+	exchange := func(current, fp string) (*lib.OAuthTokenResponse, error) {
+		tok, err := exchangeRefreshToken(current, fp, preferFile, generated)
+		if err == nil {
+			generated = false
+		}
+		return tok, err
+	}
+	return lib.NewClientWithRefreshToken(token, fingerprint, append(cliClientOptions(), lib.WithTokenExchange(exchange))...)
+}
+
+// exchangeRefreshToken exchanges a refresh token and saves its replacement
+// while holding the config lock. Refresh tokens are single-use, so a run that
+// waited on the lock, or a long-running command whose token another run has
+// since rotated, must use the token saved in the file.
+func exchangeRefreshToken(token, fingerprint string, preferFile, saveFingerprint bool) (*lib.OAuthTokenResponse, error) {
 	unlock, err := lockConfig()
 	if err != nil {
 		// The exchange still works without a lock, for example on a read-only
@@ -158,36 +182,27 @@ func rotateRefreshToken(token, fingerprint string, preferFile bool) (*lib.Client
 	}
 
 	if preferFile {
-		if saved, err := readConfigValues(); err == nil {
-			if v := saved[cfgRefreshToken]; v != "" {
-				token = v
-			}
-			if fingerprint == "" {
-				fingerprint = saved[cfgDeviceFingerprint]
-			}
+		if saved, err := readConfigValues(); err == nil && saved[cfgRefreshToken] != "" {
+			token = saved[cfgRefreshToken]
 		}
 	}
 
-	generated := fingerprint == ""
-	if generated {
-		fingerprint = newUUID()
-	}
-	c, err := lib.NewClientWithRefreshToken(token, fingerprint, cliClientOptions()...)
+	tok, err := lib.RefreshOAuthToken(token, fingerprint)
 	if err != nil {
 		return nil, err
 	}
 
-	tokenRotated := c.RefreshToken != "" && c.RefreshToken != token
-	if tokenRotated || generated {
+	tokenRotated := tok.RefreshToken != "" && tok.RefreshToken != token
+	if tokenRotated || saveFingerprint {
 		toSave := map[string]string{cfgDeviceFingerprint: fingerprint}
 		if tokenRotated {
-			toSave[cfgRefreshToken] = c.RefreshToken
+			toSave[cfgRefreshToken] = tok.RefreshToken
 		}
 		if err := saveConfigLocked(toSave); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to persist credentials, the next run will need a new login: %v\n", err)
 		}
 	}
-	return c, nil
+	return tok, nil
 }
 
 func tryLegacyEmailPasswordAuth() error {
