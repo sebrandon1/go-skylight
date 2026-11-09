@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -415,5 +416,114 @@ func TestPersistentPreRunE_AcceptsValidOutputFormats(t *testing.T) {
 		if err := rootCmd.PersistentPreRunE(cmd, nil); err != nil {
 			t.Errorf("unexpected error for --output=%q: %v", v, err)
 		}
+	}
+}
+
+// newSingleUseOAuthServer accepts each refresh token once and issues the next
+// token in the sequence token-1, token-2, and so on.
+func newSingleUseOAuthServer(t *testing.T, first string) {
+	t.Helper()
+	var mu sync.Mutex
+	current, n := first, 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("parsing form: %v", err)
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if r.PostForm.Get("refresh_token") != current {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, `{"error":"invalid_grant"}`)
+			return
+		}
+		n++
+		current = fmt.Sprintf("token-%d", n)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"access_token":"access-%d","refresh_token":%q,"expires_in":3600}`, n, current)
+	}))
+	t.Cleanup(srv.Close)
+	orig := lib.OAuthURL
+	lib.OAuthURL = srv.URL
+	t.Cleanup(func() { lib.OAuthURL = orig })
+}
+
+func TestRotateRefreshToken_ConcurrentRunsRotateInTurn(t *testing.T) {
+	resetAuthState(t)
+	newSingleUseOAuthServer(t, "stale-start")
+	configPath = filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_REFRESH_TOKEN=stale-start\nSKYLIGHT_DEVICE_FINGERPRINT=fp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	const runs = 8
+	errs := make(chan error, runs)
+	var wg sync.WaitGroup
+	for range runs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Every run starts with the token it read before taking the lock.
+			_, err := rotateRefreshToken("stale-start", "fp", true)
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("rotation failed: %v", err)
+		}
+	}
+
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := fmt.Sprintf("SKYLIGHT_REFRESH_TOKEN=token-%d", runs); !strings.Contains(string(raw), want) {
+		t.Errorf("config = %q, want it to contain %q", raw, want)
+	}
+}
+
+func TestRotateRefreshToken_TokenSource(t *testing.T) {
+	tests := []struct {
+		name       string
+		arg        string
+		preferFile bool
+		wantUsed   string
+	}{
+		{"file token wins when preferred", "older", true, "from-file"},
+		{"explicit token ignores the file", "from-flag", false, "from-flag"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetAuthState(t)
+			newSingleUseOAuthServer(t, tt.wantUsed)
+			configPath = filepath.Join(t.TempDir(), "config")
+			if err := os.WriteFile(configPath, []byte("SKYLIGHT_REFRESH_TOKEN=from-file\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := rotateRefreshToken(tt.arg, "fp", tt.preferFile); err != nil {
+				t.Fatalf("rotateRefreshToken: %v", err)
+			}
+		})
+	}
+}
+
+func TestRotateRefreshToken_ReusesSavedFingerprint(t *testing.T) {
+	resetAuthState(t)
+	newSingleUseOAuthServer(t, "start")
+	configPath = filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_REFRESH_TOKEN=start\nSKYLIGHT_DEVICE_FINGERPRINT=saved-fp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rotateRefreshToken("start", "", true); err != nil {
+		t.Fatalf("rotateRefreshToken: %v", err)
+	}
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "SKYLIGHT_DEVICE_FINGERPRINT=saved-fp") {
+		t.Errorf("saved fingerprint was replaced: %q", raw)
 	}
 }
