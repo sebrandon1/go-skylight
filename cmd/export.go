@@ -116,6 +116,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 
 		var mu sync.Mutex
 		var wg sync.WaitGroup
+		var photosFailed, photosTotal int
 
 		// launch runs fn in a goroutine, recovering any panic as an error.
 		// It sends the result before decrementing wg so the closer never
@@ -261,13 +262,16 @@ centered on today. Use --resources to limit which resource types are included.`,
 					return err
 				}
 				exports := make([]PhotoExport, 0, len(photos))
+				total, failed := 0, 0
 				for _, p := range photos {
 					if p.AssetURL == "" {
 						continue
 					}
+					total++
 					raw, err := client.DownloadPhoto(ctx, p.AssetURL)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "Warning: skipping photo %s: %v\n", p.ID, err)
+						failed++
 						continue
 					}
 					ext := strings.TrimPrefix(photoAssetExt(p.AssetURL, p.AssetType), ".")
@@ -278,6 +282,7 @@ centered on today. Use --resources to limit which resource types are included.`,
 				}
 				mu.Lock()
 				data.Photos = exports
+				photosTotal, photosFailed = total, failed
 				mu.Unlock()
 				return nil
 			})
@@ -305,12 +310,15 @@ centered on today. Use --resources to limit which resource types are included.`,
 
 		if exportOutputFile == "" || exportOutputFile == "-" {
 			fmt.Println(string(out))
-			return nil
+		} else {
+			if err := writeFileAtomic(exportOutputFile, out); err != nil {
+				return fmt.Errorf("writing %s: %w", exportOutputFile, err)
+			}
+			fmt.Printf("Exported to %s\n", exportOutputFile)
 		}
-		if err := os.WriteFile(exportOutputFile, out, 0o600); err != nil {
-			return fmt.Errorf("writing %s: %w", exportOutputFile, err)
+		if photosFailed > 0 {
+			return fmt.Errorf("export incomplete: %d of %d photos could not be downloaded", photosFailed, photosTotal)
 		}
-		fmt.Printf("Exported to %s\n", exportOutputFile)
 		return nil
 	},
 }
