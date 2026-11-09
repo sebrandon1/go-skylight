@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -521,5 +522,134 @@ func TestExportCmd_WritesToFile(t *testing.T) {
 	}
 	if len(data.Chores) != 2 {
 		t.Errorf("expected chores in exported file, got: %+v", data.Chores)
+	}
+}
+
+// exportPhotoTestServer serves one frame whose photos have the given assets.
+// An asset named "missing" returns 500, and "" has no asset URL at all.
+func exportPhotoTestServer(t *testing.T, assets []string) {
+	t.Helper()
+	var base string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/assets/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/missing") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write([]byte("image-bytes"))
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(r.URL.Path, "/messages") {
+			exportMockHandler()(w, r)
+			return
+		}
+		// Like the real API, keep offering a next page after the last one.
+		if r.URL.Query().Get("page_token") == "more" {
+			fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"more"}}`)
+			return
+		}
+		parts := make([]string, len(assets))
+		for i, a := range assets {
+			assetURL := ""
+			if a != "" {
+				assetURL = base + "/assets/" + a
+			}
+			parts[i] = fmt.Sprintf(`{"id":"p%d","attributes":{"status":"ready","asset_type":"image/jpeg","asset_url":%q}}`, i, assetURL)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"data":[%s],"meta":{"next_page_token":"more"}}`, strings.Join(parts, ","))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base = srv.URL
+	pointClientAt(t, clientAtURL(t, srv.URL))
+}
+
+func setExportFlags(t *testing.T, path, resources string) {
+	t.Helper()
+	origFile, origResources, origDays := exportOutputFile, exportResources, exportDays
+	exportOutputFile, exportResources, exportDays = path, resources, 1
+	t.Cleanup(func() {
+		exportOutputFile, exportResources, exportDays = origFile, origResources, origDays
+	})
+}
+
+func TestExportCmd_PhotoFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		assets     []string
+		wantPhotos int
+		wantErr    string
+	}{
+		{name: "one failed download", assets: []string{"good", "missing"}, wantPhotos: 1, wantErr: "export incomplete: 1 of 2 photos"},
+		{name: "all downloaded", assets: []string{"good", "also-good"}, wantPhotos: 2},
+		{name: "no asset url is not a failure", assets: []string{"good", ""}, wantPhotos: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exportPhotoTestServer(t, tt.assets)
+			path := filepath.Join(t.TempDir(), "export.json")
+			setExportFlags(t, path, exportResourcePhotos)
+
+			var runErr error
+			captureStdout(func() { runErr = exportCmd.RunE(exportCmd, nil) })
+
+			if tt.wantErr == "" && runErr != nil {
+				t.Fatalf("unexpected error: %v", runErr)
+			}
+			if tt.wantErr != "" && (runErr == nil || !strings.Contains(runErr.Error(), tt.wantErr)) {
+				t.Fatalf("error = %v, want it to contain %q", runErr, tt.wantErr)
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("partial export should still be written: %v", err)
+			}
+			var data ExportData
+			if err := json.Unmarshal(raw, &data); err != nil {
+				t.Fatalf("invalid export JSON: %v", err)
+			}
+			if len(data.Photos) != tt.wantPhotos {
+				t.Errorf("exported %d photos, want %d", len(data.Photos), tt.wantPhotos)
+			}
+		})
+	}
+}
+
+func TestExportCmd_PhotoFailureToStdoutStillPrints(t *testing.T) {
+	exportPhotoTestServer(t, []string{"good", "missing"})
+	setExportFlags(t, "", exportResourcePhotos)
+
+	var runErr error
+	out := captureStdout(func() { runErr = exportCmd.RunE(exportCmd, nil) })
+	if runErr == nil {
+		t.Error("expected an incomplete-export error")
+	}
+	if !strings.Contains(out, `"photos"`) {
+		t.Errorf("expected partial export on stdout, got: %s", out)
+	}
+}
+
+func TestExportCmd_FailedWriteKeepsPreviousFile(t *testing.T) {
+	newCmdTestClient(t, exportMockHandler())
+	dir := t.TempDir()
+	path := filepath.Join(dir, "export.json")
+	if err := os.WriteFile(path, []byte("previous backup"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	setExportFlags(t, path, exportResourceChores)
+
+	if err := exportCmd.RunE(exportCmd, nil); err == nil {
+		t.Fatal("expected a write error")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "previous backup" {
+		t.Errorf("previous file changed: %q", got)
 	}
 }
