@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -525,5 +526,31 @@ func TestRotateRefreshToken_ReusesSavedFingerprint(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), "SKYLIGHT_DEVICE_FINGERPRINT=saved-fp") {
 		t.Errorf("saved fingerprint was replaced: %q", raw)
+	}
+}
+
+func TestCLIClientOptions_RetryTransientGET(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		if calls == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+	defer srv.Close()
+
+	opts := append(cliClientOptions(), lib.WithBaseURL(srv.URL))
+	client, err := lib.NewClientWithToken("u", "t", opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ListRewards(context.Background(), "f1"); err != nil {
+		t.Fatalf("expected the 502 to be retried: %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2", calls)
 	}
 }

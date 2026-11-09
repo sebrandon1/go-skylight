@@ -6,9 +6,18 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
+)
+
+const (
+	cliRetryAttempts     = 3
+	cliRetryBaseDelay    = 500 * time.Millisecond
+	cliRetryMaxDelay     = 10 * time.Second
+	cliRequestsPerSecond = 5
+	cliRequestBurst      = 10
 )
 
 const (
@@ -163,7 +172,7 @@ func rotateRefreshToken(token, fingerprint string, preferFile bool) (*lib.Client
 	if generated {
 		fingerprint = newUUID()
 	}
-	c, err := lib.NewClientWithRefreshToken(token, fingerprint)
+	c, err := lib.NewClientWithRefreshToken(token, fingerprint, cliClientOptions()...)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +195,7 @@ func tryLegacyEmailPasswordAuth() error {
 		return nil
 	}
 	//nolint:staticcheck // intentional fallback for legacy callers.
-	c, err := lib.NewClient(email, password)
+	c, err := lib.NewClient(email, password, cliClientOptions()...)
 	if err != nil {
 		return fmt.Errorf("auto-login failed: %w", err)
 	}
@@ -203,11 +212,21 @@ func requireFrameID() error {
 	return nil
 }
 
+// cliClientOptions paces CLI requests and retries transient failures, so bulk
+// commands such as import survive rate limiting. The limit is an estimate,
+// since Skylight does not document one.
+func cliClientOptions() []lib.ClientOption {
+	return []lib.ClientOption{
+		lib.WithRetry(cliRetryAttempts, cliRetryBaseDelay, cliRetryMaxDelay),
+		lib.WithRateLimit(cliRequestsPerSecond, cliRequestBurst),
+	}
+}
+
 func getClient() (*lib.Client, error) {
 	if autoClient != nil {
 		return autoClient, nil
 	}
-	client, err := lib.NewClientWithToken(userID, token)
+	client, err := lib.NewClientWithToken(userID, token, cliClientOptions()...)
 	if err != nil {
 		return nil, fmt.Errorf("creating client: %w", err)
 	}
