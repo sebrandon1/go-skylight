@@ -48,7 +48,34 @@ func parseConfigFile(r io.Reader) (map[string]string, []string, error) {
 	return values, keys, scanner.Err()
 }
 
+// loadConfig fills every setting not given by a flag, from the environment
+// and then the config file. The refresh token is the exception: a saved token
+// is newer than an environment value, because tokens are single-use and each
+// run saves its replacement to the file.
 func loadConfig() {
+	for _, key := range knownConfigKeys {
+		if key != cfgRefreshToken {
+			applyEnvValue(key)
+		}
+	}
+	loadConfigFile()
+	applyEnvValue(cfgRefreshToken)
+
+	// cfgQuiet is stored as a string but drives a bool at runtime.
+	if !quiet && strings.EqualFold(quietConfigStr, "true") {
+		quiet = true
+	}
+}
+
+// applyEnvValue sets the global for key from the environment when it is empty.
+func applyEnvValue(key string) {
+	if ptr := configValues()[key]; *ptr == "" {
+		*ptr = os.Getenv(key)
+	}
+}
+
+// loadConfigFile fills empty settings from the config file, if there is one.
+func loadConfigFile() {
 	path := configPath
 	if path == "" {
 		path = defaultConfigPath()
@@ -77,10 +104,6 @@ func loadConfig() {
 		if ptr, exists := configValues()[key]; exists && *ptr == "" {
 			*ptr = value
 		}
-	}
-	// cfgQuiet is stored as a string in the config file but drives a bool at runtime.
-	if v, ok := values[cfgQuiet]; ok && !quiet && strings.EqualFold(v, "true") {
-		quiet = true
 	}
 }
 

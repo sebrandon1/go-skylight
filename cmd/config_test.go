@@ -558,3 +558,69 @@ func TestWriteFileAtomic_RenameFailureRemovesTemp(t *testing.T) {
 		t.Errorf("temp file left behind: %v", entries)
 	}
 }
+
+func TestLoadConfig_Environment(t *testing.T) {
+	tests := []struct {
+		name  string
+		file  string
+		env   map[string]string
+		flag  string
+		check func() string
+		want  string
+	}{
+		{name: "env used with no config file", env: map[string]string{cfgFrameID: "from-env"}, check: func() string { return frameID }, want: "from-env"},
+		{name: "env beats file", file: "SKYLIGHT_FRAME_ID=from-file\n", env: map[string]string{cfgFrameID: "from-env"}, check: func() string { return frameID }, want: "from-env"},
+		{name: "flag beats env", env: map[string]string{cfgFrameID: "from-env"}, flag: "from-flag", check: func() string { return frameID }, want: "from-flag"},
+		{name: "file used when env is empty", file: "SKYLIGHT_FRAME_ID=from-file\n", env: map[string]string{cfgFrameID: ""}, check: func() string { return frameID }, want: "from-file"},
+		{name: "file refresh token beats env", file: "SKYLIGHT_REFRESH_TOKEN=rt-file\n", env: map[string]string{cfgRefreshToken: "rt-env"}, check: func() string { return refreshToken }, want: "rt-file"},
+		{name: "env refresh token used with no file value", file: "SKYLIGHT_FRAME_ID=f\n", env: map[string]string{cfgRefreshToken: "rt-env"}, check: func() string { return refreshToken }, want: "rt-env"},
+		{name: "env output format", env: map[string]string{cfgOutput: outputTable}, check: func() string { return outputFormat }, want: outputTable},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetGlobals(t)
+			configPath = filepath.Join(t.TempDir(), "config")
+			if tt.file != "" {
+				if err := os.WriteFile(configPath, []byte(tt.file), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+			frameID = tt.flag
+			loadConfig()
+			if got := tt.check(); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoadConfig_EnvQuiet(t *testing.T) {
+	tests := []struct {
+		name string
+		file string
+		env  string
+		want bool
+	}{
+		{name: "env true", env: "true", want: true},
+		{name: "env false overrides file true", file: "SKYLIGHT_QUIET=true\n", env: "false", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetGlobals(t)
+			configPath = filepath.Join(t.TempDir(), "config")
+			if tt.file != "" {
+				if err := os.WriteFile(configPath, []byte(tt.file), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Setenv(cfgQuiet, tt.env)
+			loadConfig()
+			if quiet != tt.want {
+				t.Errorf("quiet = %v, want %v", quiet, tt.want)
+			}
+		})
+	}
+}
