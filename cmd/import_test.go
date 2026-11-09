@@ -1178,3 +1178,77 @@ func TestImportSkipExisting_RunImport(t *testing.T) {
 		t.Errorf("expected 'Imported 1/1' in output, got: %s", out)
 	}
 }
+
+func TestImport_SendsAllExportedFields(t *testing.T) {
+	allDay := `"all_day":false`
+	tests := []struct {
+		name string
+		run  func(*lib.Client)
+		want string
+	}{
+		{
+			name: "calendar event with every field",
+			run: func(c *lib.Client) {
+				importCalendarEvents(context.Background(), c, []lib.CalendarEvent{{Title: "Trip", Description: "Beach", StartAt: "2026-10-01T10:00:00Z", EndAt: "2026-10-01T11:00:00Z", Color: "#fff", CategoryID: "7"}})
+			},
+			want: `{"summary":"Trip","description":"Beach","starts_at":"2026-10-01T10:00:00Z","ends_at":"2026-10-01T11:00:00Z",` + allDay + `,"color":"#fff","category_id":"7"}`,
+		},
+		{
+			name: "calendar event omits absent fields",
+			run: func(c *lib.Client) {
+				importCalendarEvents(context.Background(), c, []lib.CalendarEvent{{Title: "Trip"}})
+			},
+			want: `{"summary":"Trip",` + allDay + `}`,
+		},
+		{
+			name: "recipe with meal category",
+			run: func(c *lib.Client) {
+				importRecipes(context.Background(), c, []lib.Recipe{{Title: "Tacos", MealCategoryID: "3"}}, nil)
+			},
+			want: `{"summary":"Tacos","meal_category_id":"3"}`,
+		},
+		{
+			name: "recipe omits absent category",
+			run: func(c *lib.Client) {
+				importRecipes(context.Background(), c, []lib.Recipe{{Title: "Tacos"}}, nil)
+			},
+			want: `{"summary":"Tacos"}`,
+		},
+		{
+			name: "sitting with recipe omits summary",
+			run: func(c *lib.Client) {
+				importSittings(context.Background(), c, []lib.MealSitting{{Summary: "dinner", RecipeID: "9", MealCategoryID: "3", Date: "2026-10-01"}})
+			},
+			want: `{"meal_recipe_id":"9","meal_category_id":"3","date":"2026-10-01"}`,
+		},
+		{
+			name: "sitting omits absent links",
+			run: func(c *lib.Client) {
+				importSittings(context.Background(), c, []lib.MealSitting{{Summary: "dinner", Date: "2026-10-01"}})
+			},
+			want: `{"summary":"dinner","date":"2026-10-01"}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []byte
+			client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+				got, _ = io.ReadAll(r.Body)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				fmt.Fprint(w, `{"data":[{"id":"x"}]}`)
+			})
+			tt.run(client)
+			var gotMap, wantMap map[string]any
+			if err := json.Unmarshal(got, &gotMap); err != nil {
+				t.Fatalf("decoding request %q: %v", got, err)
+			}
+			if err := json.Unmarshal([]byte(tt.want), &wantMap); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(gotMap, wantMap) {
+				t.Errorf("request body:\n got  %s\n want %s", got, tt.want)
+			}
+		})
+	}
+}

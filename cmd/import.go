@@ -408,7 +408,7 @@ func importRecipes(ctx context.Context, client *lib.Client, recipes []lib.Recipe
 			fmt.Fprintf(os.Stderr, "Skipping existing recipe %q\n", r.Title)
 			return 0, 0
 		}
-		if _, err := client.CreateRecipe(ctx, frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL}); err != nil {
+		if _, err := client.CreateRecipe(ctx, frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL, MealCategoryID: r.MealCategoryID}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating recipe %q: %v\n", r.Title, err)
 			return 1, 1
 		}
@@ -418,7 +418,13 @@ func importRecipes(ctx context.Context, client *lib.Client, recipes []lib.Recipe
 
 func importSittings(ctx context.Context, client *lib.Client, sittings []lib.MealSitting) (total, failed int) {
 	return parallelImport(sittings, func(s lib.MealSitting) (int, int) {
-		if _, err := client.CreateMealSitting(ctx, frameID, lib.MealSittingData{Summary: s.Summary, Date: s.Date}); err != nil {
+		data := lib.MealSittingData{Summary: s.Summary, RecipeID: s.RecipeID, MealCategoryID: s.MealCategoryID, Date: s.Date}
+		// A sitting takes its name from the recipe. The API rejects a summary
+		// sent alongside one with 422 "must be blank".
+		if data.RecipeID != "" {
+			data.Summary = ""
+		}
+		if _, err := client.CreateMealSitting(ctx, frameID, data); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating meal sitting %q: %v\n", s.Summary, err)
 			return 1, 1
 		}
@@ -429,7 +435,10 @@ func importSittings(ctx context.Context, client *lib.Client, sittings []lib.Meal
 func importCalendarEvents(ctx context.Context, client *lib.Client, events []lib.CalendarEvent) (total, failed int) {
 	return parallelImport(events, func(e lib.CalendarEvent) (int, int) {
 		allDay := e.AllDay
-		if _, err := client.CreateCalendarEvent(ctx, frameID, lib.CalendarEventData{Title: e.Title, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: &allDay}); err != nil {
+		if _, err := client.CreateCalendarEvent(ctx, frameID, lib.CalendarEventData{
+			Title: e.Title, Description: e.Description, StartAt: e.StartAt, EndAt: e.EndAt, AllDay: &allDay,
+			Color: e.Color, CategoryID: e.CategoryID,
+		}); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating calendar event %q: %v\n", e.Title, err)
 			return 1, 1
 		}
