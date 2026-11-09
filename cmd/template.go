@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,10 @@ var (
 	templateStartDate string
 	templateDryRun    bool
 )
+
+// templateChoreWindowDays is how far either side of today template save looks
+// for chores. Recurring chores collapse to one series however many rows match.
+const templateChoreWindowDays = 30
 
 func templateDir() (string, error) {
 	home, err := os.UserHomeDir()
@@ -35,12 +40,23 @@ type choreTemplate struct {
 	AssigneeID  string `json:"assignee_id,omitempty"`
 	DueDate     string `json:"due_date,omitempty"`
 	Recurring   bool   `json:"recurring,omitempty"`
+
+	RecurrenceSet   []string `json:"recurrence_set,omitempty"`
+	RecurringUntil  string   `json:"recurring_until,omitempty"`
+	RenewalUnit     string   `json:"renewal_unit,omitempty"`
+	RenewalInterval int      `json:"renewal_interval,omitempty"`
+	StartTime       string   `json:"start_time,omitempty"`
+	EmojiIcon       string   `json:"emoji_icon,omitempty"`
+	UpForGrabs      bool     `json:"up_for_grabs,omitempty"`
 }
 
 type rewardTemplate struct {
 	Title     string `json:"title"`
 	Points    int    `json:"points,omitempty"`
 	EmojiIcon string `json:"emoji_icon,omitempty"`
+	// CategoryIDs is required to apply the reward. Templates saved before this
+	// field existed must be saved again.
+	CategoryIDs []int `json:"category_ids,omitempty"`
 }
 
 type frameTemplate struct {
@@ -94,18 +110,33 @@ var templateSaveCmd = &cobra.Command{
 
 		ctx := cmd.Context()
 		if saveChores {
-			chores, err := client.ListChores(ctx, frameID, lib.ChoreListOptions{})
+			now := time.Now()
+			chores, err := listChoresWithUpForGrabs(ctx, client, lib.ChoreListOptions{
+				After:       now.AddDate(0, 0, -templateChoreWindowDays).Format(lib.DateFormat),
+				Before:      now.AddDate(0, 0, templateChoreWindowDays).Format(lib.DateFormat),
+				IncludeLate: true,
+			})
 			if err != nil {
 				return fmt.Errorf("fetching chores: %w", err)
 			}
-			for _, c := range chores {
+			creates, routines := choresToImport(chores, now.Format(lib.DateFormat))
+			for _, title := range routines {
+				fmt.Fprintf(os.Stderr, "Skipping routine chore %q (templates hold chores and rewards only)\n", title)
+			}
+			for _, d := range creates {
 				tmpl.Chores = append(tmpl.Chores, choreTemplate{
-					Title:       c.Title,
-					Description: c.Description,
-					Points:      c.Points,
-					AssigneeID:  c.AssigneeID,
-					DueDate:     c.DueDate,
-					Recurring:   c.Recurring,
+					Title:           d.Title,
+					Description:     d.Description,
+					Points:          d.Points,
+					AssigneeID:      d.AssigneeID,
+					DueDate:         d.DueDate,
+					RecurrenceSet:   d.RecurrenceSet,
+					RecurringUntil:  d.RecurringUntil,
+					RenewalUnit:     d.RenewalUnit,
+					RenewalInterval: d.RenewalInterval,
+					StartTime:       d.StartTime,
+					EmojiIcon:       d.EmojiIcon,
+					UpForGrabs:      d.UpForGrabs,
 				})
 			}
 		}
@@ -116,11 +147,11 @@ var templateSaveCmd = &cobra.Command{
 				return fmt.Errorf("fetching rewards: %w", err)
 			}
 			for _, r := range rewards {
-				tmpl.Rewards = append(tmpl.Rewards, rewardTemplate{
-					Title:     r.Title,
-					Points:    r.Points,
-					EmojiIcon: r.EmojiIcon,
-				})
+				rt := rewardTemplate{Title: r.Title, Points: r.Points, EmojiIcon: r.EmojiIcon}
+				if id, err := strconv.Atoi(r.CategoryID); err == nil {
+					rt.CategoryIDs = []int{id}
+				}
+				tmpl.Rewards = append(tmpl.Rewards, rt)
 			}
 		}
 
@@ -173,6 +204,16 @@ var templateApplyCmd = &cobra.Command{
 		applyChores := len(templateResources) == 0 || slices.Contains(templateResources, exportResourceChores)
 		applyRewards := len(templateResources) == 0 || slices.Contains(templateResources, exportResourceRewards)
 
+		// The API requires a category on every reward, so catch a missing one
+		// before any chores are created.
+		if applyRewards {
+			for _, r := range tmpl.Rewards {
+				if len(r.CategoryIDs) == 0 {
+					return fmt.Errorf("reward %q has no category; save the template again to record one", r.Title)
+				}
+			}
+		}
+
 		if templateDryRun {
 			if applyChores {
 				for _, c := range tmpl.Chores {
@@ -202,15 +243,26 @@ var templateApplyCmd = &cobra.Command{
 					dueDate = templateStartDate
 				}
 				data := lib.ChoreData{
-					Title:       c.Title,
-					Description: c.Description,
-					Points:      c.Points,
-					AssigneeID:  c.AssigneeID,
-					DueDate:     dueDate,
-					Recurring:   c.Recurring,
+					Title:           c.Title,
+					Description:     c.Description,
+					Points:          c.Points,
+					AssigneeID:      c.AssigneeID,
+					DueDate:         dueDate,
+					Recurring:       c.Recurring,
+					RecurrenceSet:   c.RecurrenceSet,
+					RecurringUntil:  c.RecurringUntil,
+					RenewalUnit:     c.RenewalUnit,
+					RenewalInterval: c.RenewalInterval,
+					StartTime:       c.StartTime,
+					EmojiIcon:       c.EmojiIcon,
+					UpForGrabs:      c.UpForGrabs,
 				}
-				if _, err := client.CreateChore(ctx, frameID, data); err != nil {
-					return fmt.Errorf("creating chore %q: %w", c.Title, err)
+				create := client.CreateChore
+				if c.UpForGrabs {
+					create = client.CreateUpForGrabsChore
+				}
+				if _, err := create(ctx, frameID, data); err != nil {
+					return fmt.Errorf("creating chore %q after creating %d chore(s): %w", c.Title, createdChores, err)
 				}
 				createdChores++
 			}
@@ -219,12 +271,13 @@ var templateApplyCmd = &cobra.Command{
 		if applyRewards {
 			for _, r := range tmpl.Rewards {
 				data := lib.RewardData{
-					Title:     r.Title,
-					Points:    r.Points,
-					EmojiIcon: r.EmojiIcon,
+					Title:       r.Title,
+					Points:      r.Points,
+					EmojiIcon:   r.EmojiIcon,
+					CategoryIDs: r.CategoryIDs,
 				}
 				if _, err := client.CreateReward(ctx, frameID, data); err != nil {
-					return fmt.Errorf("creating reward %q: %w", r.Title, err)
+					return fmt.Errorf("creating reward %q after creating %d chore(s) and %d reward(s): %w", r.Title, createdChores, createdRewards, err)
 				}
 				createdRewards++
 			}
