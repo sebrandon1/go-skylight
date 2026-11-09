@@ -41,7 +41,11 @@ skylight config edit
 | `SKYLIGHT_OUTPUT` | Output format (`json` or `table`) |
 | `SKYLIGHT_QUIET` | Suppress non-essential success messages (`true`/`false`) |
 
-> **Note:** CLI flags take precedence over config file values.
+Each key can also be set as an environment variable of the same name.
+
+> **Note:** Settings resolve in this order: CLI flag, environment variable, config file. `SKYLIGHT_REFRESH_TOKEN` is the exception. A token already saved in the config file beats the environment value, because refresh tokens are single-use and each run saves its replacement to the file.
+>
+> A container with only `SKYLIGHT_REFRESH_TOKEN` and no persistent config can run once, because that token is spent on the first run. Mount `~/.skylight` so the replacement token is kept.
 
 ## Login
 
