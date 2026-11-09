@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -130,10 +131,20 @@ func runImportDryRun(data ExportData, want map[string]bool, today string) {
 	}
 	fmt.Printf("Dry run — would import into frame %s:\n", frameID)
 	for _, r := range allExportResources {
+		if r == exportResourceBounties && !shouldImportBounties(want) {
+			continue
+		}
 		if want[r] && r != exportResourceCategories {
 			fmt.Printf("  %-10s %d items\n", r, counts[r])
 		}
 	}
+}
+
+// shouldImportBounties reports whether bounties need their own import step. A
+// bounty is only a pairing of a chore and a reward, so when both of those are
+// imported the pair already exists and importing it again would duplicate it.
+func shouldImportBounties(want map[string]bool) bool {
+	return want[exportResourceBounties] && (!want[exportResourceChores] || !want[exportResourceRewards])
 }
 
 // titlesOf builds a set of titles from a slice using the provided accessor.
@@ -205,8 +216,10 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 	if want[exportResourceRoutines] {
 		tasks = append(tasks, func() (int, int) { return importRoutines(ctx, client, data.Routines, existing.routines) })
 	}
-	if want[exportResourceBounties] {
+	if shouldImportBounties(want) {
 		tasks = append(tasks, func() (int, int) { return importBounties(ctx, client, data.Bounties) })
+	} else if want[exportResourceBounties] && len(data.Bounties) > 0 {
+		fmt.Fprintf(os.Stderr, "Skipping %d bounties (their chores and rewards are imported directly)\n", len(data.Bounties))
 	}
 	if want[exportResourcePhotos] {
 		tasks = append(tasks, func() (int, int) { return importPhotos(ctx, client, data.Photos) })
@@ -227,14 +240,9 @@ func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward
 			fmt.Fprintf(os.Stderr, "Skipping existing reward %q\n", r.Title)
 			return 0, 0
 		}
-		// The API requires a category and takes it as a number.
-		if r.CategoryID == "" {
-			fmt.Fprintf(os.Stderr, "Error creating reward %q: no category in export; skipping\n", r.Title)
-			return 1, 1
-		}
-		categoryID, err := strconv.Atoi(r.CategoryID)
+		categoryID, err := rewardCategoryID(r)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating reward %q: category ID %q is not a number\n", r.Title, r.CategoryID)
+			fmt.Fprintf(os.Stderr, "Error creating reward %q: %v\n", r.Title, err)
 			return 1, 1
 		}
 		data := lib.RewardData{
@@ -251,6 +259,19 @@ func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward
 		}
 		return 1, 0
 	})
+}
+
+// rewardCategoryID returns the reward's category. The API requires one and
+// takes it as a number.
+func rewardCategoryID(r lib.Reward) (int, error) {
+	if r.CategoryID == "" {
+		return 0, errors.New("no category in export; skipping")
+	}
+	id, err := strconv.Atoi(r.CategoryID)
+	if err != nil {
+		return 0, fmt.Errorf("category ID %q is not a number", r.CategoryID)
+	}
+	return id, nil
 }
 
 // importChores skips chores with Routine == true: a routine is a chore, so
@@ -466,10 +487,17 @@ func importRoutines(ctx context.Context, client *lib.Client, routines []lib.Rout
 
 func importBounties(ctx context.Context, client *lib.Client, bounties []lib.Bounty) (total, failed int) {
 	return parallelImport(bounties, func(b lib.Bounty) (int, int) {
+		categoryID, err := rewardCategoryID(b.Reward)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating bounty %q: %v\n", b.Chore.Title, err)
+			return 1, 1
+		}
 		if _, err := client.CreateBounty(ctx, frameID, lib.BountyData{
 			Title:       b.Chore.Title,
 			Points:      b.Chore.Points,
 			DueDate:     b.Chore.DueDate,
+			AssigneeID:  b.Chore.AssigneeID,
+			CategoryIDs: []int{categoryID},
 			RewardTitle: b.Reward.Title,
 			EmojiIcon:   b.Reward.EmojiIcon,
 		}); err != nil {
