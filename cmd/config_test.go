@@ -360,3 +360,201 @@ func TestSaveConfig(t *testing.T) {
 	userID = ""
 	configPath = ""
 }
+
+func TestWriteFileAtomic(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFileAtomic(path, []byte("new")); err != nil {
+		t.Fatalf("writeFileAtomic: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "new" {
+		t.Errorf("content = %q, want new", got)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("mode = %04o, want 0600", perm)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("expected only the config in %s, found %d entries", dir, len(entries))
+	}
+}
+
+func TestWriteFileAtomic_FailureLeavesOriginal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config")
+	if err := os.WriteFile(path, []byte("KEY=original\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+
+	if err := writeFileAtomic(path, []byte("KEY=replaced\n")); err == nil {
+		t.Fatal("expected error writing into a read-only directory")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "KEY=original\n" {
+		t.Errorf("original changed: %q", got)
+	}
+}
+
+func TestSaveConfig_ReplacesSymlinkTarget(t *testing.T) {
+	resetAuthState(t)
+	dir := t.TempDir()
+	target := filepath.Join(dir, "real-config")
+	if err := os.WriteFile(target, []byte("A=1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	configPath = link
+
+	if err := saveConfig(map[string]string{"B": "2"}); err != nil {
+		t.Fatalf("saveConfig: %v", err)
+	}
+	info, err := os.Lstat(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Error("symlink was replaced by a regular file")
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "A=1\nB=2\n" {
+		t.Errorf("target content = %q", got)
+	}
+}
+
+func TestDeleteFromConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		content   string
+		key       string
+		wantFound bool
+		want      string
+	}{
+		{"removes key and keeps comments", "# note\nA=1\nB=2\n", "A", true, "# note\nB=2\n"},
+		{"missing key leaves file alone", "A=1\n", "B", false, "A=1\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resetAuthState(t)
+			configPath = filepath.Join(t.TempDir(), "config")
+			if err := os.WriteFile(configPath, []byte(tt.content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			found, err := deleteFromConfig(tt.key)
+			if err != nil {
+				t.Fatalf("deleteFromConfig: %v", err)
+			}
+			if found != tt.wantFound {
+				t.Errorf("found = %v, want %v", found, tt.wantFound)
+			}
+			got, err := os.ReadFile(configPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("content = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDeleteFromConfig_MissingFile(t *testing.T) {
+	resetAuthState(t)
+	configPath = filepath.Join(t.TempDir(), "config")
+	found, err := deleteFromConfig("A")
+	if err != nil || found {
+		t.Fatalf("got found=%v err=%v, want false, nil", found, err)
+	}
+}
+
+func TestConfigFunctions_NoConfigPath(t *testing.T) {
+	resetAuthState(t)
+	configPath = ""
+	t.Setenv("HOME", "")
+	if err := saveConfig(map[string]string{"A": "1"}); err == nil {
+		t.Error("saveConfig: expected an error with no config path")
+	}
+	if _, err := deleteFromConfig("A"); err == nil {
+		t.Error("deleteFromConfig: expected an error with no config path")
+	}
+	if _, err := readConfigValues(); err == nil {
+		t.Error("readConfigValues: expected an error with no config path")
+	}
+}
+
+func TestConfigWrites_ReadOnlyDirectoryKeepsFile(t *testing.T) {
+	resetAuthState(t)
+	dir := t.TempDir()
+	configPath = filepath.Join(dir, "config")
+	const original = "A=1\n"
+	if err := os.WriteFile(configPath, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// An existing lock file can still be opened in a read-only directory, so
+	// the failure comes from the atomic write.
+	if err := os.WriteFile(configPath+".lock", nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+
+	if err := saveConfig(map[string]string{"B": "2"}); err == nil {
+		t.Error("saveConfig: expected a write error")
+	}
+	if _, err := deleteFromConfig("A"); err == nil {
+		t.Error("deleteFromConfig: expected a write error")
+	}
+	got, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != original {
+		t.Errorf("config changed: %q", got)
+	}
+}
+
+func TestWriteFileAtomic_RenameFailureRemovesTemp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "target")
+	if err := os.MkdirAll(filepath.Join(path, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFileAtomic(path, []byte("data")); err == nil {
+		t.Fatal("expected a rename error when the target is a directory")
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("temp file left behind: %v", entries)
+	}
+}

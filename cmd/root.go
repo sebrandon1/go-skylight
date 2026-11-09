@@ -58,7 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&token, "token", "", "Bearer access token (alternative to --refresh-token)")
 	rootCmd.PersistentFlags().StringVar(&userID, "user-id", "", "User ID (used with --token)")
 	rootCmd.PersistentFlags().StringVar(&frameID, "frame-id", "", "Frame ID")
-	rootCmd.PersistentFlags().StringVar(&refreshToken, "refresh-token", "", "OAuth2 refresh token")
+	rootCmd.PersistentFlags().StringVar(&refreshToken, flagRefreshToken, "", "OAuth2 refresh token")
 	rootCmd.PersistentFlags().StringVar(&deviceFingerprint, "device-fingerprint", "", "Device fingerprint UUID (stable per device)")
 	// Default is "" (not "json") so loadConfig() can distinguish "flag set" from "unset".
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format: json or table")
@@ -121,28 +121,64 @@ func tryRefreshTokenAuth() (handled bool, err error) {
 		return false, nil
 	}
 
-	fingerprint := deviceFingerprint
-	generated := fingerprint == ""
-	if generated {
-		fingerprint = newUUID()
-	}
-	c, err := lib.NewClientWithRefreshToken(refreshToken, fingerprint)
+	// A token passed with --refresh-token is the caller's choice. Otherwise
+	// the config file holds the newest token.
+	preferFile := !rootCmd.PersistentFlags().Changed(flagRefreshToken)
+	c, err := rotateRefreshToken(refreshToken, deviceFingerprint, preferFile)
 	if err != nil {
 		return true, fmt.Errorf("auto-login failed: %w", err)
 	}
 	autoClient = c
-	tokenRotated := c.RefreshToken != "" && c.RefreshToken != refreshToken
+	if c.RefreshToken != "" {
+		refreshToken = c.RefreshToken
+	}
+	return true, nil
+}
+
+// rotateRefreshToken exchanges a refresh token and saves its replacement while
+// holding the config lock. Refresh tokens are single-use, so a run that waited
+// on the lock must use the token the previous holder saved.
+func rotateRefreshToken(token, fingerprint string, preferFile bool) (*lib.Client, error) {
+	unlock, err := lockConfig()
+	if err != nil {
+		// The exchange still works without a lock, for example on a read-only
+		// config volume.
+		fmt.Fprintf(os.Stderr, "warning: could not lock config, concurrent runs may conflict: %v\n", err)
+	} else {
+		defer unlock()
+	}
+
+	if preferFile {
+		if saved, err := readConfigValues(); err == nil {
+			if v := saved[cfgRefreshToken]; v != "" {
+				token = v
+			}
+			if fingerprint == "" {
+				fingerprint = saved[cfgDeviceFingerprint]
+			}
+		}
+	}
+
+	generated := fingerprint == ""
+	if generated {
+		fingerprint = newUUID()
+	}
+	c, err := lib.NewClientWithRefreshToken(token, fingerprint)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenRotated := c.RefreshToken != "" && c.RefreshToken != token
 	if tokenRotated || generated {
 		toSave := map[string]string{cfgDeviceFingerprint: fingerprint}
 		if tokenRotated {
 			toSave[cfgRefreshToken] = c.RefreshToken
-			refreshToken = c.RefreshToken
 		}
-		if err := saveConfig(toSave); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to persist credentials: %v\n", err)
+		if err := saveConfigLocked(toSave); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to persist credentials, the next run will need a new login: %v\n", err)
 		}
 	}
-	return true, nil
+	return c, nil
 }
 
 func tryLegacyEmailPasswordAuth() error {

@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 var (
@@ -81,18 +84,86 @@ func loadConfig() {
 	}
 }
 
-func saveConfig(values map[string]string) error {
+// resolveConfigPath returns the config file to read and write. A symlinked
+// config resolves to its target, so an atomic rename replaces the real file
+// rather than the link.
+func resolveConfigPath() (string, error) {
 	path := configPath
 	if path == "" {
 		path = defaultConfigPath()
 	}
 	if path == "" {
-		return fmt.Errorf("could not determine config path")
+		return "", errors.New("could not determine config path")
 	}
+	if target, err := filepath.EvalSymlinks(path); err == nil {
+		return target, nil
+	}
+	return path, nil
+}
 
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("creating config directory: %w", err)
+// lockConfig takes an exclusive advisory lock on <config>.lock, blocking until
+// it is available, and returns the function that releases it.
+func lockConfig() (unlock func(), err error) {
+	path, err := resolveConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, fmt.Errorf("creating config directory: %w", err)
+	}
+	f, err := os.OpenFile(path+".lock", os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("opening config lock: %w", err)
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		f.Close()
+		return nil, fmt.Errorf("locking config: %w", err)
+	}
+	// Closing the descriptor releases the flock.
+	return func() { f.Close() }, nil
+}
+
+// writeFileAtomic replaces path with data, mode 0600, through a temp file in
+// the same directory, so a failed write leaves any existing file untouched.
+func writeFileAtomic(path string, data []byte) (err error) {
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tmp.Close()
+			os.Remove(tmp.Name())
+		}
+	}()
+	if _, err = tmp.Write(data); err != nil {
+		return err
+	}
+	if err = tmp.Sync(); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
+}
+
+// saveConfig merges values into the config file under the config lock.
+func saveConfig(values map[string]string) error {
+	unlock, err := lockConfig()
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return saveConfigLocked(values)
+}
+
+// saveConfigLocked merges values into the config file. The caller holds the
+// config lock.
+func saveConfigLocked(values map[string]string) error {
+	path, err := resolveConfigPath()
+	if err != nil {
+		return err
 	}
 
 	// Read existing config to preserve unknown keys
@@ -115,29 +186,44 @@ func saveConfig(values map[string]string) error {
 		existing[k] = v
 	}
 
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
+	var buf bytes.Buffer
+	for _, k := range orderedKeys {
+		fmt.Fprintf(&buf, "%s=%s\n", k, existing[k])
+	}
+	if err := writeFileAtomic(path, buf.Bytes()); err != nil {
 		return fmt.Errorf("writing config: %w", err)
 	}
-	defer f.Close()
-
-	for _, k := range orderedKeys {
-		fmt.Fprintf(f, "%s=%s\n", k, existing[k])
-	}
-
 	return nil
+}
+
+// readConfigValues returns the key/value pairs currently in the config file.
+func readConfigValues() (map[string]string, error) {
+	path, err := resolveConfigPath()
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	values, _, err := parseConfigFile(f)
+	return values, err
 }
 
 // deleteFromConfig removes key from the config file.
 // Returns true if found and removed, false if the key was not present.
 func deleteFromConfig(key string) (bool, error) {
-	path := configPath
-	if path == "" {
-		path = defaultConfigPath()
+	path, err := resolveConfigPath()
+	if err != nil {
+		return false, err
 	}
-	if path == "" {
-		return false, fmt.Errorf("could not determine config path")
+
+	unlock, err := lockConfig()
+	if err != nil {
+		return false, err
 	}
+	defer unlock()
 
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -173,13 +259,12 @@ func deleteFromConfig(key string) (bool, error) {
 		return false, nil
 	}
 
-	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return false, err
-	}
-	defer out.Close()
+	var buf bytes.Buffer
 	for _, line := range lines {
-		fmt.Fprintln(out, line)
+		fmt.Fprintln(&buf, line)
+	}
+	if err := writeFileAtomic(path, buf.Bytes()); err != nil {
+		return false, fmt.Errorf("writing config: %w", err)
 	}
 	return true, nil
 }
