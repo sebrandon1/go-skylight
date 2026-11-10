@@ -53,6 +53,8 @@ Each key can also be set as an environment variable of the same name.
 skylight login [--save]
 ```
 
+With `--save`, tokens go to the config file and are not printed. If the save fails, the tokens are printed so the session isn't lost, and the command exits non-zero. Without `--save`, the tokens are printed.
+
 ## Calendar
 
 ```bash
