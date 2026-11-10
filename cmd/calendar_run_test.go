@@ -77,6 +77,31 @@ func TestCalendarListCmd(t *testing.T) {
 	}
 }
 
+func TestCalendarListCmd_SendsDefaultRange(t *testing.T) {
+	var gotMin, gotMax string
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/calendar_events") {
+			gotMin, gotMax = r.URL.Query().Get("date_min"), r.URL.Query().Get("date_max")
+			fmt.Fprint(w, `{"data":[]}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+	})
+	origStart, origEnd := calendarStartDate, calendarEndDate
+	calendarStartDate, calendarEndDate = "", ""
+	t.Cleanup(func() { calendarStartDate, calendarEndDate = origStart, origEnd })
+
+	captureStdout(func() {
+		if err := calendarListCmd.RunE(calendarListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if gotMin == "" || gotMax == "" {
+		t.Errorf("expected both date bounds, got date_min=%q date_max=%q", gotMin, gotMax)
+	}
+}
+
 func TestCalendarCreateCmd_WithColorAndCategory(t *testing.T) {
 	var gotColor, gotCatID string
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

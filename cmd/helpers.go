@@ -121,6 +121,35 @@ func validateDate(date string) error {
 	return nil
 }
 
+// shiftMonths returns date moved by the given number of months.
+func shiftMonths(date string, months int) (string, error) {
+	t, err := time.Parse(lib.DateFormat, date)
+	if err != nil {
+		return "", fmt.Errorf("invalid date %q: use YYYY-MM-DD format", date)
+	}
+	return t.AddDate(0, months, 0).Format(lib.DateFormat), nil
+}
+
+// fillDateRange completes a date range for the API endpoints that reject a
+// query missing either bound. With no bounds it returns the current calendar
+// month, and a lone bound is paired with a date one month away. The API treats
+// the end date as exclusive, so the month's end is the first of the next month.
+func fillDateRange(start, end string, now time.Time) (string, string, error) {
+	switch {
+	case start != "" && end != "":
+		return start, end, nil
+	case start != "":
+		shifted, err := shiftMonths(start, 1)
+		return start, shifted, err
+	case end != "":
+		shifted, err := shiftMonths(end, -1)
+		return shifted, end, err
+	default:
+		first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		return first.Format(lib.DateFormat), first.AddDate(0, 1, 0).Format(lib.DateFormat), nil
+	}
+}
+
 // validateEnum returns an error if value is non-empty and not present in allowed.
 func validateEnum(value string, allowed []string) error {
 	if value == "" || slices.Contains(allowed, value) {

@@ -59,6 +59,11 @@ var calendarListCmd = &cobra.Command{
 			}
 		}
 
+		start, end, err := fillDateRange(calendarStartDate, calendarEndDate, time.Now())
+		if err != nil {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -70,7 +75,7 @@ var calendarListCmd = &cobra.Command{
 			return err
 		}
 
-		events, err := client.ListCalendarEvents(ctx, frameID, calendarStartDate, calendarEndDate, frame.TimeZone)
+		events, err := client.ListCalendarEvents(ctx, frameID, start, end, frame.TimeZone)
 		if err != nil {
 			return fmt.Errorf("listing calendar events: %w", err)
 		}
@@ -467,8 +472,8 @@ func init() {
 	calendarGetCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to get")
 	markFlagRequired(calendarGetCmd, "event-id")
 
-	calendarListCmd.Flags().StringVar(&calendarStartDate, "start-date", "", "Start date filter")
-	calendarListCmd.Flags().StringVar(&calendarEndDate, "end-date", "", "End date filter")
+	calendarListCmd.Flags().StringVar(&calendarStartDate, "start-date", "", "Start date filter, YYYY-MM-DD (default: start of this month, or one month before --end-date)")
+	calendarListCmd.Flags().StringVar(&calendarEndDate, "end-date", "", "End date filter, exclusive, YYYY-MM-DD (default: start of next month, or one month after --start-date)")
 
 	calendarCreateCmd.Flags().StringVar(&calendarTitle, subTitle, "", "Event title")
 	calendarCreateCmd.Flags().StringVar(&calendarStartAt, "start-at", "", "Event start time")

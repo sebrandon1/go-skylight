@@ -58,7 +58,7 @@ With `--save`, tokens go to the config file and are not printed. If the save fai
 ## Calendar
 
 ```bash
-skylight calendar list [--start-date DATE] [--end-date DATE]
+skylight calendar list [--start-date DATE] [--end-date DATE]  # default: this month; end date is exclusive
 skylight calendar get --event-id ID
 skylight calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR]
 skylight calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR]
@@ -141,7 +141,7 @@ skylight meal recipe-info --recipe-id ID
 skylight meal create-recipe --title TITLE [--description D] [--ingredients a,b] [--url URL] [--meal-category-id ID]
 skylight meal update-recipe --recipe-id ID [--title T] [--description D] [--ingredients a,b] [--url URL]
 skylight meal delete-recipe --recipe-id ID [--dry-run] [--yes]
-skylight meal sittings [--date-min DATE] [--date-max DATE]
+skylight meal sittings [--date-min DATE] [--date-max DATE]  # default: this month; end date is exclusive
 skylight meal get-sitting --sitting-id ID
 skylight meal create-sitting --recipe-id ID --date DATE [--summary S] [--meal-category-id ID]
 skylight meal update-sitting --sitting-id ID [--date DATE] [--summary S] [--meal-category-id ID] [--recipe-id ID]

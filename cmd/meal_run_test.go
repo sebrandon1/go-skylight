@@ -153,6 +153,27 @@ func TestMealSittingsCmd(t *testing.T) {
 	}
 }
 
+func TestMealSittingsCmd_SendsDefaultRange(t *testing.T) {
+	var gotMin, gotMax string
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		gotMin, gotMax = r.URL.Query().Get("date_min"), r.URL.Query().Get("date_max")
+		fmt.Fprint(w, `{"data":[]}`)
+	})
+	origMin, origMax := sittingDateMin, sittingDateMax
+	sittingDateMin, sittingDateMax = "", ""
+	t.Cleanup(func() { sittingDateMin, sittingDateMax = origMin, origMax })
+
+	captureStdout(func() {
+		if err := mealSittingsCmd.RunE(mealSittingsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if gotMin == "" || gotMax == "" {
+		t.Errorf("expected both date bounds, got date_min=%q date_max=%q", gotMin, gotMax)
+	}
+}
+
 func TestMealCreateSittingCmd(t *testing.T) {
 	newCmdTestClient(t, mealMockHandler())
 	origRecipe, origDate, origCat := recipeID, sittingDate, mealCategoryID
