@@ -276,6 +276,9 @@ func postOAuthToken(data url.Values) (*OAuthTokenResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("oauth token request failed (status %d): %w", resp.StatusCode, &AuthError{Message: readErrorBody(resp.Body)})
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("oauth token request failed (status %d): %s", resp.StatusCode, readErrorBody(resp.Body))
 	}

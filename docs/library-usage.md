@@ -40,6 +40,8 @@ client, err := lib.NewClientWithToken("user-id", "api-token",
 
 `WithRetry` retries 5xx responses and transport errors for every method except POST. POST is retried only on 429, because a 5xx can follow a create the server already applied, and a retry could duplicate it.
 
+A client built with `NewClientWithRefreshToken` renews its access token on a 401 and replays the request once. Refresh tokens are single-use, so a program that restarts must save each new one with `WithTokenRefreshHandler`. After the server rejects a refresh, `RefreshFailure` returns its error and the client needs new credentials.
+
 ## Examples
 
 ```go

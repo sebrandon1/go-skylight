@@ -554,3 +554,68 @@ func TestCLIClientOptions_RetryTransientGET(t *testing.T) {
 		t.Errorf("calls = %d, want 2", calls)
 	}
 }
+
+func TestRotateRefreshToken_RefreshUsesTokenSavedByAnotherRun(t *testing.T) {
+	resetAuthState(t)
+	newSingleUseOAuthServer(t, "start")
+	configPath = filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(configPath, []byte("SKYLIGHT_REFRESH_TOKEN=start\nSKYLIGHT_DEVICE_FINGERPRINT=fp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	calls := 0
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		if r.Header.Get("Authorization") != "Bearer access-3" {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprint(w, `{"errors":["Invalid token"]}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+	defer api.Close()
+	origURL := lib.SkylightURL
+	lib.SkylightURL = api.URL
+	t.Cleanup(func() { lib.SkylightURL = origURL })
+
+	long, err := rotateRefreshToken("start", "fp", true)
+	if err != nil {
+		t.Fatalf("first rotation: %v", err)
+	}
+	// Another run rotates after this client was built, spending its token.
+	if _, err := rotateRefreshToken("start", "fp", true); err != nil {
+		t.Fatalf("second rotation: %v", err)
+	}
+
+	if _, err := long.ListRewards(context.Background(), "f1"); err != nil {
+		t.Fatalf("expected the client to recover using the saved token: %v", err)
+	}
+	if calls != 2 {
+		t.Errorf("API calls = %d, want 2", calls)
+	}
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "SKYLIGHT_REFRESH_TOKEN=token-3") {
+		t.Errorf("config = %q, want the newest token", raw)
+	}
+}
+
+func TestRotateRefreshToken_SavesGeneratedFingerprint(t *testing.T) {
+	resetAuthState(t)
+	newSingleUseOAuthServer(t, "start")
+	configPath = filepath.Join(t.TempDir(), "config")
+
+	if _, err := rotateRefreshToken("start", "", true); err != nil {
+		t.Fatalf("rotateRefreshToken: %v", err)
+	}
+	raw, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), cfgDeviceFingerprint+"=") {
+		t.Errorf("generated fingerprint was not saved: %q", raw)
+	}
+}

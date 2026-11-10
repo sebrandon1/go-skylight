@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sync"
 
 	"github.com/sebrandon1/go-toolbox/httpx"
 	"golang.org/x/time/rate"
@@ -51,6 +52,19 @@ type Client struct {
 	logger     *slog.Logger
 	limiter    *rate.Limiter
 	retry      retryConfig
+
+	// authMu guards APIToken, RefreshToken, authCache, authGeneration and
+	// refreshFailure once the client is in use.
+	authMu         sync.RWMutex
+	authGeneration uint64
+	refreshFailure error
+
+	// refreshMu lets one request at a time exchange the refresh token, which
+	// is single-use.
+	refreshMu      sync.Mutex
+	fingerprint    string
+	tokenExchange  TokenExchangeFunc
+	onTokenRefresh func(refreshToken string) error
 }
 
 func newHTTPClient() *http.Client {
@@ -95,8 +109,9 @@ func NewClient(email, password string, opts ...ClientOption) (*Client, error) {
 }
 
 // NewClientWithRefreshToken authenticates using an OAuth2 refresh token and
-// returns a ready-to-use client. The refresh token rotates on each use; the
-// caller should persist Client.RefreshToken after a successful call.
+// returns a ready-to-use client. The refresh token rotates on each use and the
+// client renews it again on a 401, so a caller that keeps tokens across restarts
+// should save each one with WithTokenRefreshHandler.
 func NewClientWithRefreshToken(refreshToken, fingerprint string, opts ...ClientOption) (*Client, error) {
 	if refreshToken == "" {
 		return nil, errors.New("refresh token is required")
@@ -105,27 +120,36 @@ func NewClientWithRefreshToken(refreshToken, fingerprint string, opts ...ClientO
 		return nil, errors.New("device fingerprint is required")
 	}
 
-	tok, err := RefreshOAuthToken(refreshToken, fingerprint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to authenticate: %w", err)
-	}
-
 	cfg := defaultClientConfig()
 	for _, o := range opts {
 		o(&cfg)
 	}
 
-	return &Client{
-		APIToken:     tok.AccessToken,
-		RefreshToken: tok.RefreshToken,
-		authCache:    "Bearer " + tok.AccessToken,
-		HTTPClient:   cfg.httpClient,
-		baseURL:      cfg.baseURL,
-		apiVersion:   cfg.apiVersion,
-		logger:       cfg.logger,
-		limiter:      cfg.limiter,
-		retry:        cfg.retry,
-	}, nil
+	exchange := cfg.tokenExchange
+	if exchange == nil {
+		exchange = RefreshOAuthToken
+	}
+	tok, err := exchange(refreshToken, fingerprint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to authenticate: %w", err)
+	}
+
+	c := &Client{
+		APIToken:       tok.AccessToken,
+		RefreshToken:   tok.RefreshToken,
+		authCache:      "Bearer " + tok.AccessToken,
+		HTTPClient:     cfg.httpClient,
+		baseURL:        cfg.baseURL,
+		apiVersion:     cfg.apiVersion,
+		logger:         cfg.logger,
+		limiter:        cfg.limiter,
+		retry:          cfg.retry,
+		fingerprint:    fingerprint,
+		tokenExchange:  exchange,
+		onTokenRefresh: cfg.onTokenRefresh,
+	}
+	c.notifyTokenRefresh(tok.RefreshToken)
+	return c, nil
 }
 
 // NewClientWithToken creates a client from a pre-existing user ID and Bearer
@@ -154,10 +178,16 @@ func NewClientWithToken(userID, token string, opts ...ClientOption) (*Client, er
 	}, nil
 }
 
-func (c *Client) setHeaders(req *http.Request) {
-	req.Header.Set("Authorization", c.authCache)
+// setHeaders applies the current credentials and returns their generation.
+func (c *Client) setHeaders(req *http.Request) uint64 {
+	c.authMu.RLock()
+	auth, generation := c.authCache, c.authGeneration
+	c.authMu.RUnlock()
+
+	req.Header.Set("Authorization", auth)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("skylight-api-version", c.apiVersion)
+	return generation
 }
 
 // effectiveURL returns the client's base URL, falling back to the package-level
@@ -176,8 +206,89 @@ func pathSeg(s string) string {
 	return httpx.PathSeg(s)
 }
 
+// do sends req. A client built from a refresh token renews its access token on
+// a 401 and replays the request once.
 func (c *Client) do(req *http.Request) (*http.Response, error) {
-	c.setHeaders(req)
+	generation := c.setHeaders(req)
+	resp, err := c.send(req)
+	if err != nil || resp.StatusCode != http.StatusUnauthorized || c.tokenExchange == nil {
+		return resp, err
+	}
+
+	replay := req.Clone(req.Context())
+	// doWithRetry leaves GetBody set on any request that has a body.
+	if req.GetBody != nil {
+		if replay.Body, err = req.GetBody(); err != nil {
+			return resp, nil //nolint:nilerr // the original 401 is the useful result
+		}
+	}
+	resp.Body.Close()
+
+	if err := c.refreshAccessToken(generation); err != nil {
+		return nil, fmt.Errorf("refreshing access token: %w", err)
+	}
+	c.setHeaders(replay)
+	return c.send(replay)
+}
+
+// refreshAccessToken exchanges the refresh token unless another request already
+// did so after generation, the credentials the caller's 401 was for.
+func (c *Client) refreshAccessToken(generation uint64) error {
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
+
+	c.authMu.RLock()
+	current, token := c.authGeneration, c.RefreshToken
+	c.authMu.RUnlock()
+	if current != generation {
+		return nil
+	}
+
+	tok, err := c.tokenExchange(token, c.fingerprint)
+	if err != nil {
+		if IsAuthError(err) {
+			c.authMu.Lock()
+			c.refreshFailure = err
+			c.authMu.Unlock()
+		}
+		return err
+	}
+
+	c.authMu.Lock()
+	c.APIToken = tok.AccessToken
+	c.authCache = "Bearer " + tok.AccessToken
+	if tok.RefreshToken != "" {
+		c.RefreshToken = tok.RefreshToken
+	}
+	c.authGeneration++
+	c.refreshFailure = nil
+	c.authMu.Unlock()
+
+	c.notifyTokenRefresh(tok.RefreshToken)
+	return nil
+}
+
+// notifyTokenRefresh hands a newly issued refresh token to the caller's handler.
+func (c *Client) notifyTokenRefresh(refreshToken string) {
+	if c.onTokenRefresh == nil || refreshToken == "" {
+		return
+	}
+	if err := c.onTokenRefresh(refreshToken); err != nil && c.logger != nil {
+		c.logger.Warn("token refresh handler failed", slog.String("error", err.Error()))
+	}
+}
+
+// RefreshFailure returns the error from the most recent token refresh the
+// server rejected, or nil if the last refresh succeeded. Once it is non-nil the
+// client cannot recover without new credentials, so long-running callers should
+// stop.
+func (c *Client) RefreshFailure() error {
+	c.authMu.RLock()
+	defer c.authMu.RUnlock()
+	return c.refreshFailure
+}
+
+func (c *Client) send(req *http.Request) (*http.Response, error) {
 
 	if c.logger != nil {
 		c.logger.Debug("skylight request",
