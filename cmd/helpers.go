@@ -121,6 +121,15 @@ func validateDate(date string) error {
 	return nil
 }
 
+// shiftMonths returns date moved by the given number of months.
+func shiftMonths(date string, months int) (string, error) {
+	t, err := time.Parse(lib.DateFormat, date)
+	if err != nil {
+		return "", fmt.Errorf("invalid date %q: use YYYY-MM-DD format", date)
+	}
+	return t.AddDate(0, months, 0).Format(lib.DateFormat), nil
+}
+
 // fillDateRange completes a date range for the API endpoints that reject a
 // query missing either bound. With no bounds it returns the current calendar
 // month, and a lone bound is paired with a date one month away. The API treats
@@ -130,17 +139,11 @@ func fillDateRange(start, end string, now time.Time) (string, string, error) {
 	case start != "" && end != "":
 		return start, end, nil
 	case start != "":
-		t, err := time.Parse(lib.DateFormat, start)
-		if err != nil {
-			return "", "", fmt.Errorf("invalid date %q: use YYYY-MM-DD format", start)
-		}
-		return start, t.AddDate(0, 1, 0).Format(lib.DateFormat), nil
+		shifted, err := shiftMonths(start, 1)
+		return start, shifted, err
 	case end != "":
-		t, err := time.Parse(lib.DateFormat, end)
-		if err != nil {
-			return "", "", fmt.Errorf("invalid date %q: use YYYY-MM-DD format", end)
-		}
-		return t.AddDate(0, -1, 0).Format(lib.DateFormat), end, nil
+		shifted, err := shiftMonths(end, -1)
+		return shifted, end, err
 	default:
 		first := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		return first.Format(lib.DateFormat), first.AddDate(0, 1, 0).Format(lib.DateFormat), nil

@@ -941,6 +941,9 @@ func TestFillDateRange(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
 			}
+			if tt.wantErr {
+				return
+			}
 			if start != tt.wantStart || end != tt.wantEnd {
 				t.Errorf("got %s..%s, want %s..%s", start, end, tt.wantStart, tt.wantEnd)
 			}
