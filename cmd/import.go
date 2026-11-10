@@ -102,7 +102,7 @@ creates everything twice.`,
 		if t, err := time.Parse(time.RFC3339, data.ExportedAt); err == nil {
 			today = max(today, t.Format(lib.DateFormat))
 		}
-		if importDryRun {
+		if importDryRun && !importSkipExisting {
 			runImportDryRun(data, want, today)
 			return nil
 		}
@@ -111,11 +111,62 @@ creates everything twice.`,
 		if err != nil {
 			return err
 		}
+		if importDryRun {
+			return runImportDryRunSkipExisting(cmd.Context(), client, data, want, today)
+		}
 		return runImport(cmd.Context(), client, data, want, today, importSkipExisting)
 	},
 }
 
 func runImportDryRun(data ExportData, want map[string]bool, today string) {
+	printImportPreview(data, want, today, nil)
+}
+
+// runImportDryRunSkipExisting previews an import that skips what is already on
+// the frame. It reads the frame but changes nothing.
+func runImportDryRunSkipExisting(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool, today string) error {
+	existing, err := fetchExistingSets(ctx, client, data, want)
+	if err != nil {
+		return err
+	}
+	printImportPreview(data, want, today, countExisting(data, existing, today))
+	return nil
+}
+
+// countExisting reports, per resource, how many exported items a real import
+// would skip. Each match mirrors the skip check in that resource's import
+// function. Photos are always created, so they are never counted.
+func countExisting(data ExportData, existing existingSets, today string) map[string]int {
+	creates, _ := choresToImport(data.Chores, today)
+	return map[string]int{
+		exportResourceChores:  countMatching(creates, func(d lib.ChoreData) bool { return existing.chores[d.Title] }),
+		exportResourceRewards: countMatching(data.Rewards, func(r lib.Reward) bool { return existing.rewards[r.Title] }),
+		exportResourceLists:   countMatching(data.Lists, func(l lib.List) bool { return existing.lists[l.Title] }),
+		exportResourceRecipes: countMatching(data.Recipes, func(r lib.Recipe) bool { return existing.recipes[r.Title] }),
+		exportResourceSittings: countMatching(data.MealSittings, func(s lib.MealSitting) bool {
+			return existing.sittings[sittingKey(s.Summary, s.Date)]
+		}),
+		exportResourceCalendar: countMatching(data.CalendarEvents, func(e lib.CalendarEvent) bool {
+			return existing.events[eventKey(e.Title, e.StartAt)]
+		}),
+		exportResourceRoutines: countMatching(data.Routines, func(r lib.Routine) bool { return existing.routines[r.Title] }),
+		exportResourceBounties: countMatching(data.Bounties, func(b lib.Bounty) bool { return existing.chores[b.Chore.Title] }),
+	}
+}
+
+func countMatching[T any](items []T, match func(T) bool) int {
+	n := 0
+	for _, item := range items {
+		if match(item) {
+			n++
+		}
+	}
+	return n
+}
+
+// printImportPreview prints what an import would create, leaving out the
+// per-resource counts in skipped.
+func printImportPreview(data ExportData, want map[string]bool, today string, skipped map[string]int) {
 	chores, _ := choresToImport(data.Chores, today)
 	counts := map[string]int{
 		exportResourceChores:     len(chores),
@@ -135,7 +186,11 @@ func runImportDryRun(data ExportData, want map[string]bool, today string) {
 			continue
 		}
 		if want[r] && r != exportResourceCategories {
-			fmt.Printf("  %-10s %d items\n", r, counts[r])
+			fmt.Printf("  %-10s %d items", r, counts[r]-skipped[r])
+			if skipped[r] > 0 {
+				fmt.Printf(" (%d already on the frame)", skipped[r])
+			}
+			fmt.Println()
 		}
 	}
 }
@@ -202,13 +257,26 @@ func addDays(day string, n int) string {
 	return t.AddDate(0, 0, n).Format(lib.DateFormat)
 }
 
-// existingChoreTitles returns titles of chores from today through the next
-// year, including up-for-grabs chores, which the plain query leaves out.
-func existingChoreTitles(ctx context.Context, client *lib.Client) (map[string]bool, error) {
-	opts := lib.ChoreListOptions{
-		After:  time.Now().Format(lib.DateFormat),
-		Before: time.Now().AddDate(1, 0, 0).Format(lib.DateFormat),
+// existingChoreTitles returns titles of chores from the earliest exported chore
+// through the next year, including up-for-grabs chores, which the plain query
+// leaves out. The window reaches back because open chores from the past are
+// imported too, and must still match the ones already on the frame.
+func existingChoreTitles(ctx context.Context, client *lib.Client, data ExportData) (map[string]bool, error) {
+	dates := make([]string, 0, len(data.Chores)+len(data.Bounties))
+	for _, c := range data.Chores {
+		dates = append(dates, c.DueDate)
 	}
+	for _, b := range data.Bounties {
+		dates = append(dates, b.Chore.DueDate)
+	}
+	earliest, latest := dateSpan(dates)
+
+	now := time.Now()
+	after, before := now.Format(lib.DateFormat), now.AddDate(1, 0, 0).Format(lib.DateFormat)
+	if earliest != "" {
+		after, before = min(after, earliest), max(before, latest)
+	}
+	opts := lib.ChoreListOptions{After: after, Before: before}
 	chores, err := client.ListChores(ctx, frameID, opts)
 	if err != nil {
 		return nil, err
@@ -275,7 +343,7 @@ func fetchExistingSets(ctx context.Context, client *lib.Client, data ExportData,
 			return err
 		}},
 		{exportResourceChores, want[exportResourceChores] || want[exportResourceBounties], func() (err error) {
-			s.chores, err = existingChoreTitles(ctx, client)
+			s.chores, err = existingChoreTitles(ctx, client, data)
 			return err
 		}},
 		{exportResourceLists, want[exportResourceLists], func() (err error) {
@@ -671,7 +739,7 @@ func importPhotos(ctx context.Context, client *lib.Client, photos []PhotoExport)
 func init() {
 	rootCmd.AddCommand(importCmd)
 	importCmd.Flags().StringVar(&importFile, "file", "", "Path to export JSON file")
-	importCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "Preview what would be imported without making API calls")
+	importCmd.Flags().BoolVar(&importDryRun, "dry-run", false, "Preview what would be imported without changing anything (with --skip-existing, reads the frame to count what would be skipped)")
 	importCmd.Flags().StringVar(&importResources, "resources", resourceAll, "Comma-separated resource types to import")
 	importCmd.Flags().BoolVar(&importSkipExisting, "skip-existing", false, "Skip resources already on the frame, matched by title, or by title and date for sittings and calendar events (photos are always created)")
 	markFlagRequired(importCmd, "file")

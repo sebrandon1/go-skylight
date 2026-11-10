@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 )
@@ -1546,7 +1547,7 @@ func TestFetchExistingSets_LookupDetails(t *testing.T) {
 			return `{"data":[]}`, r.URL.Query().Get("include_up_for_grabs") != "true"
 		})
 		// The fallback frame body is not a chore list, so the query fails.
-		if _, err := existingChoreTitles(context.Background(), client); err == nil {
+		if _, err := existingChoreTitles(context.Background(), client, ExportData{}); err == nil {
 			t.Error("expected the up-for-grabs failure to be returned")
 		}
 	})
@@ -1588,4 +1589,124 @@ func TestFetchExistingSets_LookupDetails(t *testing.T) {
 			t.Errorf("sets = %+v", s)
 		}
 	})
+}
+
+func TestRunImportDryRunSkipExisting(t *testing.T) {
+	data := ExportData{Rewards: []lib.Reward{{Title: "Old", CategoryID: "1"}, {Title: "New", CategoryID: "1"}}}
+	want := map[string]bool{exportResourceRewards: true}
+	existing := map[string]string{"/rewards": `{"data":[{"id":"1","type":"reward","attributes":{"name":"Old","title":"Old"}}]}`}
+
+	client, posts := skipExistingMock(t, existing, "", nil)
+	var err error
+	out := captureStdout(func() {
+		err = runImportDryRunSkipExisting(context.Background(), client, data, want, importTestToday)
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out, "1 items (1 already on the frame)") {
+		t.Errorf("expected one to create and one skipped, got: %s", out)
+	}
+	if *posts != 0 {
+		t.Errorf("dry run made %d POSTs", *posts)
+	}
+}
+
+func TestRunImportDryRunSkipExisting_LookupFailure(t *testing.T) {
+	data := ExportData{Rewards: []lib.Reward{{Title: "R", CategoryID: "1"}}}
+	want := map[string]bool{exportResourceRewards: true}
+
+	client, _ := skipExistingMock(t, nil, "/rewards", nil)
+	var err error
+	out := captureStdout(func() {
+		err = runImportDryRunSkipExisting(context.Background(), client, data, want, importTestToday)
+	})
+	if err == nil || !strings.Contains(err.Error(), "checking existing") {
+		t.Fatalf("error = %v, want a checking existing error", err)
+	}
+	if strings.Contains(out, "Dry run") {
+		t.Errorf("must not print a preview after a failed lookup, got: %s", out)
+	}
+}
+
+func TestCountExisting(t *testing.T) {
+	data := ExportData{
+		Chores:         []lib.Chore{{ID: "c1", Title: "C", DueDate: importTestToday}, {ID: "c2", Title: "C2", DueDate: importTestToday}},
+		Rewards:        []lib.Reward{{Title: "R"}},
+		Lists:          []lib.List{{Title: "L"}},
+		Recipes:        []lib.Recipe{{Title: "Rc"}},
+		MealSittings:   []lib.MealSitting{{Summary: "S", Date: importTestToday}},
+		CalendarEvents: []lib.CalendarEvent{{Title: "E", StartAt: importTestToday + "T10:00:00Z"}},
+		Routines:       []lib.Routine{{Title: "Rt"}},
+		Bounties:       []lib.Bounty{{Chore: lib.Chore{Title: "C"}}},
+		Photos:         []PhotoExport{{}},
+	}
+	existing := existingSets{
+		chores:   map[string]bool{"C": true},
+		rewards:  map[string]bool{"R": true},
+		lists:    map[string]bool{"L": true},
+		recipes:  map[string]bool{"Rc": true},
+		routines: map[string]bool{"Rt": true},
+		sittings: map[string]bool{sittingKey("S", importTestToday): true},
+		events:   map[string]bool{eventKey("E", importTestToday+"T10:00:00Z"): true},
+	}
+
+	got := countExisting(data, existing, importTestToday)
+	for _, r := range []string{
+		exportResourceChores, exportResourceRewards, exportResourceLists, exportResourceRecipes,
+		exportResourceSittings, exportResourceCalendar, exportResourceRoutines, exportResourceBounties,
+	} {
+		if got[r] != 1 {
+			t.Errorf("%s: got %d skipped, want 1", r, got[r])
+		}
+	}
+	if got[exportResourcePhotos] != 0 {
+		t.Errorf("photos are always created, got %d skipped", got[exportResourcePhotos])
+	}
+}
+
+func TestExistingChoreTitles_Window(t *testing.T) {
+	today := time.Now().Format(lib.DateFormat)
+	oneYear := time.Now().AddDate(1, 0, 0).Format(lib.DateFormat)
+	tests := []struct {
+		name      string
+		data      ExportData
+		wantAfter string
+		wantLast  string
+	}{
+		{name: "no exported chores starts today", wantAfter: today, wantLast: oneYear},
+		{
+			name:      "overdue chore pulls the start back",
+			data:      ExportData{Chores: []lib.Chore{{DueDate: "2020-01-02"}}},
+			wantAfter: "2020-01-02",
+			wantLast:  oneYear,
+		},
+		{
+			name:      "bounty chores count",
+			data:      ExportData{Bounties: []lib.Bounty{{Chore: lib.Chore{DueDate: "2020-03-04"}}}},
+			wantAfter: "2020-03-04",
+			wantLast:  oneYear,
+		},
+		{
+			name:      "far-future chore pushes the end out",
+			data:      ExportData{Chores: []lib.Chore{{DueDate: "2099-05-06"}}},
+			wantAfter: today,
+			wantLast:  "2099-05-06",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var after, before string
+			client, _ := skipExistingMock(t, nil, "", func(r *http.Request) (string, bool) {
+				after, before = r.URL.Query().Get("after"), r.URL.Query().Get("before")
+				return `{"data":[]}`, true
+			})
+			if _, err := existingChoreTitles(context.Background(), client, tt.data); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if after != tt.wantAfter || before != tt.wantLast {
+				t.Errorf("window = %s..%s, want %s..%s", after, before, tt.wantAfter, tt.wantLast)
+			}
+		})
+	}
 }
