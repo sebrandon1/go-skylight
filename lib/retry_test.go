@@ -167,7 +167,7 @@ func TestDoWithRetry_BodyReplayOnRetry(t *testing.T) {
 		bodies = append(bodies, string(b))
 		mu.Unlock()
 		if n == 1 {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusTooManyRequests)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -249,3 +249,79 @@ func TestDoWithRetry_ContextCancelledMidFlight(t *testing.T) {
 		}
 	}
 }
+
+func TestDoWithRetry_StatusRetriesByMethod(t *testing.T) {
+	tests := []struct {
+		name      string
+		method    string
+		first     int
+		wantCalls int32
+		wantFinal int
+	}{
+		{"POST is not retried on 502", http.MethodPost, http.StatusBadGateway, 1, http.StatusBadGateway},
+		{"POST is not retried on 500", http.MethodPost, http.StatusInternalServerError, 1, http.StatusInternalServerError},
+		{"POST is retried on 429", http.MethodPost, http.StatusTooManyRequests, 2, http.StatusOK},
+		{"GET is retried on 502", http.MethodGet, http.StatusBadGateway, 2, http.StatusOK},
+		{"PUT is retried on 502", http.MethodPut, http.StatusBadGateway, 2, http.StatusOK},
+		{"DELETE is retried on 502", http.MethodDelete, http.StatusBadGateway, 2, http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var calls atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if calls.Add(1) == 1 {
+					w.WriteHeader(tt.first)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			req, _ := http.NewRequestWithContext(context.Background(), tt.method, srv.URL, nil)
+			cfg := retryConfig{maxAttempts: 3, baseDelay: time.Millisecond, maxDelay: 5 * time.Millisecond}
+			resp, err := doWithRetry(context.Background(), http.DefaultClient, nil, cfg, req)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer resp.Body.Close()
+			if calls.Load() != tt.wantCalls || resp.StatusCode != tt.wantFinal {
+				t.Errorf("calls = %d, status = %d; want %d, %d", calls.Load(), resp.StatusCode, tt.wantCalls, tt.wantFinal)
+			}
+		})
+	}
+}
+
+func TestDoWithRetry_TransportErrorsByMethod(t *testing.T) {
+	tests := []struct {
+		method    string
+		wantCalls int32
+	}{
+		{http.MethodPost, 1},
+		{http.MethodGet, 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.method, func(t *testing.T) {
+			var calls atomic.Int32
+			client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				calls.Add(1)
+				return nil, errors.New("connection reset")
+			})}
+			req, _ := http.NewRequestWithContext(context.Background(), tt.method, "http://example.invalid", nil)
+			cfg := retryConfig{maxAttempts: 3, baseDelay: time.Millisecond, maxDelay: 5 * time.Millisecond}
+			resp, err := doWithRetry(context.Background(), client, nil, cfg, req)
+			if resp != nil {
+				resp.Body.Close()
+			}
+			if err == nil {
+				t.Fatal("expected a transport error")
+			}
+			if calls.Load() != tt.wantCalls {
+				t.Errorf("calls = %d, want %d", calls.Load(), tt.wantCalls)
+			}
+		})
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
