@@ -53,6 +53,15 @@ func TestIntegration_ChoresCRUD(t *testing.T) {
 		}
 	})
 
+	// Read back
+	gotChore, err := client.GetChore(context.Background(), frameID, chore.ID)
+	if err != nil {
+		t.Fatalf("GetChore: %v", err)
+	}
+	if gotChore.Title != title {
+		t.Errorf("GetChore title = %q, want %q", gotChore.Title, title)
+	}
+
 	// Verify in list (retry to handle API eventual consistency)
 	opts := ChoreListOptions{
 		After:  time.Now().AddDate(0, 0, -1).Format(DateFormat),
@@ -207,6 +216,12 @@ func TestIntegration_RewardsCRUD(t *testing.T) {
 	}
 	t.Logf("created reward %s (%s)", reward.Title, reward.ID)
 
+	if got, err := client.GetReward(context.Background(), frameID, reward.ID); err != nil {
+		t.Errorf("GetReward: %v", err)
+	} else if got.Title != title {
+		t.Errorf("GetReward title = %q, want %q", got.Title, title)
+	}
+
 	t.Cleanup(func() {
 		if err := client.DeleteReward(context.Background(), frameID, reward.ID); err != nil &&
 			!IsNotFound(err) {
@@ -283,6 +298,14 @@ func TestIntegration_CalendarEventsCRUD(t *testing.T) {
 	}
 	t.Logf("created event %s (%s)", event.Title, event.ID)
 
+	if got, err := client.GetCalendarEvent(context.Background(), frameID, event.ID); noteKnownGap(t, err, "GetCalendarEvent") {
+		// The live API answers 404 for this endpoint.
+	} else if err != nil {
+		t.Errorf("GetCalendarEvent: %v", err)
+	} else if got.Title != event.Title {
+		t.Errorf("GetCalendarEvent title = %q, want %q", got.Title, event.Title)
+	}
+
 	t.Cleanup(func() {
 		if err := client.DeleteCalendarEvent(context.Background(), frameID, event.ID); err != nil &&
 			!IsNotFound(err) {
@@ -341,6 +364,12 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 		t.Fatal("created list has empty ID")
 	}
 	t.Logf("created list %s (%s)", list.Title, list.ID)
+
+	if got, err := client.GetList(context.Background(), frameID, list.ID); err != nil {
+		t.Errorf("GetList: %v", err)
+	} else if got.Title != list.Title {
+		t.Errorf("GetList title = %q, want %q", got.Title, list.Title)
+	}
 
 	t.Cleanup(func() {
 		if err := client.DeleteList(context.Background(), frameID, list.ID); err != nil &&
@@ -442,6 +471,12 @@ func TestIntegration_RecipesCRUD(t *testing.T) {
 	}
 	t.Logf("created recipe %s (%s)", recipe.Title, recipe.ID)
 
+	if got, err := client.GetRecipe(context.Background(), frameID, recipe.ID); err != nil {
+		t.Errorf("GetRecipe: %v", err)
+	} else if got.Title != recipe.Title {
+		t.Errorf("GetRecipe title = %q, want %q", got.Title, recipe.Title)
+	}
+
 	t.Cleanup(func() {
 		if err := client.DeleteRecipe(context.Background(), frameID, recipe.ID); err != nil &&
 			!IsNotFound(err) {
@@ -518,6 +553,21 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 		t.Fatal("created meal sitting has empty ID")
 	}
 	t.Logf("created meal sitting %s (%s)", sitting.Summary, sitting.ID)
+
+	if got, err := client.GetMealSitting(context.Background(), frameID, sitting.ID); noteKnownGap(t, err, "GetMealSitting") {
+		// The live API answers 404 for this endpoint.
+	} else if err != nil {
+		t.Errorf("GetMealSitting: %v", err)
+	} else if got.ID != sitting.ID {
+		t.Errorf("GetMealSitting ID = %q, want %q", got.ID, sitting.ID)
+	}
+	if linked, err := client.GetSittingRecipe(context.Background(), frameID, sitting.ID); noteKnownGap(t, err, "GetSittingRecipe") {
+		// It reads the sitting through GetMealSitting.
+	} else if err != nil {
+		t.Errorf("GetSittingRecipe: %v", err)
+	} else if linked.Recipe == nil || linked.Recipe.ID != recipe.ID {
+		t.Errorf("GetSittingRecipe recipe = %+v, want %s", linked.Recipe, recipe.ID)
+	}
 
 	t.Cleanup(func() {
 		if err := client.DeleteMealSitting(context.Background(), frameID, sitting.ID, date); err != nil &&
