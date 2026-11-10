@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 )
@@ -917,5 +918,43 @@ func TestPrintJSON_UnmarshalableData(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "error formatting output") {
 		t.Errorf("expected stderr message, got: %q", stderr.String())
+	}
+}
+
+func TestFillDateRange(t *testing.T) {
+	now := time.Date(2026, time.November, 10, 15, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name, start, end   string
+		wantStart, wantEnd string
+		wantErr            bool
+	}{
+		{name: "no bounds is the current month", wantStart: "2026-11-01", wantEnd: "2026-12-01"},
+		{name: "both bounds are untouched", start: "2026-01-02", end: "2026-01-03", wantStart: "2026-01-02", wantEnd: "2026-01-03"},
+		{name: "lone start gets an end a month later", start: "2026-03-15", wantStart: "2026-03-15", wantEnd: "2026-04-15"},
+		{name: "lone end gets a start a month earlier", end: "2026-03-15", wantStart: "2026-02-15", wantEnd: "2026-03-15"},
+		{name: "invalid start", start: "nope", wantErr: true},
+		{name: "invalid end", end: "nope", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			start, end, err := fillDateRange(tt.start, tt.end, now)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if start != tt.wantStart || end != tt.wantEnd {
+				t.Errorf("got %s..%s, want %s..%s", start, end, tt.wantStart, tt.wantEnd)
+			}
+		})
+	}
+}
+
+func TestFillDateRange_DecemberRollsIntoNextYear(t *testing.T) {
+	now := time.Date(2026, time.December, 31, 23, 0, 0, 0, time.UTC)
+	start, end, err := fillDateRange("", "", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if start != "2026-12-01" || end != "2027-01-01" {
+		t.Errorf("got %s..%s", start, end)
 	}
 }

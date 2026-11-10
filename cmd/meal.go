@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
 	"github.com/spf13/cobra"
@@ -293,14 +294,19 @@ var mealSittingsCmd = &cobra.Command{
 			}
 		}
 
+		dateMin, dateMax, err := fillDateRange(sittingDateMin, sittingDateMax, time.Now())
+		if err != nil {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
 		}
 
 		sittings, err := client.ListMealSittings(cmd.Context(), frameID, lib.MealSittingListOptions{
-			DateMin: sittingDateMin,
-			DateMax: sittingDateMax,
+			DateMin: dateMin,
+			DateMax: dateMax,
 		})
 		if err != nil {
 			return fmt.Errorf("listing meal sittings: %w", err)
@@ -619,8 +625,8 @@ func init() {
 	mealDeleteRecipeCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	markFlagRequired(mealDeleteRecipeCmd, "recipe-id")
 
-	mealSittingsCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date filter (YYYY-MM-DD)")
-	mealSittingsCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Maximum date filter (YYYY-MM-DD)")
+	mealSittingsCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date, YYYY-MM-DD (default: start of this month, or one month before --date-max)")
+	mealSittingsCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Maximum date, exclusive, YYYY-MM-DD (default: start of next month, or one month after --date-min)")
 
 	mealCreateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
