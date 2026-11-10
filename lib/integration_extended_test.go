@@ -552,16 +552,17 @@ func TestIntegration_PlanMeals(t *testing.T) {
 
 	mealCategoryID := firstMealCategory(ctx, t, client, frameID)
 	recipe := createTestRecipe(ctx, t, client, frameID, testPrefix()+"-plan", mealCategoryID)
+	start := futureDate(3)
 
 	result, err := client.PlanMeals(ctx, frameID, MealPlanData{
 		RecipeIDs:   []string{recipe.ID},
 		CategoryIDs: []string{mealCategoryID},
-		StartDate:   futureDate(3),
+		StartDate:   start,
 	})
 	if result != nil {
 		for _, s := range result.Sittings {
 			t.Cleanup(func() {
-				if err := client.DeleteMealSitting(ctx, frameID, s.ID, futureDate(3)); err != nil && !IsNotFound(err) {
+				if err := client.DeleteMealSitting(ctx, frameID, s.ID, start); err != nil && !IsNotFound(err) {
 					t.Errorf("cleanup DeleteMealSitting: %v", err)
 				}
 			})
@@ -618,11 +619,12 @@ func TestIntegration_MealSittingDateMaxExclusive(t *testing.T) {
 	ctx := context.Background()
 
 	mealCategoryID := firstMealCategory(ctx, t, client, frameID)
-	sitting := createSummarySitting(ctx, t, client, frameID, testPrefix()+"-exclusive", mealCategoryID, futureDate(6))
+	dayBefore, day, dayAfter := futureDate(5), futureDate(6), futureDate(7)
+	sitting := createSummarySitting(ctx, t, client, frameID, testPrefix()+"-exclusive", mealCategoryID, day)
 
 	listed := func(dateMax string) bool {
 		t.Helper()
-		sittings, err := client.ListMealSittings(ctx, frameID, MealSittingListOptions{DateMin: futureDate(5), DateMax: dateMax})
+		sittings, err := client.ListMealSittings(ctx, frameID, MealSittingListOptions{DateMin: dayBefore, DateMax: dateMax})
 		if err != nil {
 			t.Fatalf("ListMealSittings: %v", err)
 		}
@@ -634,10 +636,10 @@ func TestIntegration_MealSittingDateMaxExclusive(t *testing.T) {
 		return false
 	}
 
-	if listed(futureDate(6)) {
+	if listed(day) {
 		t.Error("sitting on date_max was returned, expected date_max to be exclusive")
 	}
-	if !listed(futureDate(7)) {
+	if !listed(dayAfter) {
 		t.Error("sitting before date_max was not returned")
 	}
 }
