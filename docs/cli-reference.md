@@ -298,6 +298,8 @@ skylight export [--output-file PATH] [--resources chores,rewards,lists,recipes,s
 skylight import --file PATH [--dry-run] [--resources all] [--skip-existing]
 ```
 
+`--dry-run` changes nothing. Combined with `--skip-existing`, it reads the frame and reports how many items would be created and how many are already there.
+
 `--skip-existing` skips resources already on the frame, so re-running an import does not create duplicates. Resources match by title, and meal sittings and calendar events match by title and date. If any lookup fails, the import stops before creating anything. Photos are the exception: they are always uploaded again.
 
 ## Shell Completion
