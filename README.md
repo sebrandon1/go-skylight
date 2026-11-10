@@ -175,4 +175,6 @@ Integration tests require authentication credentials and run against the live Sk
 make integration
 ```
 
-**Note:** Refresh tokens rotate on each use. If tests fail with "invalid_grant", obtain fresh tokens following the steps above.
+**Note:** Refresh tokens rotate on each use. A run authenticates once per package and saves the rotated token back to `~/.skylight/config`, so your CLI login keeps working. A token passed through the environment is not saved, so obtain a fresh one for the next run. If tests fail with "invalid_grant", obtain fresh tokens following the steps above.
+
+The suite creates and deletes `integration-test-*` items on your frame, and removes any left by an interrupted run. It never orders groceries, changes frame or device settings, or touches photos other than reading them.

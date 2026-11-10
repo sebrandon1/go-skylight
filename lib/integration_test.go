@@ -21,6 +21,10 @@ var (
 	sharedFrameID string
 	clientOnce    sync.Once
 	clientErr     error
+
+	authOnce  sync.Once
+	authToken *OAuthTokenResponse
+	authErr   error
 )
 
 // TestMain sweeps leftover integration-test-* resources before running tests
@@ -40,6 +44,7 @@ func authenticateForTests(refreshToken, fingerprint, email, password, frameID st
 		}
 		tok, err := RefreshOAuthToken(refreshToken, fingerprint)
 		if err == nil {
+			persistRotatedRefreshToken(refreshToken, tok.RefreshToken)
 			return tok, nil
 		}
 		// Log warning but continue to email/password fallback
@@ -63,6 +68,15 @@ func authenticateForTests(refreshToken, fingerprint, email, password, frameID st
 	return nil, fmt.Errorf("no authentication credentials available")
 }
 
+// sharedToken authenticates once per test binary. Refresh tokens are
+// single-use, so the sweep and the tests must share one exchange.
+func sharedToken(refreshToken, fingerprint, email, password, frameID string) (*OAuthTokenResponse, error) {
+	authOnce.Do(func() {
+		authToken, authErr = authenticateForTests(refreshToken, fingerprint, email, password, frameID)
+	})
+	return authToken, authErr
+}
+
 func sweepIntegrationTestResources() {
 	var email, password, frameID, refreshToken, deviceFingerprint string
 	email = os.Getenv("SKYLIGHT_EMAIL")
@@ -80,7 +94,7 @@ func sweepIntegrationTestResources() {
 		return
 	}
 
-	tok, err := authenticateForTests(refreshToken, deviceFingerprint, email, password, frameID)
+	tok, err := sharedToken(refreshToken, deviceFingerprint, email, password, frameID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sweep: auth failed: %v\n", err)
 		return
@@ -94,10 +108,10 @@ func sweepIntegrationTestResources() {
 	ctx := context.Background()
 	now := time.Now()
 
-	// Sweep chores (past year + today)
+	// Sweep chores (past year through next year, since tests schedule ahead)
 	chores, err := c.ListChores(ctx, frameID, ChoreListOptions{
 		After:       now.AddDate(-1, 0, 0).Format(DateFormat),
-		Before:      now.AddDate(0, 0, 1).Format(DateFormat),
+		Before:      now.AddDate(1, 0, 0).Format(DateFormat),
 		IncludeLate: true,
 	})
 	if err == nil {
@@ -167,6 +181,48 @@ func sweepIntegrationTestResources() {
 			}
 		}
 	}
+
+	sweepPlannedAndCategorized(ctx, c, frameID, now)
+}
+
+// sweepPlannedAndCategorized removes leftover routines, meal sittings and both
+// kinds of category.
+func sweepPlannedAndCategorized(ctx context.Context, c *Client, frameID string, now time.Time) {
+	if routines, err := c.ListRoutines(ctx, frameID); err == nil {
+		for _, r := range routines {
+			if strings.HasPrefix(r.Title, integrationTestPrefix) {
+				_ = c.DeleteRoutine(ctx, frameID, r.ID)
+			}
+		}
+	}
+
+	sittings, err := c.ListMealSittings(ctx, frameID, MealSittingListOptions{
+		DateMin: now.AddDate(-1, 0, 0).Format(DateFormat),
+		DateMax: now.AddDate(1, 0, 0).Format(DateFormat),
+	})
+	if err == nil {
+		for _, s := range sittings {
+			if strings.HasPrefix(s.Summary, integrationTestPrefix) {
+				_ = c.DeleteMealSitting(ctx, frameID, s.ID, s.Date)
+			}
+		}
+	}
+
+	if categories, err := c.ListCategories(ctx, frameID); err == nil {
+		for _, cat := range categories {
+			if strings.HasPrefix(cat.Name, integrationTestPrefix) {
+				_ = c.DeleteCategory(ctx, frameID, cat.ID)
+			}
+		}
+	}
+
+	if categories, err := c.ListMealCategories(ctx, frameID); err == nil {
+		for _, cat := range categories {
+			if strings.HasPrefix(cat.Name, integrationTestPrefix) {
+				_ = c.DeleteMealCategory(ctx, frameID, cat.ID)
+			}
+		}
+	}
 }
 
 func integrationClient(t *testing.T) (*Client, string) {
@@ -189,7 +245,7 @@ func integrationClient(t *testing.T) (*Client, string) {
 	}
 
 	clientOnce.Do(func() {
-		tok, err := authenticateForTests(refreshToken, deviceFingerprint, email, password, frameID)
+		tok, err := sharedToken(refreshToken, deviceFingerprint, email, password, frameID)
 		if err != nil {
 			clientErr = fmt.Errorf("authentication: %w", err)
 			return
