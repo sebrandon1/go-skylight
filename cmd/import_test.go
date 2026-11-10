@@ -631,7 +631,7 @@ func TestImportRecipes(t *testing.T) {
 func TestImportSittings(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importSittings(context.Background(), client, []lib.MealSitting{{Summary: "dinner"}})
+		total, failed := importSittings(context.Background(), client, []lib.MealSitting{{Summary: "dinner"}}, nil)
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -639,7 +639,7 @@ func TestImportSittings(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/meals/sittings": true})
-		total, failed := importSittings(context.Background(), client, []lib.MealSitting{{Summary: "dinner"}})
+		total, failed := importSittings(context.Background(), client, []lib.MealSitting{{Summary: "dinner"}}, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -649,7 +649,7 @@ func TestImportSittings(t *testing.T) {
 func TestImportCalendarEvents(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
-		total, failed := importCalendarEvents(context.Background(), client, []lib.CalendarEvent{{Title: "Birthday"}})
+		total, failed := importCalendarEvents(context.Background(), client, []lib.CalendarEvent{{Title: "Birthday"}}, nil)
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -657,7 +657,7 @@ func TestImportCalendarEvents(t *testing.T) {
 
 	t.Run("failure counted", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/calendar_events": true})
-		total, failed := importCalendarEvents(context.Background(), client, []lib.CalendarEvent{{Title: "Birthday"}})
+		total, failed := importCalendarEvents(context.Background(), client, []lib.CalendarEvent{{Title: "Birthday"}}, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -856,7 +856,7 @@ func TestImportBounties(t *testing.T) {
 		bounties := []lib.Bounty{
 			{Chore: lib.Chore{Title: "Clean garage", Points: 10, DueDate: "2026-10-10"}, Reward: lib.Reward{Title: "Ice cream", Points: 10, CategoryID: "12"}},
 		}
-		total, failed := importBounties(context.Background(), client, bounties)
+		total, failed := importBounties(context.Background(), client, bounties, nil)
 		if total != 1 || failed != 0 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=0", total, failed)
 		}
@@ -867,7 +867,7 @@ func TestImportBounties(t *testing.T) {
 		bounties := []lib.Bounty{
 			{Chore: lib.Chore{Title: "Walk dog"}, Reward: lib.Reward{Title: "Movie night", CategoryID: "12"}},
 		}
-		total, failed := importBounties(context.Background(), client, bounties)
+		total, failed := importBounties(context.Background(), client, bounties, nil)
 		if total != 1 || failed != 1 {
 			t.Errorf("got total=%d failed=%d, want total=1 failed=1", total, failed)
 		}
@@ -1189,14 +1189,14 @@ func TestImport_SendsAllExportedFields(t *testing.T) {
 		{
 			name: "calendar event with every field",
 			run: func(c *lib.Client) {
-				importCalendarEvents(context.Background(), c, []lib.CalendarEvent{{Title: "Trip", Description: "Beach", StartAt: "2026-10-01T10:00:00Z", EndAt: "2026-10-01T11:00:00Z", Color: "#fff", CategoryID: "7"}})
+				importCalendarEvents(context.Background(), c, []lib.CalendarEvent{{Title: "Trip", Description: "Beach", StartAt: "2026-10-01T10:00:00Z", EndAt: "2026-10-01T11:00:00Z", Color: "#fff", CategoryID: "7"}}, nil)
 			},
 			want: `{"summary":"Trip","description":"Beach","starts_at":"2026-10-01T10:00:00Z","ends_at":"2026-10-01T11:00:00Z",` + allDay + `,"color":"#fff","category_id":"7"}`,
 		},
 		{
 			name: "calendar event omits absent fields",
 			run: func(c *lib.Client) {
-				importCalendarEvents(context.Background(), c, []lib.CalendarEvent{{Title: "Trip"}})
+				importCalendarEvents(context.Background(), c, []lib.CalendarEvent{{Title: "Trip"}}, nil)
 			},
 			want: `{"summary":"Trip",` + allDay + `}`,
 		},
@@ -1217,14 +1217,14 @@ func TestImport_SendsAllExportedFields(t *testing.T) {
 		{
 			name: "sitting with recipe omits summary",
 			run: func(c *lib.Client) {
-				importSittings(context.Background(), c, []lib.MealSitting{{Summary: "dinner", RecipeID: "9", MealCategoryID: "3", Date: "2026-10-01"}})
+				importSittings(context.Background(), c, []lib.MealSitting{{Summary: "dinner", RecipeID: "9", MealCategoryID: "3", Date: "2026-10-01"}}, nil)
 			},
 			want: `{"meal_recipe_id":"9","meal_category_id":"3","date":"2026-10-01"}`,
 		},
 		{
 			name: "sitting omits absent links",
 			run: func(c *lib.Client) {
-				importSittings(context.Background(), c, []lib.MealSitting{{Summary: "dinner", Date: "2026-10-01"}})
+				importSittings(context.Background(), c, []lib.MealSitting{{Summary: "dinner", Date: "2026-10-01"}}, nil)
 			},
 			want: `{"summary":"dinner","date":"2026-10-01"}`,
 		},
@@ -1331,7 +1331,7 @@ func TestImportBounties_NeedsCategory(t *testing.T) {
 			})
 			bounties := []lib.Bounty{{Chore: lib.Chore{Title: "Garage"}, Reward: lib.Reward{Title: "Ice cream", CategoryID: tt.categoryID}}}
 			var total, failed int
-			stderr := captureStderr(func() { total, failed = importBounties(context.Background(), client, bounties) })
+			stderr := captureStderr(func() { total, failed = importBounties(context.Background(), client, bounties, nil) })
 			if total != 1 || failed != 1 {
 				t.Errorf("got total=%d failed=%d, want 1, 1", total, failed)
 			}
@@ -1360,4 +1360,232 @@ func TestRunImportDryRun_BountyCounting(t *testing.T) {
 			}
 		})
 	}
+}
+
+// skipExistingMock answers every lookup from existing (path suffix to body),
+// failing any suffix listed in failing, and counts POSTs.
+func skipExistingMock(t *testing.T, existing map[string]string, failing string, handle func(*http.Request) (string, bool)) (*lib.Client, *int) {
+	t.Helper()
+	var mu sync.Mutex
+	posts := 0
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPost {
+			mu.Lock()
+			posts++
+			mu.Unlock()
+			w.WriteHeader(http.StatusCreated)
+			if strings.HasSuffix(r.URL.Path, "/calendar_events") {
+				fmt.Fprint(w, `{"data":{"id":"new","relationships":{"categories":{"data":[]}}}}`)
+				return
+			}
+			fmt.Fprint(w, `{"data":[{"id":"new"}]}`)
+			return
+		}
+		if failing != "" && strings.HasSuffix(r.URL.Path, failing) {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if handle != nil {
+			if body, ok := handle(r); ok {
+				fmt.Fprint(w, body)
+				return
+			}
+		}
+		for suffix, body := range existing {
+			if strings.HasSuffix(r.URL.Path, suffix) {
+				fmt.Fprint(w, body)
+				return
+			}
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"timezone":"UTC"}}}`)
+	})
+	return client, &posts
+}
+
+func TestImportSkipExisting_LookupFailureStopsBeforeWrites(t *testing.T) {
+	empty := map[string]string{
+		"/rewards": `{"data":[]}`, "/chores": `{"data":[]}`, "/lists": `{"data":[]}`, "/meals/recipes": `{"data":[]}`,
+		"/meals/sittings": `{"data":[]}`, "/calendar_events": `{"data":[]}`,
+	}
+	data := ExportData{
+		Rewards:        []lib.Reward{{Title: "R", CategoryID: "1"}},
+		Chores:         []lib.Chore{{ID: "c1", Title: "C", DueDate: importTestToday}},
+		Lists:          []lib.List{{Title: "L"}},
+		Recipes:        []lib.Recipe{{Title: "Rc"}},
+		MealSittings:   []lib.MealSitting{{Summary: "S", Date: importTestToday}},
+		CalendarEvents: []lib.CalendarEvent{{Title: "E", StartAt: importTestToday + "T10:00:00Z"}},
+	}
+	want := toWantMap(allExportResources)
+	for _, failing := range []string{"/rewards", "/chores", "/lists", "/meals/recipes", "/meals/sittings", "/calendar_events"} {
+		t.Run(failing, func(t *testing.T) {
+			client, posts := skipExistingMock(t, empty, failing, nil)
+			err := runImport(context.Background(), client, data, want, importTestToday, true)
+			if err == nil || !strings.Contains(err.Error(), "checking existing") {
+				t.Fatalf("error = %v, want a checking existing error", err)
+			}
+			if *posts != 0 {
+				t.Errorf("made %d POSTs after a failed lookup", *posts)
+			}
+		})
+	}
+}
+
+func TestImportSkipExisting_NewResources(t *testing.T) {
+	start := importTestToday + "T10:00:00Z"
+	tests := []struct {
+		name      string
+		existing  map[string]string
+		handle    func(*http.Request) (string, bool)
+		data      ExportData
+		want      string
+		wantPosts int
+	}{
+		{
+			name: "up-for-grabs chore already present",
+			handle: func(r *http.Request) (string, bool) {
+				if !strings.HasSuffix(r.URL.Path, "/chores") {
+					return "", false
+				}
+				if r.URL.Query().Get("include_up_for_grabs") == "true" {
+					return `{"data":[{"id":"c9","attributes":{"summary":"Grab me","up_for_grabs":true}}]}`, true
+				}
+				return `{"data":[]}`, true
+			},
+			data: ExportData{Chores: []lib.Chore{{ID: "c1", Title: "Grab me", DueDate: importTestToday, UpForGrabs: true}}},
+			want: exportResourceChores,
+		},
+		{
+			name:     "sitting on the same date",
+			existing: map[string]string{"/meals/sittings": `{"data":[{"id":"s1","attributes":{"summary":"Dinner","instances":["2026-10-01"]}}]}`},
+			data:     ExportData{MealSittings: []lib.MealSitting{{Summary: "Dinner", Date: "2026-10-01"}}},
+			want:     exportResourceSittings,
+		},
+		{
+			name:      "sitting on another date is created",
+			existing:  map[string]string{"/meals/sittings": `{"data":[{"id":"s1","attributes":{"summary":"Dinner","instances":["2026-10-02"]}}]}`},
+			data:      ExportData{MealSittings: []lib.MealSitting{{Summary: "Dinner", Date: "2026-10-01"}}},
+			want:      exportResourceSittings,
+			wantPosts: 1,
+		},
+		{
+			name:     "event at the same instant in another offset",
+			existing: map[string]string{"/calendar_events": `{"data":[{"id":"e1","attributes":{"summary":"Trip","starts_at":"2026-10-01T05:00:00-05:00"},"relationships":{"categories":{"data":[]}}}]}`},
+			data:     ExportData{CalendarEvents: []lib.CalendarEvent{{Title: "Trip", StartAt: start}}},
+			want:     exportResourceCalendar,
+		},
+		{
+			name:      "event at another time is created",
+			existing:  map[string]string{"/calendar_events": `{"data":[{"id":"e1","attributes":{"summary":"Trip","starts_at":"2026-10-01T11:00:00Z"},"relationships":{"categories":{"data":[]}}}]}`},
+			data:      ExportData{CalendarEvents: []lib.CalendarEvent{{Title: "Trip", StartAt: start}}},
+			want:      exportResourceCalendar,
+			wantPosts: 1,
+		},
+		{
+			name:     "bounty whose chore exists",
+			existing: map[string]string{"/chores": `{"data":[{"id":"c9","attributes":{"summary":"Garage"}}]}`},
+			data:     ExportData{Bounties: []lib.Bounty{{Chore: lib.Chore{Title: "Garage"}, Reward: lib.Reward{Title: "Ice cream"}}}},
+			want:     exportResourceBounties,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, posts := skipExistingMock(t, tt.existing, "", tt.handle)
+			captureStderr(func() {
+				captureStdout(func() {
+					if err := runImport(context.Background(), client, tt.data, map[string]bool{tt.want: true}, importTestToday, true); err != nil {
+						t.Errorf("runImport: %v", err)
+					}
+				})
+			})
+			if *posts != tt.wantPosts {
+				t.Errorf("POSTs = %d, want %d", *posts, tt.wantPosts)
+			}
+		})
+	}
+}
+
+func TestExistingSittingKeys_IncludesLastDate(t *testing.T) {
+	var dateMax string
+	client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		dateMax = r.URL.Query().Get("date_max")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[]}`)
+	})
+	if _, err := existingSittingKeys(context.Background(), client, []lib.MealSitting{{Summary: "Dinner", Date: "2026-10-01"}}); err != nil {
+		t.Fatal(err)
+	}
+	// The API treats date_max as exclusive.
+	if dateMax != "2026-10-02" {
+		t.Errorf("date_max = %q, want 2026-10-02", dateMax)
+	}
+}
+
+func TestDateSpan(t *testing.T) {
+	first, last := dateSpan([]string{"2026-10-05T10:00:00Z", "", "bad", "2026-10-01", "2026-10-09"})
+	if first != "2026-10-01" || last != "2026-10-09" {
+		t.Errorf("got %q to %q", first, last)
+	}
+	if first, last := dateSpan(nil); first != "" || last != "" {
+		t.Errorf("empty input gave %q to %q", first, last)
+	}
+}
+
+func TestAddDays(t *testing.T) {
+	if got := addDays("2026-10-31", 1); got != "2026-11-01" {
+		t.Errorf("addDays = %q", got)
+	}
+	if got := addDays("bad", 1); got != "bad" {
+		t.Errorf("unparseable day should pass through, got %q", got)
+	}
+}
+
+func TestFetchExistingSets_LookupDetails(t *testing.T) {
+	t.Run("failed up-for-grabs query", func(t *testing.T) {
+		client, _ := skipExistingMock(t, nil, "", func(r *http.Request) (string, bool) {
+			return `{"data":[]}`, r.URL.Query().Get("include_up_for_grabs") != "true"
+		})
+		// The fallback frame body is not a chore list, so the query fails.
+		if _, err := existingChoreTitles(context.Background(), client); err == nil {
+			t.Error("expected the up-for-grabs failure to be returned")
+		}
+	})
+
+	t.Run("no dates means no lookup", func(t *testing.T) {
+		client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("unexpected request: %s", r.URL.Path)
+		})
+		if got, err := existingSittingKeys(context.Background(), client, []lib.MealSitting{{Summary: "x"}}); got != nil || err != nil {
+			t.Errorf("sittings: got %v, %v", got, err)
+		}
+		if got, err := existingEventKeys(context.Background(), client, []lib.CalendarEvent{{Title: "x"}}); got != nil || err != nil {
+			t.Errorf("events: got %v, %v", got, err)
+		}
+	})
+
+	t.Run("failed frame lookup", func(t *testing.T) {
+		client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		})
+		events := []lib.CalendarEvent{{Title: "x", StartAt: importTestToday + "T10:00:00Z"}}
+		if _, err := existingEventKeys(context.Background(), client, events); err == nil {
+			t.Error("expected the frame failure to be returned")
+		}
+	})
+
+	t.Run("titles recorded for lists recipes and routines", func(t *testing.T) {
+		client, _ := skipExistingMock(t, map[string]string{
+			"/lists":         `{"data":[{"id":"l1","type":"list","attributes":{"label":"Groceries"}}]}`,
+			"/meals/recipes": `{"data":[{"id":"r1","type":"meal_recipe","attributes":{"summary":"Tacos"}}]}`,
+			"/chores":        `{"data":[{"id":"7","attributes":{"summary":"Brush","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;BYHOUR=6"]}}]}`,
+		}, "", nil)
+		want := map[string]bool{exportResourceLists: true, exportResourceRecipes: true, exportResourceRoutines: true}
+		s, err := fetchExistingSets(context.Background(), client, ExportData{}, want)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !s.lists["Groceries"] || !s.recipes["Tacos"] || !s.routines["Brush"] {
+			t.Errorf("sets = %+v", s)
+		}
+	})
 }
