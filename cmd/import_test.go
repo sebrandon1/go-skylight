@@ -854,7 +854,7 @@ func TestImportBounties(t *testing.T) {
 	t.Run("all succeed", func(t *testing.T) {
 		client := newImportTestClient(t, nil)
 		bounties := []lib.Bounty{
-			{Chore: lib.Chore{Title: "Clean garage", Points: 10, DueDate: "2026-10-10"}, Reward: lib.Reward{Title: "Ice cream", Points: 10}},
+			{Chore: lib.Chore{Title: "Clean garage", Points: 10, DueDate: "2026-10-10"}, Reward: lib.Reward{Title: "Ice cream", Points: 10, CategoryID: "12"}},
 		}
 		total, failed := importBounties(context.Background(), client, bounties)
 		if total != 1 || failed != 0 {
@@ -865,7 +865,7 @@ func TestImportBounties(t *testing.T) {
 	t.Run("failure counted when chore create fails", func(t *testing.T) {
 		client := newImportTestClient(t, map[string]bool{"/chores": true})
 		bounties := []lib.Bounty{
-			{Chore: lib.Chore{Title: "Walk dog"}, Reward: lib.Reward{Title: "Movie night"}},
+			{Chore: lib.Chore{Title: "Walk dog"}, Reward: lib.Reward{Title: "Movie night", CategoryID: "12"}},
 		}
 		total, failed := importBounties(context.Background(), client, bounties)
 		if total != 1 || failed != 1 {
@@ -1248,6 +1248,115 @@ func TestImport_SendsAllExportedFields(t *testing.T) {
 			}
 			if !reflect.DeepEqual(gotMap, wantMap) {
 				t.Errorf("request body:\n got  %s\n want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunImport_BountyDeduplication(t *testing.T) {
+	bounty := lib.Bounty{
+		Chore:  lib.Chore{ID: "c1", Title: "Garage", Points: 10, DueDate: "2026-10-10", AssigneeID: "12"},
+		Reward: lib.Reward{ID: "r1", Title: "Ice cream", Points: 10, CategoryID: "12"},
+	}
+	data := ExportData{
+		Chores:   []lib.Chore{bounty.Chore},
+		Rewards:  []lib.Reward{bounty.Reward},
+		Bounties: []lib.Bounty{bounty},
+	}
+	tests := []struct {
+		name        string
+		want        map[string]bool
+		wantChores  int
+		wantRewards int
+		wantStderr  string
+	}{
+		{"all creates each once", map[string]bool{exportResourceChores: true, exportResourceRewards: true, exportResourceBounties: true}, 1, 1, "Skipping 1 bounties"},
+		{"bounties alone create the pair", map[string]bool{exportResourceBounties: true}, 1, 1, ""},
+		{"chores and bounties overlap on the chore", map[string]bool{exportResourceChores: true, exportResourceBounties: true}, 2, 1, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mu sync.Mutex
+			posts := map[string]int{}
+			var rewardBody map[string]any
+			client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+				raw, _ := io.ReadAll(r.Body)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				mu.Lock()
+				defer mu.Unlock()
+				if strings.HasSuffix(r.URL.Path, "/rewards") {
+					posts["rewards"]++
+					_ = json.Unmarshal(raw, &rewardBody)
+					fmt.Fprint(w, `{"data":[{"id":"r2","attributes":{"name":"x"}}]}`)
+					return
+				}
+				posts["chores"]++
+				fmt.Fprint(w, `{"data":{"id":"c2","attributes":{"summary":"x"}}}`)
+			})
+
+			var err error
+			stderr := captureStderr(func() {
+				captureStdout(func() { err = runImport(context.Background(), client, data, tt.want, importTestToday, false) })
+			})
+			if err != nil {
+				t.Fatalf("runImport: %v", err)
+			}
+			if posts["chores"] != tt.wantChores || posts["rewards"] != tt.wantRewards {
+				t.Errorf("POSTs = %v, want chores=%d rewards=%d", posts, tt.wantChores, tt.wantRewards)
+			}
+			if tt.wantStderr != "" && !strings.Contains(stderr, tt.wantStderr) {
+				t.Errorf("stderr = %q, want %q", stderr, tt.wantStderr)
+			}
+			if ids, ok := rewardBody["category_ids"].([]any); !ok || len(ids) != 1 || ids[0] != float64(12) {
+				t.Errorf("reward category_ids = %v, want [12]", rewardBody["category_ids"])
+			}
+		})
+	}
+}
+
+func TestImportBounties_NeedsCategory(t *testing.T) {
+	tests := []struct {
+		name       string
+		categoryID string
+		wantMsg    string
+	}{
+		{"no category", "", "no category in export"},
+		{"non-numeric category", "cat1", "is not a number"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := newMockClient(t, func(w http.ResponseWriter, r *http.Request) {
+				t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			})
+			bounties := []lib.Bounty{{Chore: lib.Chore{Title: "Garage"}, Reward: lib.Reward{Title: "Ice cream", CategoryID: tt.categoryID}}}
+			var total, failed int
+			stderr := captureStderr(func() { total, failed = importBounties(context.Background(), client, bounties) })
+			if total != 1 || failed != 1 {
+				t.Errorf("got total=%d failed=%d, want 1, 1", total, failed)
+			}
+			if !strings.Contains(stderr, tt.wantMsg) {
+				t.Errorf("stderr = %q, want %q", stderr, tt.wantMsg)
+			}
+		})
+	}
+}
+
+func TestRunImportDryRun_BountyCounting(t *testing.T) {
+	data := ExportData{Bounties: []lib.Bounty{{}}}
+	tests := []struct {
+		name string
+		want map[string]bool
+		show bool
+	}{
+		{"hidden when chores and rewards are imported", map[string]bool{exportResourceChores: true, exportResourceRewards: true, exportResourceBounties: true}, false},
+		{"shown alone", map[string]bool{exportResourceBounties: true}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := captureStdout(func() { runImportDryRun(data, tt.want, importTestToday) })
+			if got := strings.Contains(out, "bounties"); got != tt.show {
+				t.Errorf("bounties shown = %v, want %v: %s", got, tt.show, out)
 			}
 		})
 	}
