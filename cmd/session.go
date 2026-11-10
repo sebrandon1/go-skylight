@@ -10,6 +10,19 @@ import (
 
 var saveCredentials bool
 
+// saveLoginCredentials stores the refresh token and fingerprint from a login,
+// along with the frame ID when one was given.
+func saveLoginCredentials(refreshToken, fingerprint string) error {
+	values := map[string]string{
+		cfgRefreshToken:      refreshToken,
+		cfgDeviceFingerprint: fingerprint,
+	}
+	if frameID != "" {
+		values[cfgFrameID] = frameID
+	}
+	return saveConfig(values)
+}
+
 var loginCmd = &cobra.Command{
 	Use:   subLogin,
 	Short: "Authenticate with Skylight and save OAuth2 credentials",
@@ -34,28 +47,31 @@ persist the credentials so subsequent commands authenticate automatically.`,
 		}
 
 		printSuccess("Login successful!")
-		fmt.Printf("Access Token:  %s\n", tok.AccessToken)
-		fmt.Printf("Refresh Token: %s\n", tok.RefreshToken)
+
+		var saveErr error
+		if saveCredentials {
+			saveErr = saveLoginCredentials(tok.RefreshToken, fingerprint)
+		}
+
+		// Tokens are only printed when they were not stored: a saved refresh token
+		// must stay out of scrollback and logs, but a failed save must not lose
+		// the session.
+		if !saveCredentials || saveErr != nil {
+			fmt.Printf("Access Token:  %s\n", tok.AccessToken)
+			fmt.Printf("Refresh Token: %s\n", tok.RefreshToken)
+		}
 		fmt.Printf("Fingerprint:   %s\n", fingerprint)
 		fmt.Printf("Expires In:    %d seconds\n", tok.ExpiresIn)
 
+		if saveErr != nil {
+			return fmt.Errorf("saving credentials: %w", saveErr)
+		}
 		if saveCredentials {
-			values := map[string]string{
-				cfgRefreshToken:      tok.RefreshToken,
-				cfgDeviceFingerprint: fingerprint,
+			path := configPath
+			if path == "" {
+				path = defaultConfigPath()
 			}
-			if frameID != "" {
-				values[cfgFrameID] = frameID
-			}
-			if err := saveConfig(values); err != nil {
-				fmt.Printf("Warning: could not save config: %v\n", err)
-			} else {
-				path := configPath
-				if path == "" {
-					path = defaultConfigPath()
-				}
-				fmt.Printf("Credentials saved to %s\n", path)
-			}
+			fmt.Printf("Credentials saved to %s\n", path)
 		}
 		return nil
 	},

@@ -152,6 +152,10 @@ func TestLoginCmd_SavesCredentials(t *testing.T) {
 		t.Errorf("expected save confirmation, got: %s", out)
 	}
 
+	if strings.Contains(out, "access1") || strings.Contains(out, "refresh1") {
+		t.Errorf("tokens must not be printed after a successful save, got: %s", out)
+	}
+
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("reading saved config: %v", err)
@@ -162,6 +166,42 @@ func TestLoginCmd_SavesCredentials(t *testing.T) {
 	}
 	if !strings.Contains(content, "SKYLIGHT_FRAME_ID=f1") {
 		t.Errorf("expected frame id persisted, got: %s", content)
+	}
+}
+
+func TestLoginCmd_SaveFailureKeepsTokensAndFails(t *testing.T) {
+	withHeadlessLoginServer(t)
+
+	// A config path whose parent is a regular file can never be written.
+	notADir := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(notADir, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	origEmail, origPassword, origFingerprint, origSave, origConfigPath :=
+		email, password, deviceFingerprint, saveCredentials, configPath
+	email, password = "u@example.com", "pw"
+	deviceFingerprint = "fp-fixed"
+	saveCredentials = true
+	configPath = filepath.Join(notADir, "config")
+	t.Cleanup(func() {
+		email, password, deviceFingerprint, saveCredentials, configPath =
+			origEmail, origPassword, origFingerprint, origSave, origConfigPath
+	})
+
+	var runErr error
+	out := captureStdout(func() {
+		runErr = loginCmd.RunE(loginCmd, nil)
+	})
+
+	if runErr == nil || !strings.Contains(runErr.Error(), "saving credentials") {
+		t.Errorf("expected a save error, got: %v", runErr)
+	}
+	if !strings.Contains(out, "access1") || !strings.Contains(out, "refresh1") {
+		t.Errorf("tokens must be printed when the save fails, got: %s", out)
+	}
+	if strings.Contains(out, "Credentials saved") {
+		t.Errorf("must not claim the credentials were saved, got: %s", out)
 	}
 }
 
