@@ -41,8 +41,10 @@ func (c *Client) ListPhotos(ctx context.Context, frameID string, opts PhotoListO
 		photos[i] = apiResp.Data[i].toPhoto()
 	}
 
+	// The API sometimes returns a next_page_token even when the page is empty
+	// (last-page overshoot). Suppress it here so callers can stop on next == "".
 	var nextToken string
-	if apiResp.Meta != nil {
+	if apiResp.Meta != nil && len(photos) > 0 {
 		nextToken = apiResp.Meta.NextPageToken
 	}
 

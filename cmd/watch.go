@@ -318,9 +318,7 @@ func pollPhotos(ctx context.Context, client *lib.Client, state *watchState, ts s
 					}
 				}
 				all = append(all, page...)
-				// The API keeps returning a next_page_token after the last page, so
-				// an empty page is the real end of the list.
-				if next == "" || len(page) == 0 || (allSeen && !state.seeding) {
+				if next == "" || (allSeen && !state.seeding) {
 					return all, nil
 				}
 				pageToken = next
