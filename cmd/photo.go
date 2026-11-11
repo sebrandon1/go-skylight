@@ -23,9 +23,7 @@ func listAllPhotos(ctx context.Context, client *lib.Client, fid string) ([]lib.P
 			return nil, err
 		}
 		all = append(all, photos...)
-		// The API keeps returning a next_page_token after the last page, so an
-		// empty page is the real end of the list.
-		if next == "" || len(photos) == 0 {
+		if next == "" {
 			break
 		}
 		pageToken = next

@@ -32,9 +32,11 @@ func TestPhotoListCmd(t *testing.T) {
 }
 
 func TestPhotoListCmd_PrintsNextPageToken(t *testing.T) {
+	// A non-empty page with a token: the token must reach stdout so scripts
+	// can paginate by passing it back as --page-token.
 	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"next123"}}`)
+		fmt.Fprint(w, `{"data":[{"id":"p1","attributes":{}}],"meta":{"next_page_token":"next123"}}`)
 	})
 
 	// Table mode prints token on stdout so scripts can parse it
@@ -49,6 +51,24 @@ func TestPhotoListCmd_PrintsNextPageToken(t *testing.T) {
 	})
 	if !strings.Contains(out, "next123") {
 		t.Errorf("expected next page token on stdout, got: %s", out)
+	}
+}
+
+func TestPhotoListCmd_EmptyPageSuppressesToken(t *testing.T) {
+	// An empty page with a token: the token must be suppressed (the API overshoot
+	// fix in lib.ListPhotos). Scripts stop paging when they see next_page_token "".
+	newCmdTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[],"meta":{"next_page_token":"should-not-appear"}}`)
+	})
+
+	out := captureStdout(func() {
+		if err := photoListCmd.RunE(photoListCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "should-not-appear") {
+		t.Errorf("token must be suppressed on an empty page, got: %s", out)
 	}
 }
 

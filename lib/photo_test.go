@@ -475,3 +475,34 @@ func TestDownloadPhotoTo_WriteFailure(t *testing.T) {
 		t.Error("expected the write failure to be returned")
 	}
 }
+
+func TestListPhotos_EmptyPageSuppressesToken(t *testing.T) {
+	// Regression for #578: the API returns a next_page_token even on an empty
+	// last page. ListPhotos must return "" so callers can stop on next == "".
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(photoAPIResponse{
+			Data: nil,
+			Meta: &photoMeta{NextPageToken: "should-be-suppressed"},
+		}); err != nil {
+			t.Errorf("encode: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	photos, nextToken, err := client.ListPhotos(context.Background(), "frame1", PhotoListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(photos) != 0 {
+		t.Errorf("want 0 photos, got %d", len(photos))
+	}
+	if nextToken != "" {
+		t.Errorf("next token must be empty on an empty page, got %q", nextToken)
+	}
+}
