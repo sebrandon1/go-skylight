@@ -249,11 +249,15 @@ var listUpdateItemCmd = &cobra.Command{
 			data.Title = listItemTitle
 		}
 		if cmd.Flags().Changed("completed") {
-			data.Completed = listItemCompleted
+			data.Completed = &listItemCompleted
 		}
 		// only send position when flag is explicitly set — zero value is ambiguous
 		if cmd.Flags().Changed("position") {
 			data.Position = listItemPosition
+		}
+		if !cmd.Flags().Changed(subTitle) && !cmd.Flags().Changed("completed") &&
+			!cmd.Flags().Changed("position") && !cmd.Flags().Changed("section") {
+			return fmt.Errorf("nothing to update: specify --title, --completed, --position, or --section")
 		}
 
 		item, err := client.UpdateListItem(cmd.Context(), frameID, listID, listItemID, data)

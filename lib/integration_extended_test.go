@@ -533,7 +533,8 @@ func TestIntegration_ClearCompletedListItems(t *testing.T) {
 	if _, err := client.AddListItem(ctx, frameID, list.ID, ListItemData{Title: prefix + "-open"}); err != nil {
 		t.Fatalf("AddListItem: %v", err)
 	}
-	if _, err := client.UpdateListItem(ctx, frameID, list.ID, done.ID, ListItemData{Completed: true}); err != nil {
+	completed := true
+	if _, err := client.UpdateListItem(ctx, frameID, list.ID, done.ID, ListItemData{Completed: &completed}); err != nil {
 		t.Fatalf("UpdateListItem: %v", err)
 	}
 

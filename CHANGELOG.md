@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file.
 - Go toolchain bumped to 1.27.3 to fix GO-2026-6809 (#536)
 
 ### Fixed
+- `list update-item` and `grocery update-item`: `--completed=false` alongside other flags is no longer silently dropped. `ListItemData.Completed` is now `*bool` — nil leaves the status unchanged, `&true` completes, `&false` un-completes. **Breaking**: library callers that set `Completed: true` must change to `Completed: &trueVar` (#577)
+- `list update-item` and `grocery update-item` with no flags now return an error instead of sending a no-op request that un-completes the item as a side effect (#577)
 - `routine get` now correctly fetches a routine by scanning the chore list (matching `GetChore`'s approach) rather than calling a non-existent single-item endpoint that the API rejects with "chore not found" (#533)
 
 ## [v0.2.8] - 2026-10-09

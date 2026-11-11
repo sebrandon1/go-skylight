@@ -310,9 +310,12 @@ type ListData struct {
 }
 
 // ListItemData holds the list item fields for create/update requests.
+// Completed is a pointer so nil means "leave the status unchanged", true means
+// completed, and false means pending. This lets --completed=false work
+// alongside other flags without being silently dropped.
 type ListItemData struct {
 	Title     string `json:"label,omitempty"`
-	Completed bool   `json:"-"`
+	Completed *bool  `json:"-"`
 	Position  int    `json:"position,omitempty"`
 	Section   string `json:"section,omitempty"`
 }
