@@ -615,7 +615,7 @@ func importLists(ctx context.Context, client *lib.Client, lists []lib.List, exis
 		slices.SortStableFunc(items, func(a, b lib.ListItem) int { return cmp.Compare(a.Position, b.Position) })
 		for _, item := range items {
 			t++
-			if _, err := client.AddListItem(ctx, frameID, created.ID, lib.ListItemData{Title: item.Title, Completed: item.Completed, Section: item.Section}); err != nil {
+			if _, err := client.AddListItem(ctx, frameID, created.ID, lib.ListItemData{Title: item.Title, Completed: &item.Completed, Section: item.Section}); err != nil {
 				fmt.Fprintf(os.Stderr, "Error adding item %q to list %q: %v\n", item.Title, l.Title, err)
 				f++
 			}

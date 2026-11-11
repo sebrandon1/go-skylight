@@ -121,7 +121,7 @@ func (c *Client) AddListItem(ctx context.Context, frameID, listID string, item L
 		Position: item.Position,
 		Section:  item.Section,
 	}
-	if item.Completed {
+	if item.Completed != nil && *item.Completed {
 		send.Status = listItemStatusCompleted
 	}
 
@@ -147,11 +147,12 @@ func (c *Client) UpdateListItem(ctx context.Context, frameID, listID, itemID str
 		Position: item.Position,
 		Section:  item.Section,
 	}
-	if item.Completed {
-		send.Status = listItemStatusCompleted
-	} else if item.Title == "" && item.Position == 0 && item.Section == "" {
-		// Explicit incomplete when only status is being changed
-		send.Status = listItemStatusPending
+	if item.Completed != nil {
+		if *item.Completed {
+			send.Status = listItemStatusCompleted
+		} else {
+			send.Status = listItemStatusPending
+		}
 	}
 
 	req, err := newRequestWithBody(ctx, "PUT", fmt.Sprintf("%s/frames/%s/lists/%s/list_items/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(listID), pathSeg(itemID)), send)

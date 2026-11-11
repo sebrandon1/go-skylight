@@ -414,8 +414,9 @@ func TestIntegration_ListsCRUD(t *testing.T) {
 	})
 
 	// Update item (mark completed)
+	completed := true
 	updatedItem, err := client.UpdateListItem(context.Background(), frameID, list.ID, item.ID, ListItemData{
-		Completed: true,
+		Completed: &completed,
 	})
 	if err != nil {
 		t.Fatalf("UpdateListItem: %v", err)

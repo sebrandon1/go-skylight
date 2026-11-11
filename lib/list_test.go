@@ -507,7 +507,7 @@ func TestUpdateListItem(t *testing.T) {
 	}{
 		{
 			name:          "marks item completed",
-			input:         ListItemData{Title: "Updated Item", Completed: true},
+			input:         ListItemData{Title: "Updated Item", Completed: func() *bool { b := true; return &b }()},
 			status:        http.StatusOK,
 			response:      `{"data":{"id":"item1","type":"list_item","attributes":{"label":"Updated Item","status":"` + listItemStatusCompleted + `","position":1}}}`,
 			wantCompleted: true,
@@ -722,7 +722,8 @@ func TestAddListItem_Completed(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	item, err := client.AddListItem(context.Background(), "frame1", "l1", ListItemData{Title: "Done", Completed: true})
+	completed := true
+	item, err := client.AddListItem(context.Background(), "frame1", "l1", ListItemData{Title: "Done", Completed: &completed})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -786,7 +787,8 @@ func TestUpdateListItem_ExplicitPending(t *testing.T) {
 	defer func() { SkylightURL = old }()
 
 	client, _ := NewClientWithToken("u", "t")
-	item, err := client.UpdateListItem(context.Background(), "frame1", "l1", "i1", ListItemData{Completed: false, Title: "", Position: 0})
+	pending := false
+	item, err := client.UpdateListItem(context.Background(), "frame1", "l1", "i1", ListItemData{Completed: &pending})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -821,6 +823,66 @@ func TestUpdateListItem_SectionOnly(t *testing.T) {
 	}
 	if want := map[string]any{"section": "Dairy"}; !reflect.DeepEqual(body, want) {
 		t.Errorf("request body: want %v (no status, so a completed item stays completed), got %v", want, body)
+	}
+}
+
+func TestUpdateListItem_CompletedFalseWithTitle(t *testing.T) {
+	// Regression for #577: --completed=false alongside --title was silently dropped.
+	var body listItemSendData
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusPending + `","position":0}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	pending := false
+	if _, err := client.UpdateListItem(context.Background(), "frame1", "l1", "i1", ListItemData{Title: "Milk", Completed: &pending}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if body.Label != "Milk" {
+		t.Errorf("label: want %q, got %q", "Milk", body.Label)
+	}
+	if body.Status != listItemStatusPending {
+		t.Errorf("status: want %q, got %q", listItemStatusPending, body.Status)
+	}
+}
+
+func TestUpdateListItem_NilCompletedOmitsStatus(t *testing.T) {
+	// When Completed is nil, the status field must not be sent so the server
+	// leaves the item's current status unchanged.
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := w.Write([]byte(`{"data":{"id":"i1","type":"list_item","attributes":{"label":"Milk","status":"` + listItemStatusCompleted + `","position":0}}}`)); err != nil {
+			t.Errorf("write: %v", err)
+		}
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	// Completed is nil (zero value of *bool) — must not send a status field.
+	if _, err := client.UpdateListItem(context.Background(), "frame1", "l1", "i1", ListItemData{Title: "Milk"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, hasStatus := body["status"]; hasStatus {
+		t.Errorf("status field must not be sent when Completed is nil, got body: %v", body)
 	}
 }
 

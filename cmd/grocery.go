@@ -293,7 +293,10 @@ var groceryUpdateItemCmd = &cobra.Command{
 			data.Title = groceryItemTitle
 		}
 		if cmd.Flags().Changed("completed") {
-			data.Completed = groceryCompleted
+			data.Completed = &groceryCompleted
+		}
+		if !cmd.Flags().Changed(subTitle) && !cmd.Flags().Changed("completed") {
+			return fmt.Errorf("nothing to update: specify --title or --completed")
 		}
 
 		item, err := client.UpdateListItem(cmd.Context(), frameID, groceryListID, groceryItemID, data)
