@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Default API version bumped from `2026-08-05` to `2026-10-15`, the version Skylight's own web app sends. `SendMessage` now sends `all_devices: true`, which that version requires
 - HTTP helpers, typed errors and retry now come from `github.com/sebrandon1/go-toolbox`; the exported error types are now type aliases of `httpx` types, so existing code still compiles (#540, #541)
+- Go toolchain bumped to 1.27.4 to fix GO-2026-6859 (net/http MaxBytesReader race)
 - Go toolchain bumped to 1.27.3 to fix GO-2026-6809 (#536)
 
 ### Fixed

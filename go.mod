@@ -2,7 +2,7 @@ module github.com/sebrandon1/go-skylight
 
 go 1.27.0
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 require (
 	github.com/sebrandon1/go-toolbox v0.1.2
