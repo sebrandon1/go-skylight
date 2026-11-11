@@ -152,6 +152,9 @@ func TestSendMessage(t *testing.T) {
 			if body["body"] != tc.data.Body {
 				t.Errorf("body = %v", body["body"])
 			}
+			if body["all_devices"] != true {
+				t.Errorf("all_devices = %v, want true", body["all_devices"])
+			}
 			ids, _ := body["category_ids"].([]any)
 			if len(ids) != len(tc.data.CategoryIDs) {
 				t.Errorf("category_ids = %v", body["category_ids"])

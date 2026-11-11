@@ -200,6 +200,7 @@ skylight message delete --message-id ID [--dry-run] [--yes]
 
 - With no `--send-at`, the message is delivered now. `--send-at` takes local time (`2026-11-07T08:00`) or RFC 3339.
 - `--text` is capped at 220 characters, the same as the app.
+- `message send` shows the message on every device on the frame. `message update` keeps the devices the message already targets.
 - `--repeat` takes an RFC 5545 rule without the `RRULE:` prefix (e.g. `FREQ=WEEKLY;BYDAY=SA`) and needs `--send-at`.
 - `list` prints one row per delivery, so a recurring message shows once for each occurrence, all with the same ID.
 - Recurring deliveries keep a fixed UTC time, so the local delivery time moves an hour across a daylight saving change. This is server behavior.

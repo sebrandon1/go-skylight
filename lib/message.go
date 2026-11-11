@@ -28,13 +28,20 @@ func (c *Client) ListMessages(ctx context.Context, frameID, after, before string
 	return messages, nil
 }
 
-// SendMessage creates a household message. The API requires a delivery time,
-// so an empty data.DeliverAt is set to now, which delivers it immediately.
+// SendMessage creates a household message shown on every device of the frame.
+// The API requires a delivery time, so an empty data.DeliverAt is set to now,
+// which delivers it immediately.
 func (c *Client) SendMessage(ctx context.Context, frameID string, data MessageData) (*Message, error) {
 	if data.DeliverAt == "" {
 		data.DeliverAt = time.Now().UTC().Format(time.RFC3339)
 	}
-	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/nudges", c.effectiveURL(), pathSeg(frameID)), data)
+	// Since API version 2026-10-15 a message must name its target devices
+	// ("Target devices can't be blank").
+	body := struct {
+		MessageData
+		AllDevices bool `json:"all_devices"`
+	}{MessageData: data, AllDevices: true}
+	req, err := newRequestWithBody(ctx, "POST", fmt.Sprintf("%s/frames/%s/nudges", c.effectiveURL(), pathSeg(frameID)), body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create send message request: %w", err)
 	}
