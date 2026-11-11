@@ -490,3 +490,42 @@ func TestRewardsPollerStopIdempotent(t *testing.T) {
 	p.Stop()
 	p.Stop()
 }
+
+func TestRewardsPollerStopWithoutStart(t *testing.T) {
+	old := SkylightURL
+	SkylightURL = "http://localhost:1/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(t.TempDir(), "state.json"))
+
+	done := make(chan struct{})
+	go func() {
+		p.Stop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop() without Start() hung")
+	}
+}
+
+func TestRewardsPollerDoubleStart(t *testing.T) {
+	rewards := []Reward{{ID: "rw1", Title: "Prize", Points: 5, Redeemed: true}}
+	srv := makePollerServer(t, rewards, nil)
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	p := NewRewardsPoller(client, "f1", time.Hour, filepath.Join(t.TempDir(), "state.json"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	p.Start(ctx)
+	p.Start(ctx) // second Start must be a no-op, not start a second loop
+	p.Stop()     // must not panic
+}

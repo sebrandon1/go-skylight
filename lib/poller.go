@@ -51,6 +51,8 @@ type RewardsPoller struct {
 	events chan RedemptionEvent
 	stop   chan struct{}
 	done   chan struct{}
+	// startOnce ensures Start launches at most one loop goroutine.
+	startOnce sync.Once
 	// stopOnce makes Stop idempotent — a second Stop must not panic on close(stop) (#269).
 	stopOnce sync.Once
 
@@ -98,15 +100,21 @@ func (p *RewardsPoller) Events() <-chan RedemptionEvent {
 
 // Start begins polling in a new goroutine. ctx is used for long-lived
 // cancellation (e.g. signal.NotifyContext). The poller also respects Stop().
+// Calling Start more than once does nothing; the second call is ignored.
+// Calling Start after Stop also does nothing.
 func (p *RewardsPoller) Start(ctx context.Context) {
-	go p.loop(ctx)
+	p.startOnce.Do(func() { go p.loop(ctx) })
 }
 
 // Stop signals the poll loop to exit and waits for it to finish.
 // Safe to call more than once (sync.Once); subsequent calls wait on done only (#269).
+// Safe to call without a prior Start; returns immediately in that case.
 func (p *RewardsPoller) Stop() {
 	p.stopOnce.Do(func() {
 		close(p.stop)
+		// If Start was never called, the loop never ran and p.done will never be
+		// closed by loop. Close it here so <-p.done below does not block.
+		p.startOnce.Do(func() { close(p.done) })
 	})
 	<-p.done
 }
