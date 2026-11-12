@@ -138,7 +138,7 @@ make integration    # integration tests (requires credentials - see below)
 make integration-read  # read-only integration tests
 ```
 
-CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.3.
+CI runs `lint`, `test` (with `-race`), and `build` on ubuntu + macos with Go 1.27.4.
 
 ### Running Integration Tests
 
