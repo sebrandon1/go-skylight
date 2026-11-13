@@ -4,7 +4,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 
 ## Go Version
 
-Go 1.27.0 minimum, toolchain 1.27.3 (see `go.mod`)
+Go 1.27.0 minimum, toolchain 1.27.4 (see `go.mod`)
 
 ## Dependencies
 
