@@ -19,7 +19,7 @@ Go CLI and client library for the [Skylight Calendar](https://www.ourskylight.co
 - Family activity analytics and chore completion streaks
 - Export/import for backup and migration between frames
 - Live change watcher with configurable resource polling
-- Weekly combined home view (events, tasks, lists, meals) and quick frame status
+- Weekly combined home view (events, tasks, lists, meals, routines) and quick frame status
 - Grocery list management with Instacart ordering and recipe ingredient import
 - Go client library with retry, rate limiting, and typed errors
 - Docker images for `linux/amd64` and `linux/arm64`
@@ -70,7 +70,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 
 | Document | Description |
 |----------|-------------|
-| [Examples](docs/examples/) | Common scenarios: deleting profiles/labels, managing chores, scripting |
+| [Examples](docs/examples/) | Step-by-step guides: getting started, profiles and labels, chores, rewards, calendar, backup and restore, scripting |
 | [CLI Reference](docs/cli-reference.md) | Full command listing for all resources |
 | [Library Usage](docs/library-usage.md) | Go client API, examples, typed errors, and coverage matrix |
 
@@ -102,6 +102,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `rotation` | Rotating chore assignments |
 | `template` | Save/apply named chore+reward templates (stored in `~/.skylight/templates/`) |
 | `config` | View and modify configuration (show/get/set/unset/edit) |
+| `completion` | Generate shell completion scripts (see [Shell Completion](#shell-completion)) |
 
 See [CLI Reference](docs/cli-reference.md) for full details.
 

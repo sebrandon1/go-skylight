@@ -106,7 +106,9 @@ lib/                           # API client library
 docs/                          # User and library documentation
   cli-reference.md             # CLI command reference
   library-usage.md             # Library usage guide
-  examples/                    # Example walkthroughs
+  examples/                    # Step-by-step guides (getting-started, chores, rewards, calendar, profiles-and-labels, backup-restore, scripting)
+Dockerfile                     # Container image for the CLI
+.github/workflows/             # pre-main, release-binaries, docker-publish, update-major-tag
 ```
 
 ## Authentication
@@ -161,6 +163,7 @@ SKYLIGHT_QUIET=false
 - `bounty create|list|update|delete` -- Chore + reward pairs
 - `rotation create` -- Rotating chore assignments
 - `template save|apply|list|delete` -- Named chore+reward templates (stored in `~/.skylight/templates/`)
+- `completion bash|zsh|fish` -- Generate shell completion scripts
 - `config show|get|set|unset|edit` -- View and modify the local configuration file
 - `task all` -- alias for `chore all`
 
@@ -213,7 +216,8 @@ Several destructive commands support `--dry-run` to preview the action without m
 
 - Pre-main workflow at `.github/workflows/pre-main.yaml` -- runs lint, test, build on matrix (ubuntu + macos), plus govulncheck
 - Release workflow at `.github/workflows/release-binaries.yaml` -- cross-platform binaries (linux/darwin, amd64/arm64) with SHA256 checksums
-- Docker images for `linux/amd64` and `linux/arm64`
+- Docker images for `linux/amd64` and `linux/arm64`, built from `Dockerfile` by `.github/workflows/docker-publish.yaml`
+- `.github/workflows/update-major-tag.yaml` -- moves the major version tag (e.g. `v0`) when a release is published
 - Version injected via ldflags at build time
 - Linters: goconst, gocritic, gocyclo, misspell, unparam, errcheck, gosec, ineffassign, revive, staticcheck
 
