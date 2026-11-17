@@ -12,7 +12,7 @@ skylight chore list | jq '[.[] | select(.assignee_id == "6750876" and .status ==
 skylight reward points | jq '[.[].balance] | add'
 
 # Names of all profiles
-skylight category list | jq '[.[].name]'
+skylight category list | jq '[.[].label]'
 ```
 
 ## Use environment variables (CI, cron, Docker)

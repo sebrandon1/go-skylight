@@ -21,7 +21,7 @@ Config is loaded automatically from `~/.skylight/config` (refresh token, frame I
 - `/skylight rewards` — reward balances and available rewards
 - `/skylight grocery` — show the grocery list
 - `/skylight analytics` — family activity stats (last 30 days)
-- `/skylight home` — weekly combined view of events, tasks, and lists
+- `/skylight home` — weekly combined view of events, tasks, lists, meals, and routines
 - `/skylight watch` — live polling for new completions and events
 
 ## Discovering Family Members
@@ -32,7 +32,7 @@ Always resolve family member names to category IDs dynamically — never hardcod
 skylight category list -o json
 ```
 
-Returns an array with `id`, `name`, `color`, and `avatar_url` per member. Use the `id` field when commands require `--assignee-id`.
+Returns an array with `id`, `label`, `color`, and `avatar_url` per member. Use the `id` field when commands require `--assignee-id`.
 
 ## Operations
 
@@ -58,7 +58,7 @@ Present grouped per family member:
 
 **List:**
 ```bash
-skylight chore list [--date YYYY-MM-DD] [--status pending|complete] [--assignee-id ID] [--include-late]
+skylight chore list [--date YYYY-MM-DD] [--status pending|complete|skipped] [--assignee-id ID] [--include-late]
 ```
 
 **Create:**
@@ -76,7 +76,7 @@ skylight chore skip --chore-id ID
 
 **Update:**
 ```bash
-skylight chore update --chore-id ID [--title] [--points] [--status pending|complete] [--assignee-id] [--date]
+skylight chore update --chore-id ID [--title] [--points] [--status pending|complete|skipped] [--assignee-id] [--date]
 ```
 
 **Delete:**
@@ -129,7 +129,7 @@ Shows per-member chore completion rates, top chores, reward stats, and calendar 
 ### Home / Weekly View
 
 ```bash
-skylight home [--no-lists] [--no-tasks]
+skylight home [--no-lists] [--no-tasks] [--no-meals] [--no-routines]
 ```
 
 Weekly combined view of calendar events, pending tasks, and active lists.
@@ -137,7 +137,7 @@ Weekly combined view of calendar events, pending tasks, and active lists.
 ### Watch (Live Polling)
 
 ```bash
-skylight watch [--interval 60] [--resources rewards,chores,calendar]
+skylight watch [--interval 60] [--resources rewards,chores,calendar,lists,routines,meals,photos]
 ```
 
 Prints new completions and upcoming events as they happen. Ctrl+C to stop.

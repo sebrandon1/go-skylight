@@ -10,8 +10,8 @@ skylight category list
 
 ```json
 [
-  { "id": "6750875", "name": "Team Blah Blah", "color": "#FF5733" },
-  { "id": "6750876", "name": "Emma", "color": "#33A1FF" }
+  { "id": "6750875", "label": "Team Blah Blah", "color": "#FF5733" },
+  { "id": "6750876", "label": "Emma", "color": "#33A1FF" }
 ]
 ```
 

@@ -15,6 +15,7 @@ All commands accept these persistent flags:
 | `--device-fingerprint` | Stable device UUID used with OAuth |
 | `--output` / `-o` | `json` (default) or `table` |
 | `--quiet` / `-q` | Suppress non-essential success messages |
+| `--version` | Print the version and exit |
 | `--email` / `--password` | **Deprecated** — use `--refresh-token` instead |
 
 ## Config

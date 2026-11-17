@@ -13,7 +13,7 @@ Thank you for your interest in contributing!
 1. Fork the repository and create a feature branch off `main`.
 2. Write your code. Follow the patterns in the existing `lib/` files.
 3. Run `make lint` and fix all issues before pushing.
-4. Run `make test` (`go test ./... -v -race`) and ensure all tests pass.
+4. Run `make test` (`go test ./... -v`) and ensure all tests pass.
 5. Open a pull request against `main`. CI must be green before a PR can be merged.
 
 ## Commit Message Format
@@ -73,7 +73,7 @@ recommended way to override the API base URL. Use WithBaseURL instead.
 ## Running Tests
 
 ```bash
-make test         # all packages, verbose, with race detector
+make test         # all packages, verbose
 make lint         # golangci-lint
 make vet          # go vet
 make build        # CLI binary

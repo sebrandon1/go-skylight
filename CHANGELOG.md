@@ -5,23 +5,60 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- `frame tabs` and `frame update --hide-tabs/--show-tabs/--device-id`: show and hide navigation tabs on a device (#537)
-- `GetDeviceConfig`, `UpdateDeviceTabs`, `HideableTabs` and the `DeviceConfig` type (#537)
-- `message list|send|update|delete`: household text messages, sent now or scheduled with optional recurrence (#542)
-- `ListMessages`, `SendMessage`, `UpdateMessage`, `DeleteMessage` and the `Message`/`MessageData` types (#542)
-- `routine create`/`routine update`: `--emoji-icon`, `--points` and `--track-habit` (#532)
-- `RoutineUpdateData`: `EmojiIcon`, `Points` and `TrackHabit`, sent by `UpdateRoutine`; `TrackHabit` is a `*bool` so `false` turns habit tracking off (#532)
+- `chore all` (alias `task all`): the All Tasks view, one entry per series bucketed late/today/today_timed/any_day/future; `ListAllTasks` (#586)
+- `routine habits`: habit-tracked routines with current/longest streak and weekly progress; `Chore.Habit`/`Routine.Habit` and `ListHabits` (#587)
+- `chore create/update --due-time HH:MM` and `chore notifications show|set` for frame-wide task due/completed notifications; `GetTaskNotificationSettings`, `UpdateTaskNotificationSettings`, `ValidateStartTime` (#588)
+- Linked tasks: `chore create --assignee-ids`, `chore update/delete --apply-to-profiles all|one`; `CreateLinkedChore`, `DeleteLinkedChore` and `Chore.LinkedTaskGroupID` (#589)
+- `--emoji-icon` on `calendar create`, `create-countdown` and `update`; `CalendarEvent.EmojiIcon` (#590)
+- `import` into a different frame remaps people by label (including meal-sitting profiles) and links sittings to the recipes created in that run (#591)
+- `--profile-id` on `meal create-sitting`, `update-sitting` and `sittings`: assign meals to household profiles; `MealSitting.ProfileIDs` (#592)
+- `addon settings` / `addon set`: the household add-on switches (Disney Mode); `GetHouseholdConfig`, `UpdateHouseholdConfig` (#593)
 
 ### Changed
 - Default API version bumped from `2026-08-05` to `2026-10-15`, the version Skylight's own web app sends. `SendMessage` now sends `all_devices: true`, which that version requires
-- HTTP helpers, typed errors and retry now come from `github.com/sebrandon1/go-toolbox`; the exported error types are now type aliases of `httpx` types, so existing code still compiles (#540, #541)
 - Go toolchain bumped to 1.27.4 to fix GO-2026-6859 (net/http MaxBytesReader race)
-- Go toolchain bumped to 1.27.3 to fix GO-2026-6809 (#536)
 
 ### Fixed
 - `list update-item` and `grocery update-item`: `--completed=false` alongside other flags is no longer silently dropped. `ListItemData.Completed` is now `*bool` — nil leaves the status unchanged, `&true` completes, `&false` un-completes. **Breaking**: library callers that set `Completed: true` must change to `Completed: &trueVar` (#577)
 - `list update-item` and `grocery update-item` with no flags now return an error instead of sending a no-op request that un-completes the item as a side effect (#577)
 - `ListPhotos` no longer returns a `next_page_token` after the last page (the API sends one on empty pages). Callers can now stop on `next == ""` without also checking `len(page) == 0` (#578)
+- `RewardsPoller`: fixed a lifecycle hang on stop and a panic (#576)
+- Calendar events now report their profile as `category_id` (the API sends a to-one `category` relationship) (#590)
+- `meal get-sitting`, `update-sitting` and `sitting-recipe` no longer 404: they act on one dated occurrence and require `--date`. **Breaking**: `GetMealSitting`, `UpdateMealSitting` and `GetSittingRecipe` take a date argument (#592)
+
+## [v0.2.10] - 2026-11-10
+
+### Added
+- `frame tabs` and `frame update --hide-tabs/--show-tabs/--device-id`: show and hide navigation tabs on a device (#537)
+- `GetDeviceConfig`, `UpdateDeviceTabs`, `HideableTabs` and the `DeviceConfig` type (#537)
+- `message list|send|update|delete`: household text messages, sent now or scheduled with optional recurrence (#542)
+- `ListMessages`, `SendMessage`, `UpdateMessage`, `DeleteMessage` and the `Message`/`MessageData` types (#542)
+- `import --dry-run` honors `--skip-existing` and matches overdue chores; `--skip-existing` no longer creates duplicates (#552, #564, #573)
+- `calendar list` and `meal sittings` default to a date range (#572)
+
+### Changed
+- HTTP helpers, typed errors and retry now come from `github.com/sebrandon1/go-toolbox`; the exported error types are now type aliases of `httpx` types, so existing code still compiles (#540, #541)
+- Go toolchain bumped to 1.27.3 to fix GO-2026-6809 (#536)
+- Long-running clients refresh expired access tokens (#554, #567)
+- POSTs are no longer retried on 5xx, and CLI bulk writes are rate-limited (#556, #566)
+- Config saves are atomic and refresh-token rotation is serialized (#548, #558)
+
+### Fixed
+- Documented `SKYLIGHT_*` environment variables are now honored by the CLI (#547, #559)
+- `login --save` no longer prints tokens after a successful login (#570)
+- `watch` no longer hangs on the photo page after the last (#571)
+- `photo download` streams to disk and exits non-zero when downloads fail (#511, #560)
+- `export` exits non-zero when photos are missing from the backup (#557, #561)
+- `import` keeps calendar event and meal fields, and no longer recreates bounties already restored by chores and rewards (#550, #551, #562, #563)
+- `template save`/`apply` keep recurrence and create rewards with a category (#553, #565)
+
+## [v0.2.9] - 2026-10-13
+
+### Added
+- `routine create`/`routine update`: `--emoji-icon`, `--points` and `--track-habit` (#532)
+- `RoutineUpdateData`: `EmojiIcon`, `Points` and `TrackHabit`, sent by `UpdateRoutine`; `TrackHabit` is a `*bool` so `false` turns habit tracking off (#532)
+
+### Fixed
 - `routine get` now correctly fetches a routine by scanning the chore list (matching `GetChore`'s approach) rather than calling a non-existent single-item endpoint that the API rejects with "chore not found" (#533)
 
 ## [v0.2.8] - 2026-10-09
@@ -39,6 +76,18 @@ All notable changes to this project will be documented in this file.
 - `export`/`import`: routines lost their icon, points and habit tracking; now kept (#525, #526)
 - `import`: chores that repeat a set time after they're completed were recreated as one-off chores that never came back (#527, #528)
 - `export`: a chore's repeat-after-completion unit and interval were not captured; now included (#527, #528)
+
+## [v0.2.7] - 2026-10-06
+
+### Added
+- `bounty delete --all` for bulk delete, and `--after`/`--before` flags on `bounty list` (#515, #517)
+- `import --skip-existing` for idempotent re-import (#510)
+- Documented `calendar schedule`, `import --skip-existing` and the profile/label commands (#512, #514)
+- `chore list` up-for-grabs discoverability improvements (#516)
+
+### Fixed
+- `photo download` sanitizes filenames against path traversal (#272, #509)
+- `printJSON` exits gracefully instead of panicking (#502, #506)
 
 ## [v0.2.6] - 2026-10-05
 

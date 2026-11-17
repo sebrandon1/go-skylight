@@ -33,7 +33,7 @@ client, err := lib.NewClientWithToken("user-id", "api-token",
     lib.WithRetry(3, 500*time.Millisecond, 10*time.Second),
     lib.WithRateLimit(rate.Limit(5), 10),
     lib.WithLogger(slog.Default()),
-    lib.WithAPIVersion("2026-06-01"),
+    lib.WithAPIVersion("2026-10-15"),
     lib.WithBaseURL("https://staging.example.com/api"), // test seam
 )
 ```
@@ -50,6 +50,10 @@ ctx := context.Background()
 // List chores (a missing after/before window is defaulted automatically —
 // Date becomes a same-day window; otherwise the current calendar month)
 chores, err := client.ListChores(ctx, "frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
+if err != nil {
+    return err
+}
+fmt.Println(len(chores), "chores")
 
 // All Tasks view: one entry per series, bucketed late/today/today_timed/any_day/future
 all, err := client.ListAllTasks(ctx, "frame-id", lib.AllTasksOptions{Limit: 50, IncludeUpForGrabs: true})
@@ -101,6 +105,10 @@ bounty, err := client.CreateBounty(ctx, "frame-id", lib.BountyData{
     RewardTitle: "Ice cream night",
     EmojiIcon:   "🍦",
 })
+if err != nil {
+    return err
+}
+fmt.Println("created bounty:", bounty)
 
 // Send a household message to two family members on Saturday morning, every week
 msg, err := client.SendMessage(ctx, "frame-id", lib.MessageData{
@@ -109,6 +117,10 @@ msg, err := client.SendMessage(ctx, "frame-id", lib.MessageData{
     DeliverAt:   "2026-11-07T08:00:00-06:00", // empty = deliver now
     RRule:       "FREQ=WEEKLY;BYDAY=SA",
 })
+if err != nil {
+    return err
+}
+fmt.Println("sent message:", msg)
 
 // Stream reward redemptions
 poller := lib.NewRewardsPoller(client, "frame-id", 60*time.Second, "")
@@ -160,6 +172,10 @@ if errors.As(err, &authErr) {
     time.Sleep(rateLimit.RetryAfter)
 } else if errors.As(err, &valErr) {
     fmt.Println("validation failed:", valErr.Fields)
+} else if errors.As(err, &notFound) {
+    fmt.Println("not found:", notFound)
+} else if errors.As(err, &netErr) {
+    fmt.Println("network error:", netErr)
 }
 ```
 
