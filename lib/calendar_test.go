@@ -588,3 +588,32 @@ func TestGetCalendarEvent(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateCalendarEvent_SendsEmojiIcon(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decoding request body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"data":{"id":"5","type":"calendar_event","attributes":{"summary":"Party","emoji_icon":"🎉"},"relationships":{"category":{"data":{"id":"cat1","type":"category"}}}}}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	event, err := client.CreateCalendarEvent(context.Background(), "frame1", CalendarEventData{Title: "Party", EmojiIcon: "🎉"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got, _ := body["emoji_icon"].(string); got != "🎉" {
+		t.Errorf("request body emoji_icon = %q, want 🎉", got)
+	}
+	if event.EmojiIcon != "🎉" || event.CategoryID != "cat1" {
+		t.Errorf("event = %+v, want emoji 🎉 and category cat1", event)
+	}
+}

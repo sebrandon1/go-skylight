@@ -18,6 +18,7 @@ var (
 	calendarAllDay        bool
 	calendarColor         string
 	calendarCategoryID    string
+	calendarEmojiIcon     string
 	calendarWeekDate      string
 	calendarDayDate       string
 	calendarCountdownDate string
@@ -106,6 +107,7 @@ var calendarCreateCmd = &cobra.Command{
 			AllDay:     &allDay,
 			Color:      calendarColor,
 			CategoryID: calendarCategoryID,
+			EmojiIcon:  calendarEmojiIcon,
 		})
 		if err != nil {
 			return fmt.Errorf("creating calendar event: %w", err)
@@ -226,6 +228,9 @@ var calendarUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("category-id") {
 			data.CategoryID = calendarCategoryID
 		}
+		if cmd.Flags().Changed(flagEmojiIcon) {
+			data.EmojiIcon = calendarEmojiIcon
+		}
 
 		event, err := client.UpdateCalendarEvent(cmd.Context(), frameID, calendarEventID, data)
 		if err != nil {
@@ -259,6 +264,7 @@ var calendarCreateCountdownCmd = &cobra.Command{
 			Title:     calendarTitle,
 			StartAt:   calendarCountdownDate,
 			AllDay:    &allDayTrue,
+			EmojiIcon: calendarEmojiIcon,
 			EventType: lib.CalendarEventTypeCountdown,
 		})
 		if err != nil {
@@ -481,6 +487,7 @@ func init() {
 	calendarCreateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
 	calendarCreateCmd.Flags().StringVar(&calendarColor, "color", "", "Event color")
 	calendarCreateCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Category ID to assign to this event")
+	calendarCreateCmd.Flags().StringVar(&calendarEmojiIcon, flagEmojiIcon, "", "Emoji shown with the event (e.g. on Buddy)")
 	markFlagRequired(calendarCreateCmd, subTitle)
 	markFlagRequired(calendarCreateCmd, "start-at")
 
@@ -491,6 +498,7 @@ func init() {
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
 	calendarUpdateCmd.Flags().StringVar(&calendarColor, "color", "", "Event color")
 	calendarUpdateCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Category ID to assign to this event")
+	calendarUpdateCmd.Flags().StringVar(&calendarEmojiIcon, flagEmojiIcon, "", "Emoji shown with the event (e.g. on Buddy)")
 	markFlagRequired(calendarUpdateCmd, "event-id")
 
 	calendarDeleteCmd.Flags().StringVar(&calendarEventID, "event-id", "", "Event ID to delete")
@@ -500,6 +508,7 @@ func init() {
 
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, subTitle, "", "Countdown event title")
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarCountdownDate, subDate, "", "Target date (YYYY-MM-DD)")
+	calendarCreateCountdownCmd.Flags().StringVar(&calendarEmojiIcon, flagEmojiIcon, "", "Emoji shown with the countdown")
 	markFlagRequired(calendarCreateCountdownCmd, subTitle)
 	markFlagRequired(calendarCreateCountdownCmd, subDate)
 

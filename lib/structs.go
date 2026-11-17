@@ -50,6 +50,7 @@ type CalendarEvent struct {
 	AllDay      bool   `json:"all_day"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
+	EmojiIcon   string `json:"emoji_icon,omitempty"`
 	CreatedAt   string `json:"created_at,omitempty"`
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
@@ -66,6 +67,7 @@ type CalendarEventData struct {
 	AllDay      *bool  `json:"all_day,omitempty"`
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
+	EmojiIcon   string `json:"emoji_icon,omitempty"`
 	EventType   string `json:"event_type,omitempty"`
 }
 
@@ -89,10 +91,16 @@ type calendarAPIEntry struct {
 		EndsAt      string `json:"ends_at"`
 		AllDay      bool   `json:"all_day"`
 		Color       string `json:"color"`
+		EmojiIcon   string `json:"emoji_icon"`
 		CreatedAt   string `json:"created_at"`
 		UpdatedAt   string `json:"updated_at"`
 	} `json:"attributes"`
 	Relationships struct {
+		// The live API sends a to-one "category" relationship; the to-many
+		// "categories" form is still accepted as a fallback.
+		Category struct {
+			Data *apiRelationshipData `json:"data"`
+		} `json:"category"`
 		Categories struct {
 			Data []apiRelationshipData `json:"data"`
 		} `json:"categories"`
@@ -108,10 +116,13 @@ func (e *calendarAPIEntry) toCalendarEvent() CalendarEvent {
 		EndAt:       e.Attributes.EndsAt,
 		AllDay:      e.Attributes.AllDay,
 		Color:       e.Attributes.Color,
+		EmojiIcon:   e.Attributes.EmojiIcon,
 		CreatedAt:   e.Attributes.CreatedAt,
 		UpdatedAt:   e.Attributes.UpdatedAt,
 	}
-	if len(e.Relationships.Categories.Data) > 0 {
+	if d := e.Relationships.Category.Data; d != nil {
+		ev.CategoryID = d.ID
+	} else if len(e.Relationships.Categories.Data) > 0 {
 		ev.CategoryID = e.Relationships.Categories.Data[0].ID
 	}
 	return ev

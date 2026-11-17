@@ -444,3 +444,83 @@ func TestCalendarCreateCmd_TableOutput(t *testing.T) {
 		t.Errorf("expected event title in table, got: %s", out)
 	}
 }
+
+// emojiCaptureHandler records the JSON body of a calendar event write.
+func emojiCaptureHandler(method string, body *map[string]any) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == method && strings.Contains(r.URL.Path, "/calendar_events") {
+			*body = nil
+			_ = json.NewDecoder(r.Body).Decode(body)
+			fmt.Fprint(w, `{"data":{"id":"e1","type":"calendar_event","attributes":{"summary":"X","emoji_icon":"🎉"}}}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"id":"test-frame","attributes":{"name":"Kitchen","timezone":"UTC"}}}`)
+	}
+}
+
+func TestCalendarCreateCmd_EmojiIcon(t *testing.T) {
+	var body map[string]any
+	newCmdTestClient(t, emojiCaptureHandler(http.MethodPost, &body))
+	origTitle, origStart, origEmoji := calendarTitle, calendarStartAt, calendarEmojiIcon
+	calendarTitle, calendarStartAt, calendarEmojiIcon = "Party", "2026-08-10T09:00:00Z", "🎉"
+	t.Cleanup(func() { calendarTitle, calendarStartAt, calendarEmojiIcon = origTitle, origStart, origEmoji })
+
+	captureStdout(func() {
+		if err := calendarCreateCmd.RunE(calendarCreateCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if got, _ := body["emoji_icon"].(string); got != "🎉" {
+		t.Errorf("emoji_icon in POST body: want 🎉 got %q", got)
+	}
+}
+
+func TestCalendarCreateCountdownCmd_EmojiIcon(t *testing.T) {
+	var body map[string]any
+	newCmdTestClient(t, emojiCaptureHandler(http.MethodPost, &body))
+	origTitle, origDate, origEmoji := calendarTitle, calendarCountdownDate, calendarEmojiIcon
+	calendarTitle, calendarCountdownDate, calendarEmojiIcon = "Trip", "2026-06-01", "✈️"
+	t.Cleanup(func() { calendarTitle, calendarCountdownDate, calendarEmojiIcon = origTitle, origDate, origEmoji })
+
+	captureStdout(func() {
+		if err := calendarCreateCountdownCmd.RunE(calendarCreateCountdownCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if got, _ := body["emoji_icon"].(string); got != "✈️" {
+		t.Errorf("emoji_icon in POST body: want ✈️ got %q", got)
+	}
+}
+
+func TestCalendarUpdateCmd_EmojiIconOnlyWhenChanged(t *testing.T) {
+	var body map[string]any
+	newCmdTestClient(t, emojiCaptureHandler(http.MethodPut, &body))
+	origID, origEmoji := calendarEventID, calendarEmojiIcon
+	calendarEventID, calendarEmojiIcon = "event1", "🦃"
+	t.Cleanup(func() { calendarEventID, calendarEmojiIcon = origID, origEmoji })
+
+	run := func() {
+		captureStdout(func() {
+			if err := calendarUpdateCmd.RunE(calendarUpdateCmd, nil); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+
+	// Flag not set: emoji_icon must be omitted even though the variable is non-empty.
+	run()
+	if _, ok := body["emoji_icon"]; ok {
+		t.Errorf("emoji_icon sent without flag: %v", body)
+	}
+
+	// pflag.Set() marks the flag permanently Changed on the shared singleton,
+	// so this must stay after the not-set assertion.
+	if err := calendarUpdateCmd.Flags().Set(flagEmojiIcon, "🦃"); err != nil {
+		t.Fatalf("setting flag: %v", err)
+	}
+	run()
+	if got, _ := body["emoji_icon"].(string); got != "🦃" {
+		t.Errorf("emoji_icon in PUT body: want 🦃 got %q", got)
+	}
+}

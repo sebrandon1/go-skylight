@@ -67,8 +67,12 @@ func printCalendarTable(events []lib.CalendarEvent) {
 		if e.AllDay {
 			allDay = boolYes
 		}
+		title := e.Title
+		if e.EmojiIcon != "" {
+			title = e.EmojiIcon + " " + title
+		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			e.ID, e.Title, e.StartAt, e.EndAt, allDay)
+			e.ID, title, e.StartAt, e.EndAt, allDay)
 	}
 	w.Flush()
 }
