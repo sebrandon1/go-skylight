@@ -64,6 +64,7 @@ cmd/                           # Cobra command definitions
   analytics.go                 # analytics — family activity stats over a time period
   export.go                    # export — dump frame data to JSON file
   import.go                    # import — restore frame data from export JSON file
+  import_remap.go              # Cross-frame import: remap categories by label, link sittings to new recipes
   watch.go                     # watch — poll for changes and print events as they happen
   home.go                      # home — weekly combined view of events, tasks, lists, meals, routines
   status.go                    # status — quick overview of the connected frame

@@ -353,6 +353,8 @@ skylight import --file PATH [--dry-run] [--resources all] [--skip-existing]
 
 `--skip-existing` skips resources already on the frame, so re-running an import does not create duplicates. Resources match by title, and meal sittings and calendar events match by title and date. If any lookup fails, the import stops before creating anything. Photos are the exception: they are always uploaded again.
 
+**Importing into a different frame.** When the export's `frame_id` differs from the target frame, people are remapped by label: assignee and category IDs on chores, rewards, routines, calendar events and bounties become the ID of the target category with the same label (exact match; target categories are never renamed or deleted). Recipes are imported first and meal sittings are linked to the recipes created in that run. Categories that exist only in the export are created when `--resources` includes `categories`; otherwise the import fails before writing anything and lists the unmatched labels or unknown category IDs. The export must include categories. Meal categories are not remapped. `--dry-run` reads the target frame and prints the mapping and any unmatched labels. Imports into the same frame are unchanged.
+
 ## Shell Completion
 
 Cobra auto-generates shell completion scripts for bash, zsh, and fish. Enable completion once by adding the appropriate line to your shell profile:
