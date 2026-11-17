@@ -54,6 +54,25 @@ chores, err := client.ListChores(ctx, "frame-id", lib.ChoreListOptions{Date: "20
 // All Tasks view: one entry per series, bucketed late/today/today_timed/any_day/future
 all, err := client.ListAllTasks(ctx, "frame-id", lib.AllTasksOptions{Limit: 50, IncludeUpForGrabs: true})
 // all.Chores.Late, all.Routines.TodayTimed, ...
+// Create a chore with a due time ("HH:MM", 24-hour). Invalid values are rejected
+// client-side because the API silently accepts junk (see lib.ValidateStartTime).
+chore, err := client.CreateChore(ctx, "frame-id", lib.ChoreData{
+    Title:     "Feed the cat",
+    DueDate:   "2026-11-20",
+    StartTime: "07:30",
+})
+
+// Task notifications are frame-wide, not per task. Due notifications fire for
+// tasks that have a due time. Only the rules you set are sent. A disabled rule
+// is sent without filters (the API rejects and clears them). Enabling a rule
+// needs a category ID or up-for-grabs (lib.ErrNoNotificationRecipients), and
+// changing filters on a rule that stays disabled returns
+// lib.ErrFiltersOnDisabledRule.
+on := true
+settings, err := client.UpdateTaskNotificationSettings(ctx, "frame-id", lib.TaskNotificationUpdate{
+    TaskDue: &lib.TaskNotificationChange{Enabled: &on, CategoryIDs: &[]string{"cat-1"}},
+})
+current, err := client.GetTaskNotificationSettings(ctx, "frame-id")
 
 // Create a bounty (chore + matched reward)
 bounty, err := client.CreateBounty(ctx, "frame-id", lib.BountyData{
@@ -116,7 +135,7 @@ if lib.IsValidation(err) { /* bad request */ }
 | Resource | List | Create | Update | Delete | Extra |
 |----------|------|--------|--------|--------|-------|
 | Calendar events | ✓ | ✓ | ✓ | ✓ | sources |
-| Chores | ✓ | ✓ | ✓ | ✓ | filter by date/assignee/status |
+| Chores | ✓ | ✓ | ✓ | ✓ | filter by date/assignee/status, due time, frame-wide task notification settings |
 | Rewards | ✓ | ✓ | ✓ | ✓ | redeem, unredeem, points |
 | Lists | ✓ | ✓ | ✓ | ✓ | items CRUD, task box |
 | Recipes | ✓ | ✓ | ✓ | ✓ | sittings, grocery |

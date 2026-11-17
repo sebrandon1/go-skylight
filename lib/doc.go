@@ -29,6 +29,8 @@
 //   - Frame: GetFrame, ListDevices, GetAvatars, GetColors
 //   - Bounties (chore+reward pairs): CreateBounty, ListBounties
 //   - Chore rotations: CreateChoreRotation
+//   - Task notifications: GetTaskNotificationSettings,
+//     UpdateTaskNotificationSettings, ValidateStartTime
 //
 // # Base URL
 //

@@ -225,6 +225,8 @@ func printTableOutput(data any) bool {
 		printChoresTable(v)
 	case *lib.AllTasks:
 		printAllTasksTable(v)
+	case *lib.TaskNotificationSettings:
+		printTaskNotificationsTable(v)
 	case []lib.Reward:
 		printRewardsTable(v)
 	case []lib.Frame:

@@ -43,6 +43,7 @@ cmd/                           # Cobra command definitions
   calendar_schedule.go         # `schedule` subcommand — agenda view builder
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
   chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim, all (also registers the `task all` alias)
+  chore_notifications.go       # chore notifications show|set — frame-wide task notification settings
   chore_streak.go              # chore streak — per-assignee completion streak stats
   chore_week.go                # Weekly chore view builder (Mon-Sun slots)
   reward.go                    # reward list, get, create, update, delete, redeem, unredeem, points, remove-stars
@@ -86,6 +87,7 @@ lib/                           # API client library
   message.go                   # Household messages (API "nudges"): list, send, update, delete
   chore.go                     # Chore CRUD (JSON-API format)
   chore_all.go                 # All Tasks view (GET /frames/{id}/chores/all): ListAllTasks, buckets late/today/today_timed/any_day/future
+  task_notifications.go        # Frame-wide task notification settings (GET/PATCH task_notification_settings)
   frame.go                     # Frame info, devices, device tab visibility (device_config), avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
   meal.go                      # Recipes, meal sittings, meal categories, grocery list
@@ -163,7 +165,7 @@ SKYLIGHT_QUIET=false
 ### Resource Commands
 
 - `calendar list|get|create|create-countdown|day|week|schedule|update|delete|sources|source-enable|source-disable` -- Calendar events and source calendars
-- `chore list|get|search|create|update|delete|complete|skip|claim|streak|all` -- Chore management (list supports `--week` for weekly view; `all` is the All Tasks view, also available as the top-level alias `task all`)
+- `chore list|get|search|create|update|delete|complete|skip|claim|streak|all|notifications show|set` -- Chore management (list supports `--week` for weekly view; `all` is the All Tasks view, also available as the top-level alias `task all`; create/update accept `--due-time HH:MM`)
 - `reward list|get|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
 - `list all|info|create|update|delete|add-item|update-item|delete-item|delete-section|reorder-item|clear-completed|task-box-item` -- List management
 - `meal categories|create-category|update-category|delete-category|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|get-sitting|create-sitting|update-sitting|delete-sitting|sitting-recipe|plan|add-to-grocery` -- Meal planning
@@ -185,7 +187,7 @@ The `get` prefix (`get calendar list`, etc.) is still supported but hidden. Pref
 
 All update commands use `cmd.Flags().Changed()` to only send fields that were explicitly set:
 
-- `chore update --chore-id ID [--title] [--status] [--points] [--assignee-id] [--date]`
+- `chore update --chore-id ID [--title] [--status] [--points] [--assignee-id] [--date] [--due-time]`
 - `calendar update --event-id ID [--title] [--start-at] [--end-at] [--all-day]`
 - `list update --list-id ID [--title] [--color]`
 - `list update-item --list-id ID --item-id ID [--title] [--completed]`

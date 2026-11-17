@@ -85,7 +85,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `watch` | Poll for changes and print events in real time |
 | `export` / `import` | Backup and restore frame data as JSON |
 | `calendar` | Calendar event CRUD, weekly view, source calendars, countdowns |
-| `chore` | Chore CRUD, weekly view, All Tasks view (`chore all` / `task all`), completion streaks, complete/skip/claim |
+| `chore` | Chore CRUD, weekly view, All Tasks view (`chore all` / `task all`), completion streaks, complete/skip/claim, due times, task notification settings (`chore notifications show|set`) |
 | `reward` | Reward CRUD, redeem/unredeem, points, remove-stars |
 | `list` | List and list item CRUD |
 | `meal` | Recipe CRUD, meal sittings, meal categories |
