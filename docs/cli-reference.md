@@ -87,6 +87,7 @@ skylight chore complete --chore-id ID
 skylight chore skip --chore-id ID [--defer-until DATE]
 skylight chore claim --chore-id ID --assignee-id ID
 skylight chore streak [--days N] [--assignee-id ID]
+skylight chore all [--limit N] [--include-up-for-grabs=true|false]   # All Tasks view: one entry per series, bucketed late/today/today_timed/any_day/future; aliases: skylight task all, skylight chore all-tasks; --limit must be >= 0
 ```
 
 > **Note:** The Skylight API requires a date window for every chore query.
