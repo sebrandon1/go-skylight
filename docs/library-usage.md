@@ -74,6 +74,26 @@ settings, err := client.UpdateTaskNotificationSettings(ctx, "frame-id", lib.Task
 })
 current, err := client.GetTaskNotificationSettings(ctx, "frame-id")
 
+// Create one task linked across several profiles (needs API version >= 2026-08-05)
+linked, err := client.CreateLinkedChore(ctx, "frame-id", lib.ChoreData{
+    Title:       "Take out bins",
+    DueDate:     "2026-11-20",
+    CategoryIDs: []string{"profile-1", "profile-2"},
+})
+// linked[0].LinkedTaskGroupID identifies the group
+
+// Edit every linked copy (After/Before = instance date), or detach just one with "one"
+_, err = client.UpdateChore(ctx, "frame-id", linked[0].ID, lib.ChoreData{
+    Title:           "Bins and recycling",
+    ApplyToProfiles: lib.ApplyToProfilesAll,
+    CategoryIDs:     []string{"profile-1", "profile-2"},
+    After:           "2026-11-20",
+    Before:          "2026-11-20",
+})
+
+// Delete for every profile, or only this profile's copy
+err = client.DeleteLinkedChore(ctx, "frame-id", linked[0].ID, lib.ApplyToProfilesAll)
+
 // Create a bounty (chore + matched reward)
 bounty, err := client.CreateBounty(ctx, "frame-id", lib.BountyData{
     Title:       "Clean the kitchen",

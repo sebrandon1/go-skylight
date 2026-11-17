@@ -32,12 +32,16 @@ var (
 	choreAllLimit        int
 	choreAllUpForGrabs   bool
 	choreDueTime         string
+	choreAssigneeIDs     []string
+	choreApplyToProfiles string
 )
 
 const (
 	flagDueTime  = "due-time"
 	dueTimeUsage = "Due time (HH:MM, 24-hour); due notifications only fire for tasks with a due time (see chore notifications)"
 )
+
+var choreApplyScopes = []string{lib.ApplyToProfilesAll, lib.ApplyToProfilesOne}
 
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
 
@@ -246,6 +250,18 @@ var choreCreateCmd = &cobra.Command{
 			return err
 		}
 
+		if cmd.Flags().Changed("assignee-ids") {
+			if cmd.Flags().Changed("assignee-id") {
+				return fmt.Errorf("--assignee-id and --assignee-ids are mutually exclusive")
+			}
+			if choreUpForGrabs {
+				return fmt.Errorf("--assignee-ids cannot be combined with --up-for-grabs")
+			}
+			if len(choreAssigneeIDs) < 2 {
+				return fmt.Errorf("--assignee-ids needs at least two profile IDs; use --assignee-id for one")
+			}
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
@@ -277,6 +293,15 @@ var choreCreateCmd = &cobra.Command{
 		}
 		var chore *lib.Chore
 		ctx := cmd.Context()
+		if cmd.Flags().Changed("assignee-ids") {
+			linked, err := createLinkedChores(cmd, client, data)
+			if err != nil {
+				return err
+			}
+			maybeLoadCatNames(ctx, client)
+			printOutput(linked)
+			return nil
+		}
 		if choreUpForGrabs {
 			chore, err = client.CreateUpForGrabsChore(ctx, frameID, data)
 		} else {
@@ -301,6 +326,15 @@ var choreDeleteCmd = &cobra.Command{
 			return err
 		}
 
+		if cmd.Flags().Changed("apply-to-profiles") {
+			if err := validateEnum(choreApplyToProfiles, choreApplyScopes); err != nil {
+				return err
+			}
+			if choreDeleteRecurring {
+				return fmt.Errorf("--apply-to-profiles and --recurring are mutually exclusive")
+			}
+		}
+
 		if dryRun {
 			printDryRun("delete chore %s", choreID)
 			return nil
@@ -316,7 +350,9 @@ var choreDeleteCmd = &cobra.Command{
 		}
 
 		var delErr error
-		if choreDeleteRecurring {
+		if cmd.Flags().Changed("apply-to-profiles") {
+			delErr = client.DeleteLinkedChore(cmd.Context(), frameID, choreID, choreApplyToProfiles)
+		} else if choreDeleteRecurring {
 			delErr = client.DeleteRecurringChore(cmd.Context(), frameID, choreID)
 		} else {
 			delErr = client.DeleteChore(cmd.Context(), frameID, choreID)
@@ -377,6 +413,9 @@ var choreUpdateCmd = &cobra.Command{
 				return err
 			}
 		}
+		if err := validateLinkedUpdateFlags(cmd); err != nil {
+			return err
+		}
 
 		client, err := getClient()
 		if err != nil {
@@ -423,6 +462,13 @@ var choreUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("up-for-grabs") {
 			data.UpForGrabs = choreUpForGrabs
 		}
+		if cmd.Flags().Changed("apply-to-profiles") {
+			data.ApplyToProfiles = choreApplyToProfiles
+			data.After, data.Before = choreDate, choreDate
+		}
+		if cmd.Flags().Changed("assignee-ids") {
+			data.CategoryIDs = choreAssigneeIDs
+		}
 
 		ctx := cmd.Context()
 		chore, err := client.UpdateChore(ctx, frameID, choreID, data)
@@ -434,6 +480,44 @@ var choreUpdateCmd = &cobra.Command{
 		printOutput([]lib.Chore{*chore})
 		return nil
 	},
+}
+
+// validateLinkedUpdateFlags checks the linked-task flags of chore update: the API
+// needs an instance date with --apply-to-profiles, and a profile list only makes
+// sense when editing every linked copy.
+func validateLinkedUpdateFlags(cmd *cobra.Command) error {
+	hasScope := cmd.Flags().Changed("apply-to-profiles")
+	hasIDs := cmd.Flags().Changed("assignee-ids")
+	if hasScope {
+		if err := validateEnum(choreApplyToProfiles, choreApplyScopes); err != nil {
+			return err
+		}
+		if !cmd.Flags().Changed(subDate) {
+			return fmt.Errorf("--apply-to-profiles requires --date (the instance date)")
+		}
+	}
+	if hasIDs {
+		if cmd.Flags().Changed("assignee-id") {
+			return fmt.Errorf("--assignee-id and --assignee-ids are mutually exclusive")
+		}
+		if !hasScope || choreApplyToProfiles != lib.ApplyToProfilesAll {
+			return fmt.Errorf("--assignee-ids requires --apply-to-profiles all")
+		}
+		if len(choreAssigneeIDs) == 0 {
+			return fmt.Errorf("--assignee-ids needs at least one profile ID")
+		}
+	}
+	return nil
+}
+
+// createLinkedChores creates one chore linked across the --assignee-ids profiles.
+func createLinkedChores(cmd *cobra.Command, client *lib.Client, data lib.ChoreData) ([]lib.Chore, error) {
+	data.CategoryIDs = choreAssigneeIDs
+	chores, err := client.CreateLinkedChore(cmd.Context(), frameID, data)
+	if err != nil {
+		return nil, fmt.Errorf("creating linked chore: %w", err)
+	}
+	return chores, nil
 }
 
 var choreSearchCmd = &cobra.Command{
@@ -589,6 +673,7 @@ func init() {
 	choreCreateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
 	choreCreateCmd.Flags().StringVar(&choreDueTime, flagDueTime, "", dueTimeUsage)
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
+	choreCreateCmd.Flags().StringSliceVar(&choreAssigneeIDs, "assignee-ids", nil, "Comma-separated profile IDs (2+) to create one linked task across")
 	choreCreateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
 	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
 	choreCreateCmd.Flags().BoolVar(&choreUpForGrabs, "up-for-grabs", false, "Make chore claimable by anyone")
@@ -606,7 +691,10 @@ func init() {
 	choreUpdateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
 	choreUpdateCmd.Flags().StringVar(&choreDueTime, flagDueTime, "", dueTimeUsage)
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
-	choreUpdateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
+	choreUpdateCmd.Flags().StringSliceVar(&choreAssigneeIDs, "assignee-ids", nil, "Full list of profile IDs for a linked task (adds/removes profiles; requires --apply-to-profiles all)")
+	choreUpdateCmd.Flags().StringVar(&choreApplyToProfiles, "apply-to-profiles", "", "Linked task scope: all (every profile's copy) or one (this copy only, detaches it); requires --date")
+	registerEnumFlagCompletion(choreUpdateCmd, "apply-to-profiles", choreApplyScopes...)
+	choreUpdateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date (with --apply-to-profiles: the instance date)")
 	choreUpdateCmd.Flags().StringVar(&choreFrequency, "frequency", "", "Recurrence frequency: daily, weekly, monthly (replaces the schedule)")
 	choreUpdateCmd.Flags().IntVar(&choreInterval, "interval", 0, "Recurrence interval (every N periods)")
 	choreUpdateCmd.Flags().StringSliceVar(&choreRecurrenceDays, "recurrence-days", nil, "Days of week for weekly recurrence (e.g., mon,wed,fri; replaces the schedule)")
@@ -623,6 +711,8 @@ func init() {
 	choreDeleteCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview without making API calls")
 	choreDeleteCmd.Flags().BoolVar(&yes, "yes", false, "Skip confirmation prompt")
 	choreDeleteCmd.Flags().BoolVar(&choreDeleteRecurring, "recurring", false, "Delete all instances of a recurring chore")
+	choreDeleteCmd.Flags().StringVar(&choreApplyToProfiles, "apply-to-profiles", "", "Linked task scope: all (every profile) or one (this profile's copy only)")
+	registerEnumFlagCompletion(choreDeleteCmd, "apply-to-profiles", choreApplyScopes...)
 	markFlagRequired(choreDeleteCmd, "chore-id")
 
 	choreCompleteCmd.Flags().StringVar(&choreID, "chore-id", "", "Chore ID to complete")

@@ -165,7 +165,7 @@ SKYLIGHT_QUIET=false
 ### Resource Commands
 
 - `calendar list|get|create|create-countdown|day|week|schedule|update|delete|sources|source-enable|source-disable` -- Calendar events and source calendars
-- `chore list|get|search|create|update|delete|complete|skip|claim|streak|all|notifications show|set` -- Chore management (list supports `--week` for weekly view; `all` is the All Tasks view, also available as the top-level alias `task all`; create/update accept `--due-time HH:MM`)
+- `chore list|get|search|create|update|delete|complete|skip|claim|streak|all|notifications show|set` -- Chore management (list supports `--week` for weekly view; `all` is the All Tasks view, also available as the top-level alias `task all`; create/update accept `--due-time HH:MM`; create supports `--assignee-ids` (linked tasks); delete supports `--apply-to-profiles all|one`)
 - `reward list|get|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
 - `list all|info|create|update|delete|add-item|update-item|delete-item|delete-section|reorder-item|clear-completed|task-box-item` -- List management
 - `meal categories|create-category|update-category|delete-category|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|get-sitting|create-sitting|update-sitting|delete-sitting|sitting-recipe|plan|add-to-grocery` -- Meal planning
@@ -187,7 +187,7 @@ The `get` prefix (`get calendar list`, etc.) is still supported but hidden. Pref
 
 All update commands use `cmd.Flags().Changed()` to only send fields that were explicitly set:
 
-- `chore update --chore-id ID [--title] [--status] [--points] [--assignee-id] [--date] [--due-time]`
+- `chore update --chore-id ID [--title] [--status] [--points] [--assignee-id] [--assignee-ids] [--apply-to-profiles all|one] [--date] [--due-time]` (`--apply-to-profiles` requires `--date`; `--assignee-ids` requires `--apply-to-profiles all`)
 - `calendar update --event-id ID [--title] [--start-at] [--end-at] [--all-day]`
 - `list update --list-id ID [--title] [--color]`
 - `list update-item --list-id ID --item-id ID [--title] [--completed]`
