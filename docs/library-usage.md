@@ -126,6 +126,6 @@ if lib.IsValidation(err) { /* bad request */ }
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
 | Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |
 | Rotations | — | ✓ | — | — | rotating chore assignments |
-| Routines | ✓ | ✓ | ✓ | ✓ | get/update supported; modeled as a chore with a time-of-day slot |
+| Routines | ✓ | ✓ | ✓ | ✓ | get/update supported; modeled as a chore with a time-of-day slot; `ListHabits` and `Routine.Habit` expose habit streaks |
 | Grocery | ✓ | ✓ | — | — | organize, order (Instacart), clear completed |
 | Status / Home / Analytics / Watch | — | — | — | — | dashboards, stats, and live polling |

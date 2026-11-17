@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/sebrandon1/go-skylight/lib"
 )
 
 func routineMockHandler() http.HandlerFunc {
@@ -342,5 +344,60 @@ func TestRoutineUpdateCmd_RejectsNonPositivePoints(t *testing.T) {
 	}
 	if called {
 		t.Error("expected no API call for --points 0")
+	}
+}
+
+func habitMockHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[
+			{"id":"h-2026-08-10-0600","attributes":{"summary":"Brush teeth","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}},"habit_tracker":{"data":{"id":"t1","type":"habit_tracker"}}}},
+			{"id":"p-2026-08-10-2000","attributes":{"summary":"Plain","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"a1","type":"category"}},"habit_tracker":{"data":null}}}
+		],"included":[{"id":"t1","type":"habit_tracker","attributes":{"current_streak":3,"longest_streak":7,"time_range_progress":[{"type":"week","total":2,"possible":4}]}}]}`)
+	}
+}
+
+func TestRoutineHabitsCmd_JSON(t *testing.T) {
+	newCmdTestClient(t, habitMockHandler())
+
+	out := captureStdout(func() {
+		if err := routineHabitsCmd.RunE(routineHabitsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if !strings.Contains(out, "Brush teeth") || !strings.Contains(out, `"current_streak": 3`) {
+		t.Errorf("expected habit with streak, got: %s", out)
+	}
+	if strings.Contains(out, "Plain") {
+		t.Errorf("untracked routine should be excluded, got: %s", out)
+	}
+}
+
+func TestPrintRoutinesTable_Habits(t *testing.T) {
+	routines := []lib.Routine{{ID: "1", Title: "Brush teeth", TimeOfDay: "morning", Habit: &lib.HabitTracker{CurrentStreak: 3, LongestStreak: 7, Progress: []lib.HabitProgress{{Type: "week", Total: 2, Possible: 4}}}}}
+	out := captureStdout(func() { printRoutinesTable(routines) })
+	for _, want := range []string{"STREAK", "LONGEST", "2/4 this week"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected %q in table, got: %s", want, out)
+		}
+	}
+	plain := captureStdout(func() { printRoutinesTable([]lib.Routine{{ID: "1", Title: "x"}}) })
+	if strings.Contains(plain, "STREAK") {
+		t.Errorf("plain table should not have streak columns: %s", plain)
+	}
+}
+
+func TestRoutineHabitsCmd_AssigneeFilter(t *testing.T) {
+	newCmdTestClient(t, habitMockHandler())
+	routineListAssigneeID = "someone-else"
+	defer func() { routineListAssigneeID = "" }()
+
+	out := captureStdout(func() {
+		if err := routineHabitsCmd.RunE(routineHabitsCmd, nil); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	if strings.Contains(out, "Brush teeth") {
+		t.Errorf("expected assignee filter to exclude habit, got: %s", out)
 	}
 }

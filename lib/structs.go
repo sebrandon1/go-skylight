@@ -173,11 +173,78 @@ type Chore struct {
 	TrackHabit      bool     `json:"track_habit,omitempty"`
 	RenewalUnit     string   `json:"renewal_unit,omitempty"`
 	RenewalInterval int      `json:"renewal_interval,omitempty"`
+
+	// Habit holds streak stats from the chore's habit_tracker record. It is
+	// only populated by list calls, and only when the chore tracks a habit.
+	Habit *HabitTracker `json:"habit,omitempty"`
+}
+
+// HabitProgress is a habit's completion progress over a time range, e.g.
+// {Type: "week", Total: 2, Possible: 2}. The API returns a list of these.
+type HabitProgress struct {
+	Type     string `json:"type,omitempty"`
+	Total    int    `json:"total"`
+	Possible int    `json:"possible"`
+}
+
+// HabitTracker holds the streak stats Skylight keeps for a routine with
+// track_habit enabled. There is no habit endpoint; the record arrives as an
+// included habit_tracker resource on the chores list response.
+type HabitTracker struct {
+	ID            string          `json:"id,omitempty"`
+	CurrentStreak int             `json:"current_streak"`
+	LongestStreak int             `json:"longest_streak"`
+	Progress      []HabitProgress `json:"time_range_progress,omitempty"`
 }
 
 // choreAPIResponse wraps the JSON-API envelope for chore list responses.
 type choreAPIResponse struct {
-	Data []choreAPIEntry `json:"data"`
+	Data     []choreAPIEntry     `json:"data"`
+	Included []includedAPIRecord `json:"included"`
+}
+
+// includedAPIRecord is a JSON-API included resource. Attributes stay raw so
+// that only habit_tracker records are decoded; other included types (such as
+// categories) can never break chore list decoding.
+type includedAPIRecord struct {
+	ID         string          `json:"id"`
+	Type       string          `json:"type"`
+	Attributes json.RawMessage `json:"attributes"`
+}
+
+type habitTrackerAttributes struct {
+	CurrentStreak     int             `json:"current_streak"`
+	LongestStreak     int             `json:"longest_streak"`
+	TimeRangeProgress []HabitProgress `json:"time_range_progress"`
+}
+
+// habitTrackers indexes the response's included habit_tracker records by ID.
+func (r *choreAPIResponse) habitTrackers() map[string]*HabitTracker {
+	out := make(map[string]*HabitTracker)
+	for _, inc := range r.Included {
+		if inc.Type != "habit_tracker" {
+			continue
+		}
+		var attrs habitTrackerAttributes
+		if err := json.Unmarshal(inc.Attributes, &attrs); err != nil {
+			continue
+		}
+		out[inc.ID] = &HabitTracker{
+			ID:            inc.ID,
+			CurrentStreak: attrs.CurrentStreak,
+			LongestStreak: attrs.LongestStreak,
+			Progress:      attrs.TimeRangeProgress,
+		}
+	}
+	return out
+}
+
+// habitTrackerID returns the ID of the entry's habit_tracker relationship, or "".
+func (e *choreAPIEntry) habitTrackerID() string {
+	if d := e.Relationships.HabitTracker.Data; d != nil {
+		return d.ID
+	}
+	return ""
 }
 
 type choreAPIAttributes struct {

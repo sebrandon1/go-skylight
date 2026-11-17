@@ -72,6 +72,45 @@ var routineListCmd = &cobra.Command{
 	},
 }
 
+var routineHabitsCmd = &cobra.Command{
+	Use:   "habits",
+	Short: "List habit-tracked routines with streaks and weekly progress",
+	Long: `List routines that have habit tracking enabled (--track-habit), with their
+current streak, longest streak, and progress over the current time range.
+There is no separate habits resource on the Skylight API; a habit is a routine
+with track_habit on, and its stats come from the chore's habit_tracker record.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		client, err := getClient()
+		if err != nil {
+			return err
+		}
+
+		ctx := cmd.Context()
+		habits, err := client.ListHabits(ctx, frameID)
+		if err != nil {
+			return fmt.Errorf("listing habits: %w", err)
+		}
+
+		if routineListAssigneeID != "" {
+			filtered := habits[:0]
+			for _, r := range habits {
+				if r.AssigneeID == routineListAssigneeID {
+					filtered = append(filtered, r)
+				}
+			}
+			habits = filtered
+		}
+
+		maybeLoadCatNames(ctx, client)
+		printOutput(habits)
+		return nil
+	},
+}
+
 var routineGetCmd = &cobra.Command{
 	Use:   subGet,
 	Short: "Get a single routine by ID",
@@ -218,6 +257,8 @@ func init() {
 
 	routineCmd.AddCommand(routineListCmd)
 	routineListCmd.Flags().StringVar(&routineListAssigneeID, "assignee-id", "", "Filter routines by assignee ID")
+	routineCmd.AddCommand(routineHabitsCmd)
+	routineHabitsCmd.Flags().StringVar(&routineListAssigneeID, "assignee-id", "", "Filter habits by assignee ID")
 	routineCmd.AddCommand(routineGetCmd)
 	routineCmd.AddCommand(routineCreateCmd)
 	routineCmd.AddCommand(routineUpdateCmd)

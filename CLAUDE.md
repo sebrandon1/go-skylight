@@ -55,7 +55,7 @@ cmd/                           # Cobra command definitions
   message.go                   # message list, send, update, delete (household text messages)
   template.go                  # template save|apply|list|delete (stored in ~/.skylight/templates/)
   photo.go                     # photo list, upload, delete, download
-  routine.go                   # routine list, get, create, update, delete
+  routine.go                   # routine list, habits, get, create, update, delete
   grocery.go                   # grocery list, create, show, delete, add, add-recipe, update-item, delete-item, organize, order, clear
   bounty.go                    # bounty (chore + reward pair) create/list/update/delete
   rotation.go                  # chore rotation — generate rotating assignments across members
@@ -93,7 +93,7 @@ lib/                           # API client library
   bounty.go                    # Bounty (chore + reward pair) create, list, update, delete
   rotation.go                  # Chore rotation generator (rotating assignments across members)
   photo.go                     # Photo list, upload, delete, download
-  routine.go                   # Routine create/list/get/update/delete (a routine is a chore with routine:true and a BYHOUR-encoded time slot)
+  routine.go                   # Routine create/list/get/update/delete (a routine is a chore with routine:true and a BYHOUR-encoded time slot); ListHabits (routines with habit_tracker streaks)
   *_test.go                    # Unit tests using httptest mock servers
   integration_test.go          # Integration tests (build tag: integration)
   integration_crud_test.go     # CRUD integration tests (build tag: integration)
@@ -173,7 +173,7 @@ SKYLIGHT_QUIET=false
 - `message list|send|update|delete` -- Household text messages, sent now or scheduled and recurring (Calendar Plus)
 - `frame list|info|devices|tabs|avatars|colors|list-albums|set-album|update` -- Frame info and settings (`update --hide-tabs/--show-tabs` sets per-device tab visibility)
 - `photo list|upload|delete|download` -- Photo and video management
-- `routine list|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot)
+- `routine list|habits|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot; `habits` lists habit-tracked routines with streaks)
 - `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order|clear` -- Grocery list management (Instacart ordering)
 - `addon list` -- Frame add-ons and enabled state
 

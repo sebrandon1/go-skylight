@@ -327,9 +327,32 @@ func printPhotosTable(photos []lib.Photo) {
 
 func printRoutinesTable(routines []lib.Routine) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tTITLE\tTIME OF DAY\tASSIGNEE")
+	habits := false
 	for _, r := range routines {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.ID, r.Title, r.TimeOfDay, resolveCatName(r.AssigneeID))
+		if r.Habit != nil {
+			habits = true
+			break
+		}
+	}
+	if !habits {
+		fmt.Fprintln(w, "ID\tTITLE\tTIME OF DAY\tASSIGNEE")
+		for _, r := range routines {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.ID, r.Title, r.TimeOfDay, resolveCatName(r.AssigneeID))
+		}
+		w.Flush()
+		return
+	}
+	fmt.Fprintln(w, "ID\tTITLE\tTIME OF DAY\tASSIGNEE\tSTREAK\tLONGEST\tPROGRESS")
+	for _, r := range routines {
+		streak, longest, progress := "-", "-", "-"
+		if h := r.Habit; h != nil {
+			streak, longest = fmt.Sprint(h.CurrentStreak), fmt.Sprint(h.LongestStreak)
+			if len(h.Progress) > 0 {
+				p := h.Progress[0]
+				progress = fmt.Sprintf("%d/%d this %s", p.Total, p.Possible, p.Type)
+			}
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.ID, r.Title, r.TimeOfDay, resolveCatName(r.AssigneeID), streak, longest, progress)
 	}
 	w.Flush()
 }

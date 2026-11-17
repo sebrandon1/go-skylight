@@ -667,3 +667,109 @@ func TestUpdateRoutine_ServerError(t *testing.T) {
 		t.Fatal("expected error for server error response, got nil")
 	}
 }
+
+func habitMockServer(t *testing.T) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"111-2026-08-10-0600","attributes":{"summary":"Brush teeth","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}},
+			{"id":"222-2026-08-10-2000","attributes":{"summary":"Read","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=20"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":null}}},
+			{"id":"333-2026-08-10-1400","attributes":{"summary":"Walk","start":"2026-08-10","routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=14"]},"relationships":{"category":{"data":{"id":"c1","type":"category"}},"habit_tracker":{"data":{"id":"h3","type":"habit_tracker"}}}}
+		],"included":[
+			{"id":"h1","type":"habit_tracker","attributes":{"current_streak":2,"longest_streak":5,"time_range_progress":[{"type":"week","total":2,"possible":2}]}},
+			{"id":"h3","type":"habit_tracker","attributes":{"current_streak":0,"longest_streak":0}},
+			{"id":"x","type":"category","attributes":{"current_streak":99}}
+		]}`))
+	}))
+	t.Cleanup(srv.Close)
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	t.Cleanup(func() { SkylightURL = old })
+}
+
+func TestListRoutines_ParsesHabitTrackerStreaks(t *testing.T) {
+	habitMockServer(t)
+	client, _ := NewClientWithToken("u", "t")
+	routines, err := client.ListRoutines(context.Background(), "frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(routines) != 3 {
+		t.Fatalf("expected 3 routines, got %d", len(routines))
+	}
+	want := &HabitTracker{ID: "h1", CurrentStreak: 2, LongestStreak: 5, Progress: []HabitProgress{{Type: "week", Total: 2, Possible: 2}}}
+	if !reflect.DeepEqual(routines[0].Habit, want) {
+		t.Errorf("habit:\n got %+v\nwant %+v", routines[0].Habit, want)
+	}
+	if routines[1].Habit != nil {
+		t.Errorf("expected no habit on untracked routine, got %+v", routines[1].Habit)
+	}
+	if routines[2].Habit == nil || routines[2].Habit.Progress != nil {
+		t.Errorf("expected habit without progress, got %+v", routines[2].Habit)
+	}
+}
+
+func TestListHabits_OnlyTrackedRoutines(t *testing.T) {
+	habitMockServer(t)
+	client, _ := NewClientWithToken("u", "t")
+	habits, err := client.ListHabits(context.Background(), "frame1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(habits) != 2 || habits[0].ID != "111" || habits[1].ID != "333" {
+		t.Errorf("unexpected habits: %+v", habits)
+	}
+}
+
+func TestListHabits_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.ListHabits(context.Background(), "frame1"); err == nil {
+		t.Error("expected error, got nil")
+	}
+}
+
+func TestListChores_IncludedOddAttributesDoNotBreakDecoding(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[
+			{"id":"1","attributes":{"summary":"Brush teeth","start":"2026-08-10"},"relationships":{"habit_tracker":{"data":{"id":"h1","type":"habit_tracker"}}}},
+			{"id":"2","attributes":{"summary":"Bad tracker","start":"2026-08-10"},"relationships":{"habit_tracker":{"data":{"id":"h2","type":"habit_tracker"}}}}
+		],"included":[
+			{"id":"c1","type":"category","attributes":{"time_range_progress":"oops","current_streak":"x"}},
+			{"id":"c2","type":"category","attributes":["a","b"]},
+			{"id":"c3","type":"category"},
+			{"id":"c4","type":"avatar","attributes":null},
+			{"id":"h2","type":"habit_tracker","attributes":{"current_streak":"nope"}},
+			{"id":"h1","type":"habit_tracker","attributes":{"current_streak":1,"longest_streak":1,"time_range_progress":[{"type":"week","total":0,"possible":6}]}}
+		]}`))
+	}))
+	defer srv.Close()
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	chores, err := client.ListChores(context.Background(), "frame1", ChoreListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(chores) != 2 {
+		t.Fatalf("expected 2 chores, got %d", len(chores))
+	}
+	want := &HabitTracker{ID: "h1", CurrentStreak: 1, LongestStreak: 1, Progress: []HabitProgress{{Type: "week", Total: 0, Possible: 6}}}
+	if !reflect.DeepEqual(chores[0].Habit, want) {
+		t.Errorf("habit:\n got %+v\nwant %+v", chores[0].Habit, want)
+	}
+	if chores[1].Habit != nil {
+		t.Errorf("malformed habit_tracker should be skipped, got %+v", chores[1].Habit)
+	}
+}
