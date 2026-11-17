@@ -1599,7 +1599,7 @@ func TestRunImportDryRunSkipExisting(t *testing.T) {
 	client, posts := skipExistingMock(t, existing, "", nil)
 	var err error
 	out := captureStdout(func() {
-		err = runImportDryRunSkipExisting(context.Background(), client, data, want, importTestToday)
+		err = runImportDryRunOnFrame(context.Background(), client, data, want, importTestToday, true)
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1619,7 +1619,7 @@ func TestRunImportDryRunSkipExisting_LookupFailure(t *testing.T) {
 	client, _ := skipExistingMock(t, nil, "/rewards", nil)
 	var err error
 	out := captureStdout(func() {
-		err = runImportDryRunSkipExisting(context.Background(), client, data, want, importTestToday)
+		err = runImportDryRunOnFrame(context.Background(), client, data, want, importTestToday, true)
 	})
 	if err == nil || !strings.Contains(err.Error(), "checking existing") {
 		t.Fatalf("error = %v, want a checking existing error", err)

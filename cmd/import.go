@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sebrandon1/go-skylight/lib"
@@ -72,9 +73,18 @@ Recurring chores are recreated once per series with their recurrence rule, start
 from the first exported occurrence on or after today that isn't done yet. If the
 backup has none (for example, it is older than --days), the series starts on its
 latest exported occurrence, so past dates may show as late. Series that have
-already ended and completed one-off chores are skipped. Import into the frame the
-export came from: assignee (category) IDs are not remapped. Running import twice
-creates everything twice.`,
+already ended and completed one-off chores are skipped. Running import
+twice creates everything twice.
+
+Importing into a different frame than the export came from remaps people by
+label: each assignee or category ID in chores, rewards, routines, calendar events
+and bounties is replaced with the ID of the category on the target frame that has
+the same label (exact match; target categories are never renamed or deleted), and
+meal sittings are linked to the recipes created in the same run. Categories that
+exist only in the export are created when --resources includes categories;
+otherwise the import stops before writing anything and lists the unmatched
+labels or unknown category IDs. The export must include categories for this. Meal categories are not
+remapped. --dry-run prints the mapping and any unmatched labels.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
 			return err
@@ -102,7 +112,7 @@ creates everything twice.`,
 		if t, err := time.Parse(time.RFC3339, data.ExportedAt); err == nil {
 			today = max(today, t.Format(lib.DateFormat))
 		}
-		if importDryRun && !importSkipExisting {
+		if importDryRun && !importSkipExisting && !isCrossFrame(data) {
 			runImportDryRun(data, want, today)
 			return nil
 		}
@@ -112,7 +122,7 @@ creates everything twice.`,
 			return err
 		}
 		if importDryRun {
-			return runImportDryRunSkipExisting(cmd.Context(), client, data, want, today)
+			return runImportDryRunOnFrame(cmd.Context(), client, data, want, today, importSkipExisting)
 		}
 		return runImport(cmd.Context(), client, data, want, today, importSkipExisting)
 	},
@@ -122,15 +132,28 @@ func runImportDryRun(data ExportData, want map[string]bool, today string) {
 	printImportPreview(data, want, today, nil)
 }
 
-// runImportDryRunSkipExisting previews an import that skips what is already on
-// the frame. It reads the frame but changes nothing.
-func runImportDryRunSkipExisting(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool, today string) error {
-	existing, err := fetchExistingSets(ctx, client, data, want)
+// runImportDryRunOnFrame previews an import that needs to read the target
+// frame, to skip what is already on it and/or to remap categories. It changes
+// nothing.
+func runImportDryRunOnFrame(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool, today string, skipExisting bool) error {
+	var skipped map[string]int
+	if skipExisting {
+		existing, err := fetchExistingSets(ctx, client, data, want)
+		if err != nil {
+			return err
+		}
+		skipped = countExisting(data, existing, today)
+	}
+	printImportPreview(data, want, today, skipped)
+	if !isCrossFrame(data) {
+		return nil
+	}
+	plan, err := planCategoryRemap(ctx, client, data, want)
 	if err != nil {
 		return err
 	}
-	printImportPreview(data, want, today, countExisting(data, existing, today))
-	return nil
+	plan.print()
+	return plan.check(want)
 }
 
 // countExisting reports, per resource, how many exported items a real import
@@ -219,6 +242,8 @@ type existingSets struct {
 	routines map[string]bool
 	sittings map[string]bool
 	events   map[string]bool
+	// recipeIDs maps a recipe title to its ID on the frame.
+	recipeIDs map[string]string
 }
 
 func sittingKey(summary, date string) string { return summary + "|" + date }
@@ -356,6 +381,10 @@ func fetchExistingSets(ctx context.Context, client *lib.Client, data ExportData,
 			var rs []lib.Recipe
 			rs, err = client.ListRecipes(ctx, frameID)
 			s.recipes = titlesOf(rs, func(r lib.Recipe) string { return r.Title })
+			s.recipeIDs = make(map[string]string, len(rs))
+			for _, r := range rs {
+				s.recipeIDs[r.Title] = r.ID
+			}
 			return err
 		}},
 		{exportResourceRoutines, want[exportResourceRoutines], func() (err error) {
@@ -385,6 +414,12 @@ func fetchExistingSets(ctx context.Context, client *lib.Client, data ExportData,
 }
 
 func runImport(ctx context.Context, client *lib.Client, data ExportData, want map[string]bool, today string, skipExisting bool) error {
+	cross := isCrossFrame(data)
+	data, err := remapForTargetFrame(ctx, client, data, want)
+	if err != nil {
+		return err
+	}
+
 	var existing existingSets
 	if skipExisting {
 		var err error
@@ -392,6 +427,8 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 			return err
 		}
 	}
+
+	recipeTotal, recipeFailed := importRecipesFirst(ctx, client, &data, want, existing, cross)
 
 	type importFn = func() (int, int)
 	var tasks []importFn
@@ -404,9 +441,6 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 	}
 	if want[exportResourceLists] {
 		tasks = append(tasks, func() (int, int) { return importLists(ctx, client, data.Lists, existing.lists) })
-	}
-	if want[exportResourceRecipes] {
-		tasks = append(tasks, func() (int, int) { return importRecipes(ctx, client, data.Recipes, existing.recipes) })
 	}
 	if want[exportResourceSittings] {
 		tasks = append(tasks, func() (int, int) { return importSittings(ctx, client, data.MealSittings, existing.sittings) })
@@ -427,12 +461,26 @@ func runImport(ctx context.Context, client *lib.Client, data ExportData, want ma
 	}
 
 	total, failed := parallelImport(tasks, func(fn importFn) (int, int) { return fn() })
+	total, failed = total+recipeTotal, failed+recipeFailed
 
 	printSuccessf("Imported %d/%d items successfully.\n", total-failed, total)
 	if failed > 0 {
 		return fmt.Errorf("%d/%d items failed to import", failed, total)
 	}
 	return nil
+}
+
+// importRecipesFirst imports recipes ahead of everything else so that, across
+// frames, sittings can be linked to the recipes created here.
+func importRecipesFirst(ctx context.Context, client *lib.Client, data *ExportData, want map[string]bool, existing existingSets, cross bool) (total, failed int) {
+	recipeIDs := &sync.Map{}
+	if want[exportResourceRecipes] {
+		total, failed = importRecipesMapped(ctx, client, data.Recipes, existing.recipes, existing.recipeIDs, recipeIDs)
+	}
+	if cross && want[exportResourceSittings] {
+		data.MealSittings = remapSittingRecipes(data.MealSittings, recipeIDs)
+	}
+	return total, failed
 }
 
 func importRewards(ctx context.Context, client *lib.Client, rewards []lib.Reward, existing map[string]bool) (total, failed int) {
@@ -625,15 +673,30 @@ func importLists(ctx context.Context, client *lib.Client, lists []lib.List, exis
 }
 
 func importRecipes(ctx context.Context, client *lib.Client, recipes []lib.Recipe, existing map[string]bool) (total, failed int) {
+	return importRecipesMapped(ctx, client, recipes, existing, nil, nil)
+}
+
+// importRecipesMapped is importRecipes that also records, in ids, the target
+// frame's ID for each exported recipe ID: the new recipe's, or for a skipped
+// one the existing recipe's from existingIDs.
+func importRecipesMapped(ctx context.Context, client *lib.Client, recipes []lib.Recipe, existing map[string]bool, existingIDs map[string]string, ids *sync.Map) (total, failed int) {
+	record := func(oldID, newID string) {
+		if ids != nil && oldID != "" && newID != "" {
+			ids.Store(oldID, newID)
+		}
+	}
 	return parallelImport(recipes, func(r lib.Recipe) (int, int) {
 		if existing[r.Title] {
 			fmt.Fprintf(os.Stderr, "Skipping existing recipe %q\n", r.Title)
+			record(r.ID, existingIDs[r.Title])
 			return 0, 0
 		}
-		if _, err := client.CreateRecipe(ctx, frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL, MealCategoryID: r.MealCategoryID}); err != nil {
+		created, err := client.CreateRecipe(ctx, frameID, lib.RecipeData{Title: r.Title, Description: r.Description, Ingredients: r.Ingredients, URL: r.URL, MealCategoryID: r.MealCategoryID})
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating recipe %q: %v\n", r.Title, err)
 			return 1, 1
 		}
+		record(r.ID, created.ID)
 		return 1, 0
 	})
 }
