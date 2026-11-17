@@ -19,7 +19,22 @@ const (
 	paramTrue          = "true"
 	applyToAll         = "all"
 	queryKeyApplyTo    = "apply_to"
+
+	// ApplyToProfilesAll and ApplyToProfilesOne scope an update or delete of a
+	// linked (multi-profile) chore.
+	ApplyToProfilesAll      = "all"
+	ApplyToProfilesOne      = "one"
+	queryKeyApplyToProfiles = "apply_to_profiles"
 )
+
+var errBothAssignees = errors.New("set either AssigneeID or CategoryIDs, not both")
+
+func validateApplyToProfiles(v string) error {
+	if v != "" && v != ApplyToProfilesAll && v != ApplyToProfilesOne {
+		return fmt.Errorf("invalid apply_to_profiles %q: must be all or one", v)
+	}
+	return nil
+}
 
 // choreIDRe matches composite chore IDs like "18731133-2026-04-28" or "70190003-2026-04-28-0600".
 // The trailing HHMM group is present for routine (time-of-day) occurrences.
@@ -154,15 +169,30 @@ func (c *Client) ListChores(ctx context.Context, frameID string, opts ChoreListO
 // CreateChore creates a new chore on a frame. POST /chores ignores frequency, interval and
 // recurrence_days, so a chore with Frequency, RecurrenceDays or RecurrenceSet goes through
 // create_multiple with an RRULE instead.
+//
+// A chore with more than one CategoryIDs entry is a linked task: it goes through
+// create_multiple, which links the per-profile copies only on API version
+// 2026-08-05 or later (the default). Use CreateLinkedChore to get every copy back.
 func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
 	if err := ValidateStartTime(chore.StartTime); err != nil {
 		return nil, err
+	}
+	if len(chore.CategoryIDs) > 1 {
+		chores, err := c.CreateLinkedChore(ctx, frameID, chore)
+		if err != nil {
+			return nil, err
+		}
+		return &chores[0], nil
 	}
 	if isRecurring(chore) {
 		if chore.AssigneeID != "" {
 			chore.CategoryIDs = []string{chore.AssigneeID}
 		}
-		return c.createMultiple(ctx, frameID, chore, "chore")
+		chores, err := c.createMultiple(ctx, frameID, chore, "chore")
+		if err != nil {
+			return nil, err
+		}
+		return &chores[0], nil
 	}
 	if chore.Interval != 0 || chore.EndDate != "" {
 		return nil, errRuleRequired
@@ -182,6 +212,22 @@ func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreDat
 	return &result, nil
 }
 
+// CreateLinkedChore creates one chore linked across the profiles in
+// chore.CategoryIDs (two or more) and returns every created copy. Each returned
+// chore carries the shared LinkedTaskGroupID when the API links them.
+func (c *Client) CreateLinkedChore(ctx context.Context, frameID string, chore ChoreData) ([]Chore, error) {
+	if len(chore.CategoryIDs) < 2 {
+		return nil, errors.New("a linked chore needs at least two category IDs")
+	}
+	if chore.AssigneeID != "" {
+		return nil, errBothAssignees
+	}
+	if err := ValidateStartTime(chore.StartTime); err != nil {
+		return nil, err
+	}
+	return c.createMultiple(ctx, frameID, chore, "linked chore")
+}
+
 // CreateUpForGrabsChore creates a shared chore that anyone can claim, using the
 // create_multiple endpoint which accepts up_for_grabs without a category_id.
 func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
@@ -189,7 +235,11 @@ func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chor
 		return nil, err
 	}
 	chore.UpForGrabs = true
-	return c.createMultiple(ctx, frameID, chore, "up-for-grabs chore")
+	chores, err := c.createMultiple(ctx, frameID, chore, "up-for-grabs chore")
+	if err != nil {
+		return nil, err
+	}
+	return &chores[0], nil
 }
 
 // ValidateStartTime checks a chore due time is "HH:MM" (24-hour, 00:00-23:59).
@@ -232,7 +282,7 @@ func withRule(chore ChoreData) (ChoreData, error) {
 	return chore, nil
 }
 
-func (c *Client) createMultiple(ctx context.Context, frameID string, chore ChoreData, kind string) (*Chore, error) {
+func (c *Client) createMultiple(ctx context.Context, frameID string, chore ChoreData, kind string) ([]Chore, error) {
 	chore, err := withRule(chore)
 	if err != nil {
 		return nil, err
@@ -251,8 +301,11 @@ func (c *Client) createMultiple(ctx context.Context, frameID string, chore Chore
 		return nil, fmt.Errorf("no chore returned from create_multiple")
 	}
 
-	result := apiResp.Data[0].toChore()
-	return &result, nil
+	result := make([]Chore, len(apiResp.Data))
+	for i := range apiResp.Data {
+		result[i] = apiResp.Data[i].toChore()
+	}
+	return result, nil
 }
 
 const (
@@ -344,8 +397,15 @@ func (c *Client) GetChore(ctx context.Context, frameID, choreID string) (*Chore,
 // UpdateChore updates an existing chore. Composite instance IDs are normalized
 // to their base ID before the request. PUT ignores frequency, interval and recurrence_days
 // too, so a recurrence change is sent as a replacement RRULE, which replaces the whole schedule.
+//
+// For a linked chore set ApplyToProfiles ("all" or "one"), together with After and Before
+// (the instance date, which the API requires). With "all", send the full CategoryIDs list:
+// adding an ID links another profile, dropping one deletes that profile's copy.
 func (c *Client) UpdateChore(ctx context.Context, frameID, choreID string, chore ChoreData) (*Chore, error) {
 	if err := ValidateStartTime(chore.StartTime); err != nil {
+		return nil, err
+	}
+	if err := validateApplyToProfiles(chore.ApplyToProfiles); err != nil {
 		return nil, err
 	}
 	chore, err := withRule(chore)
@@ -395,13 +455,30 @@ func (c *Client) DeleteRecurringChore(ctx context.Context, frameID, choreID stri
 	return c.deleteChore(ctx, frameID, choreID, applyToAll)
 }
 
+// DeleteLinkedChore deletes a linked chore. applyToProfiles "all" removes it for every
+// profile; "one" removes only this profile's copy and leaves the rest linked.
+func (c *Client) DeleteLinkedChore(ctx context.Context, frameID, choreID, applyToProfiles string) error {
+	if applyToProfiles != ApplyToProfilesAll && applyToProfiles != ApplyToProfilesOne {
+		return fmt.Errorf("invalid apply_to_profiles %q: must be all or one", applyToProfiles)
+	}
+	return c.deleteChoreWith(ctx, frameID, choreID, map[string]string{queryKeyApplyToProfiles: applyToProfiles})
+}
+
 func (c *Client) deleteChore(ctx context.Context, frameID, choreID, applyTo string) error {
+	var params map[string]string
+	if applyTo != "" {
+		params = map[string]string{queryKeyApplyTo: applyTo}
+	}
+	return c.deleteChoreWith(ctx, frameID, choreID, params)
+}
+
+func (c *Client) deleteChoreWith(ctx context.Context, frameID, choreID string, params map[string]string) error {
 	req, err := newRequest(ctx, "DELETE", fmt.Sprintf("%s/frames/%s/chores/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(choreID)))
 	if err != nil {
 		return fmt.Errorf("failed to create delete chore request: %w", err)
 	}
-	if applyTo != "" {
-		addQueryParams(req, map[string]string{queryKeyApplyTo: applyTo})
+	if len(params) > 0 {
+		addQueryParams(req, params)
 	}
 	if err := c.doDelete(req); err != nil {
 		return fmt.Errorf("failed to delete chore: %w", err)

@@ -17,7 +17,8 @@
 //
 //   - Calendar events: ListCalendarEvents, CreateCalendarEvent,
 //     UpdateCalendarEvent, DeleteCalendarEvent, ListSourceCalendars
-//   - Chores: ListChores, CreateChore, UpdateChore, DeleteChore, ListAllTasks
+//   - Chores: ListChores, CreateChore, CreateLinkedChore, UpdateChore,
+//     DeleteChore, DeleteLinkedChore, ListAllTasks
 //   - Rewards: ListRewards, CreateReward, UpdateReward, DeleteReward,
 //     RedeemReward, UnredeemReward, GetRewardPoints
 //   - Lists and items: ListLists, GetList, CreateList, UpdateList, DeleteList,

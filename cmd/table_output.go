@@ -10,7 +10,7 @@ import (
 
 func printChoresTable(chores []lib.Chore) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tDUE DATE\tDUE TIME\tPOINTS\tASSIGNEE\tFREQUENCY\tINTERVAL\tDAYS\tEND DATE")
+	fmt.Fprintln(w, "ID\tTITLE\tSTATUS\tDUE DATE\tDUE TIME\tPOINTS\tASSIGNEE\tFREQUENCY\tINTERVAL\tDAYS\tEND DATE\tLINKED")
 	for _, c := range chores {
 		freq, interval, days, endDate := "-", "-", "-", "-"
 		if c.Recurring {
@@ -29,9 +29,9 @@ func printChoresTable(chores []lib.Chore) {
 		if c.StartTime != "" {
 			dueTime = c.StartTime
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			c.ID, c.Title, c.Status, c.DueDate, dueTime, c.Points, resolveCatName(c.AssigneeID),
-			freq, interval, days, endDate)
+			freq, interval, days, endDate, dashIfEmpty(c.LinkedTaskGroupID))
 	}
 	w.Flush()
 }

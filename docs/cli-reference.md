@@ -78,14 +78,14 @@ skylight calendar schedule [--date DATE] [--days N]   # agenda view; default: to
 skylight chore list [--date DATE] [--assignee-id ID] [--status S] [--after DATE] [--before DATE] [--include-late] [--up-for-grabs] [--week [DATE]]
 skylight chore get --chore-id ID
 skylight chore search --query TERM [--assignee-id ID] [--status S] [--after DATE] [--before DATE]
-skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID] [--date DATE] [--due-time HH:MM] [--recurring] [--up-for-grabs] \
+skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID | --assignee-ids ID1,ID2] [--date DATE] [--due-time HH:MM] [--recurring] [--up-for-grabs] \
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
-skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE] [--due-time HH:MM] [--up-for-grabs] \
+skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--assignee-ids ID1,ID2] [--apply-to-profiles all|one] [--date DATE] [--due-time HH:MM] [--up-for-grabs] \
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
 skylight chore notifications show
 skylight chore notifications set [--task-due on|off] [--due-category-id ID,...] [--due-up-for-grabs on|off] \
     [--task-completed on|off] [--completed-category-id ID,...] [--completed-up-for-grabs on|off] [--dry-run]
-skylight chore delete --chore-id ID [--recurring] [--dry-run] [--yes]   # --recurring deletes every instance
+skylight chore delete --chore-id ID [--recurring | --apply-to-profiles all|one] [--dry-run] [--yes]   # --recurring deletes every instance
 skylight chore complete --chore-id ID
 skylight chore skip --chore-id ID [--defer-until DATE]
 skylight chore claim --chore-id ID --assignee-id ID
@@ -126,6 +126,20 @@ skylight chore all [--limit N] [--include-up-for-grabs=true|false]   # All Tasks
 >
 > On `chore update`, `--frequency`/`--recurrence-days` replace the whole schedule,
 > so pass `--interval` and `--end-date` again if the chore uses them.
+>
+> **Linked tasks.** `chore create --assignee-ids A,B` (two or more profile IDs) creates one
+> task linked across those profiles and prints every copy; the `LINKED` table column and the
+> `linked_task_group_id` JSON field show the shared group. Linking needs API version
+> `2026-08-05` or later (the default is newer); on older versions the API silently creates
+> unlinked copies. `chore update --apply-to-profiles all --date DATE` edits every linked copy
+> (`--date` is the instance date); add `--assignee-ids` with the full profile list to link
+> another profile or drop one (dropping deletes that profile's copy). `--apply-to-profiles one`
+> edits only that chore and detaches it from the group. `chore delete --apply-to-profiles
+> all|one` removes the task for everyone or just that profile's copy; a plain delete removes it
+> for everyone. Detaching one copy from a two-copy group dissolves the group, so the other
+> copy ends up unlinked too. `--assignee-id` and `--assignee-ids` are mutually exclusive.
+>
+> Constraints: on create, `--assignee-ids` cannot be combined with `--assignee-id` or `--up-for-grabs`; on delete, `--apply-to-profiles` cannot be combined with `--recurring`; on update, `--assignee-ids` requires `--apply-to-profiles all`.
 
 ## Rewards
 

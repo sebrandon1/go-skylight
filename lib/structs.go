@@ -173,6 +173,8 @@ type Chore struct {
 	TrackHabit      bool     `json:"track_habit,omitempty"`
 	RenewalUnit     string   `json:"renewal_unit,omitempty"`
 	RenewalInterval int      `json:"renewal_interval,omitempty"`
+	// LinkedTaskGroupID is set when the chore is linked across several profiles.
+	LinkedTaskGroupID string `json:"linked_task_group_id,omitempty"`
 
 	// Habit holds streak stats from the chore's habit_tracker record. It is
 	// only populated by list calls, and only when the chore tracks a habit.
@@ -279,6 +281,9 @@ type choreAPIEntry struct {
 		HabitTracker struct {
 			Data *apiRelationshipData `json:"data"`
 		} `json:"habit_tracker"`
+		LinkedTaskGroup struct {
+			Data *apiRelationshipData `json:"data"`
+		} `json:"linked_task_group"`
 	} `json:"relationships"`
 }
 
@@ -314,6 +319,9 @@ func (e *choreAPIEntry) toChore() Chore {
 	if e.Relationships.Category.Data != nil {
 		c.AssigneeID = e.Relationships.Category.Data.ID
 	}
+	if e.Relationships.LinkedTaskGroup.Data != nil {
+		c.LinkedTaskGroupID = e.Relationships.LinkedTaskGroup.Data.ID
+	}
 	return c
 }
 
@@ -342,6 +350,12 @@ type ChoreData struct {
 	TrackHabit      bool     `json:"track_habit,omitempty"`
 	RenewalUnit     string   `json:"renewal_unit,omitempty"`
 	RenewalInterval int      `json:"renewal_interval,omitempty"`
+	// ApplyToProfiles scopes an update of a linked chore: "all" edits every
+	// linked profile's copy, "one" edits only this chore and detaches it.
+	ApplyToProfiles string `json:"apply_to_profiles,omitempty"`
+	// After and Before are the date window the API requires with ApplyToProfiles.
+	After  string `json:"after,omitempty"`
+	Before string `json:"before,omitempty"`
 }
 
 // List represents a list (e.g., grocery list, todo list).
