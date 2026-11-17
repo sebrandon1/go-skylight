@@ -31,6 +31,12 @@ var (
 	choreDeleteRecurring bool
 	choreAllLimit        int
 	choreAllUpForGrabs   bool
+	choreDueTime         string
+)
+
+const (
+	flagDueTime  = "due-time"
+	dueTimeUsage = "Due time (HH:MM, 24-hour); due notifications only fire for tasks with a due time (see chore notifications)"
 )
 
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
@@ -236,6 +242,9 @@ var choreCreateCmd = &cobra.Command{
 		if err := validateDate(choreDate); err != nil {
 			return err
 		}
+		if err := lib.ValidateStartTime(choreDueTime); err != nil {
+			return err
+		}
 
 		client, err := getClient()
 		if err != nil {
@@ -243,6 +252,7 @@ var choreCreateCmd = &cobra.Command{
 		}
 
 		data := lib.ChoreData{
+			StartTime:   choreDueTime,
 			Title:       choreTitle,
 			Description: choreDescription,
 			DueDate:     choreDate,
@@ -362,12 +372,21 @@ var choreUpdateCmd = &cobra.Command{
 			}
 		}
 
+		if cmd.Flags().Changed(flagDueTime) {
+			if err := lib.ValidateStartTime(choreDueTime); err != nil {
+				return err
+			}
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
 		}
 
 		data := lib.ChoreData{}
+		if cmd.Flags().Changed(flagDueTime) {
+			data.StartTime = choreDueTime
+		}
 		if cmd.Flags().Changed(subTitle) {
 			data.Title = choreTitle
 		}
@@ -551,6 +570,7 @@ func init() {
 	choreCmd.AddCommand(choreSkipCmd)
 	choreCmd.AddCommand(choreClaimCmd)
 	choreCmd.AddCommand(choreSearchCmd)
+	choreCmd.AddCommand(choreNotificationsCmd)
 
 	choreListCmd.Flags().StringVar(&choreDate, subDate, "", "Date filter")
 	choreListCmd.Flags().StringVar(&choreStatus, "status", "", "Status filter: pending, complete, skipped")
@@ -567,6 +587,7 @@ func init() {
 	choreCreateCmd.Flags().StringVar(&choreTitle, subTitle, "", "Chore title")
 	choreCreateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
 	choreCreateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
+	choreCreateCmd.Flags().StringVar(&choreDueTime, flagDueTime, "", dueTimeUsage)
 	choreCreateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreCreateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
 	choreCreateCmd.Flags().BoolVar(&choreRecurring, "recurring", false, "Make chore recurring")
@@ -583,6 +604,7 @@ func init() {
 	choreUpdateCmd.Flags().StringVar(&choreDescription, "description", "", "Chore description")
 	choreUpdateCmd.Flags().StringVar(&choreStatus, "status", "", "Chore status: pending, complete, skipped")
 	choreUpdateCmd.Flags().IntVar(&chorePoints, subPoints, 0, "Points value")
+	choreUpdateCmd.Flags().StringVar(&choreDueTime, flagDueTime, "", dueTimeUsage)
 	choreUpdateCmd.Flags().StringVar(&choreAssigneeID, "assignee-id", "", "Assignee ID")
 	choreUpdateCmd.Flags().StringVar(&choreDate, subDate, "", "Due date")
 	choreUpdateCmd.Flags().StringVar(&choreFrequency, "frequency", "", "Recurrence frequency: daily, weekly, monthly (replaces the schedule)")

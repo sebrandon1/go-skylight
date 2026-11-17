@@ -78,10 +78,13 @@ skylight calendar schedule [--date DATE] [--days N]   # agenda view; default: to
 skylight chore list [--date DATE] [--assignee-id ID] [--status S] [--after DATE] [--before DATE] [--include-late] [--up-for-grabs] [--week [DATE]]
 skylight chore get --chore-id ID
 skylight chore search --query TERM [--assignee-id ID] [--status S] [--after DATE] [--before DATE]
-skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID] [--date DATE] [--recurring] [--up-for-grabs] \
+skylight chore create --title TITLE [--description D] [--points N] [--assignee-id ID] [--date DATE] [--due-time HH:MM] [--recurring] [--up-for-grabs] \
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
-skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE] [--up-for-grabs] \
+skylight chore update --chore-id ID [--title T] [--description D] [--status S] [--points N] [--assignee-id ID] [--date DATE] [--due-time HH:MM] [--up-for-grabs] \
     [--frequency daily|weekly|monthly] [--interval N] [--recurrence-days mon,wed] [--end-date DATE]
+skylight chore notifications show
+skylight chore notifications set [--task-due on|off] [--due-category-id ID,...] [--due-up-for-grabs on|off] \
+    [--task-completed on|off] [--completed-category-id ID,...] [--completed-up-for-grabs on|off] [--dry-run]
 skylight chore delete --chore-id ID [--recurring] [--dry-run] [--yes]   # --recurring deletes every instance
 skylight chore complete --chore-id ID
 skylight chore skip --chore-id ID [--defer-until DATE]
@@ -95,6 +98,31 @@ skylight chore all [--limit N] [--include-up-for-grabs=true|false]   # All Tasks
 > `--date DATE` becomes a same-day window, `--up-for-grabs` uses the next 7 days,
 > and bare `chore list` / `chore search` use the current calendar month. When
 > passed explicitly, `--after` and `--before` must be used together.
+>
+> **Due times and task notifications.** `--due-time` sets the chore's time of day
+> (`HH:MM`, 24-hour, `00:00`-`23:59`; anything else is rejected before the request
+> because the API silently accepts junk). There is no per-task reminder: task
+> notifications are a frame-wide setting, and a "task due" notification fires for
+> tasks that have a due time. `chore notifications show` prints the current
+> settings; `chore notifications set` changes only the flags you pass, and a rule
+> you do not mention is not sent. `--due-category-id` and
+> `--completed-category-id` take family member IDs from `skylight profile list`
+> (repeatable or comma-separated; pass an empty value to clear the filter).
+> With `--output table` the due time shows in a DUE TIME column, and
+> `chore notifications show -o table` shows `-` when a rule has no category
+> filter.
+>
+> Notification rule behavior (confirmed against the live API):
+>
+> - A disabled rule is sent without filters, because the API rejects filters on a
+>   disabled rule (422) and clears them. Disabling a rule therefore does not
+>   preserve its category filter or up-for-grabs setting.
+> - Enabling a rule needs at least one category ID or up-for-grabs. Otherwise the
+>   command fails locally, because the API would silently store the rule as
+>   disabled.
+> - Changing filters (`--*-category-id`, `--*-up-for-grabs`) on a rule that stays
+>   disabled fails locally; pass `--task-due on` or `--task-completed on` in the
+>   same command.
 >
 > On `chore update`, `--frequency`/`--recurrence-days` replace the whole schedule,
 > so pass `--interval` and `--end-date` again if the chore uses them.

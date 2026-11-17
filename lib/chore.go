@@ -155,6 +155,9 @@ func (c *Client) ListChores(ctx context.Context, frameID string, opts ChoreListO
 // recurrence_days, so a chore with Frequency, RecurrenceDays or RecurrenceSet goes through
 // create_multiple with an RRULE instead.
 func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
+	if err := ValidateStartTime(chore.StartTime); err != nil {
+		return nil, err
+	}
 	if isRecurring(chore) {
 		if chore.AssigneeID != "" {
 			chore.CategoryIDs = []string{chore.AssigneeID}
@@ -182,8 +185,24 @@ func (c *Client) CreateChore(ctx context.Context, frameID string, chore ChoreDat
 // CreateUpForGrabsChore creates a shared chore that anyone can claim, using the
 // create_multiple endpoint which accepts up_for_grabs without a category_id.
 func (c *Client) CreateUpForGrabsChore(ctx context.Context, frameID string, chore ChoreData) (*Chore, error) {
+	if err := ValidateStartTime(chore.StartTime); err != nil {
+		return nil, err
+	}
 	chore.UpForGrabs = true
 	return c.createMultiple(ctx, frameID, chore, "up-for-grabs chore")
+}
+
+// ValidateStartTime checks a chore due time is "HH:MM" (24-hour, 00:00-23:59).
+// An empty value is valid and means "not set". The API accepts junk silently
+// ("5pm" becomes 17:00, "25:00" clears the time), so it is checked client-side.
+func ValidateStartTime(v string) error {
+	if v == "" {
+		return nil
+	}
+	if _, err := time.Parse("15:04", v); err != nil || len(v) != 5 {
+		return fmt.Errorf("invalid due time %q: use HH:MM (24-hour, 00:00-23:59)", v)
+	}
+	return nil
 }
 
 var errRuleRequired = errors.New("interval and end date require a frequency or recurrence days: the API replaces the whole rule")
@@ -326,6 +345,9 @@ func (c *Client) GetChore(ctx context.Context, frameID, choreID string) (*Chore,
 // to their base ID before the request. PUT ignores frequency, interval and recurrence_days
 // too, so a recurrence change is sent as a replacement RRULE, which replaces the whole schedule.
 func (c *Client) UpdateChore(ctx context.Context, frameID, choreID string, chore ChoreData) (*Chore, error) {
+	if err := ValidateStartTime(chore.StartTime); err != nil {
+		return nil, err
+	}
 	chore, err := withRule(chore)
 	if err != nil {
 		return nil, err
