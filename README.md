@@ -97,7 +97,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `label` | Event/task label management (list/create/update/delete) |
 | `message` | Household text messages: list, send now or scheduled/recurring, update, delete |
 | `frame` | Frame info, devices, avatars, colors, albums, screensaver settings, show/hide tabs |
-| `addon` | Frame add-ons and enabled state |
+| `addon` | Frame add-ons (`list`) and household add-on switches (`settings`, `set`: Disney Mode) |
 | `bounty` | Chore + reward pair management |
 | `rotation` | Rotating chore assignments |
 | `template` | Save/apply named chore+reward templates (stored in `~/.skylight/templates/`) |

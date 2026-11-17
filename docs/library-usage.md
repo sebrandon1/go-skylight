@@ -183,6 +183,7 @@ if lib.IsValidation(err) { /* bad request */ }
 | Categories | ✓ | ✓ | ✓ | ✓ | profiles & labels |
 | Messages | ✓ | ✓ | ✓ | ✓ | household text messages (`/nudges`); scheduled and recurring |
 | Frame | ✓ | — | ✓ | — | info, devices, avatars, colors, per-device tab visibility |
+| Household add-on settings | ✓ | — | ✓ | — | Disney Mode switches (`/household_config`); partial update via pointer fields |
 | Photos | ✓ | ✓ | — | ✓ | paginated list, upload (S3), download, bulk delete |
 | Bounties | ✓ | ✓ | ✓ | ✓ | chore + reward pairs |
 | Rotations | — | ✓ | — | — | rotating chore assignments |

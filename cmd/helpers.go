@@ -223,10 +223,6 @@ func printTableOutput(data any) bool {
 	switch v := data.(type) {
 	case []lib.Chore:
 		printChoresTable(v)
-	case *lib.AllTasks:
-		printAllTasksTable(v)
-	case *lib.TaskNotificationSettings:
-		printTaskNotificationsTable(v)
 	case []lib.Reward:
 		printRewardsTable(v)
 	case []lib.Frame:
@@ -285,6 +281,22 @@ func printTableOutputMore(data any) bool {
 		printListItemsTable(v)
 	case map[string]lib.FeatureState:
 		printFeatureBundleTable(v)
+	default:
+		return printObjectTableOutput(data)
+	}
+	return true
+}
+
+// printObjectTableOutput renders single-object results (views and settings)
+// rather than lists.
+func printObjectTableOutput(data any) bool {
+	switch v := data.(type) {
+	case *lib.AllTasks:
+		printAllTasksTable(v)
+	case *lib.TaskNotificationSettings:
+		printTaskNotificationsTable(v)
+	case *lib.HouseholdConfig:
+		printHouseholdConfigTable(v)
 	default:
 		return false
 	}

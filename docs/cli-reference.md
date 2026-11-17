@@ -278,8 +278,13 @@ Show and hide tabs:
 ## Add-ons
 
 ```bash
-skylight addon list
+skylight addon list                                  # add-ons included in the frame's plan
+skylight addon settings                              # household add-on switches
+skylight addon set [--disney-profile-pictures=true|false] [--disney-screensaver=true|false]
 ```
+
+- `addon list` shows the frame's `feature_bundle`. That reflects the plan the frame is on; the API has no way to turn those add-ons on or off.
+- `addon settings` and `addon set` read and change `/frames/{id}/household_config`, which holds the Disney Mode switches: Disney avatars for profile photos, and the Disney screensaver album. `set` sends only the flags you pass. `set` requires at least one flag.
 
 ## Bounties & Rotations
 

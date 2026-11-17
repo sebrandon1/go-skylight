@@ -60,7 +60,7 @@ cmd/                           # Cobra command definitions
   grocery.go                   # grocery list, create, show, delete, add, add-recipe, update-item, delete-item, organize, order, clear
   bounty.go                    # bounty (chore + reward pair) create/list/update/delete
   rotation.go                  # chore rotation — generate rotating assignments across members
-  addon.go                     # addon list — show frame add-ons and enabled state
+  addon.go                     # addon list|settings|set — frame add-ons, household add-on switches
   analytics.go                 # analytics — family activity stats over a time period
   export.go                    # export — dump frame data to JSON file
   import.go                    # import — restore frame data from export JSON file
@@ -89,6 +89,7 @@ lib/                           # API client library
   chore.go                     # Chore CRUD (JSON-API format)
   chore_all.go                 # All Tasks view (GET /frames/{id}/chores/all): ListAllTasks, buckets late/today/today_timed/any_day/future
   task_notifications.go        # Frame-wide task notification settings (GET/PATCH task_notification_settings)
+  household.go                 # Household add-on settings (household_config: Disney Mode switches)
   frame.go                     # Frame info, devices, device tab visibility (device_config), avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
   meal.go                      # Recipes, meal sittings, meal categories, grocery list
@@ -178,7 +179,7 @@ SKYLIGHT_QUIET=false
 - `photo list|upload|delete|download` -- Photo and video management
 - `routine list|habits|get|create|update|delete` -- Routine management (a routine is a recurring chore with a morning/afternoon/evening time slot; `habits` lists habit-tracked routines with streaks)
 - `grocery list|create|show|delete|add|add-recipe|update-item|delete-item|organize|order|clear` -- Grocery list management (Instacart ordering)
-- `addon list` -- Frame add-ons and enabled state
+- `addon list|settings|set` -- Frame add-ons, plus the household add-on switches (Disney Mode)
 
 ### Legacy `get` Command
 
@@ -195,6 +196,7 @@ All update commands use `cmd.Flags().Changed()` to only send fields that were ex
 - `reward update --reward-id ID [--title] [--points] [--emoji-icon]`
 - `routine update --routine-id ID [--title] [--time-of-day] [--emoji-icon] [--points] [--track-habit]`
 - `meal update-recipe --recipe-id ID [--title] [--description] [--ingredients] [--url]`
+- `addon set [--disney-profile-pictures=BOOL] [--disney-screensaver=BOOL]`
 
 ### Delete/Mutate Commands
 
