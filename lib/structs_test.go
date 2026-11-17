@@ -28,6 +28,23 @@ func TestToCalendarEventWithCategory(t *testing.T) {
 	}
 }
 
+func TestToCalendarEventLiveShape(t *testing.T) {
+	// Shape returned by the live API (2026-10-15): to-one "category" plus emoji_icon.
+	raw := `{"id":"e1","type":"calendar_event","attributes":{"summary":"Gym","emoji_icon":"🤸"},` +
+		`"relationships":{"category":{"data":{"id":"cat9","type":"category"}},"calendar_account":{"data":{"id":"a1","type":"calendar_account"}}}}`
+	var entry calendarAPIEntry
+	if err := json.Unmarshal([]byte(raw), &entry); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	ev := entry.toCalendarEvent()
+	if ev.CategoryID != "cat9" {
+		t.Errorf("CategoryID = %q, want cat9", ev.CategoryID)
+	}
+	if ev.EmojiIcon != "🤸" {
+		t.Errorf("EmojiIcon = %q, want 🤸", ev.EmojiIcon)
+	}
+}
+
 func TestToRewardNilCategory(t *testing.T) {
 	entry := rewardAPIEntry{ID: "r1"}
 	entry.Attributes.Name = "Prize"

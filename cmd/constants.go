@@ -14,6 +14,7 @@ const (
 
 	// Cobra Use strings / flag names shared across commands
 	flagRefreshToken = "refresh-token"
+	flagEmojiIcon    = "emoji-icon"
 	subCreate        = "create"
 	subList          = "list"
 	subDelete        = "delete"

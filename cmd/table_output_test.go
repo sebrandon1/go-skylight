@@ -266,3 +266,13 @@ func TestPrintFeatureBundleTable(t *testing.T) {
 		t.Errorf("expected both yes/no values in output, got: %s", out)
 	}
 }
+
+func TestPrintCalendarTable_EmojiPrefix(t *testing.T) {
+	events := []lib.CalendarEvent{
+		{ID: "e1", Title: "Party", EmojiIcon: "🎉"},
+	}
+	out := captureStdout(func() { printCalendarTable(events) })
+	if !strings.Contains(out, "🎉 Party") {
+		t.Errorf("expected emoji-prefixed title, got: %s", out)
+	}
+}

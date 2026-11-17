@@ -60,17 +60,19 @@ With `--save`, tokens go to the config file and are not printed. If the save fai
 ```bash
 skylight calendar list [--start-date DATE] [--end-date DATE]  # default: this month; end date is exclusive
 skylight calendar get --event-id ID
-skylight calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR]
-skylight calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR]
+skylight calendar create --title TITLE --start-at DATETIME [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR] [--emoji-icon EMOJI]
+skylight calendar update --event-id ID [--title TITLE] [--start-at DATETIME] [--end-at DATETIME] [--all-day] [--category-id ID] [--color COLOR] [--emoji-icon EMOJI]
 skylight calendar delete --event-id ID [--dry-run] [--yes]
 skylight calendar day [--date DATE]           # default: today
 skylight calendar sources
 skylight calendar source-enable --source-id ID
 skylight calendar source-disable --source-id ID
-skylight calendar create-countdown --title TITLE --date DATE
+skylight calendar create-countdown --title TITLE --date DATE [--emoji-icon EMOJI]
 skylight calendar week [--date DATE]
 skylight calendar schedule [--date DATE] [--days N]   # agenda view; default: today (UTC), 3 days
 ```
+
+Events carry an `emoji_icon`, which Skylight shows on event buttons and cards (for example on Buddy). It is returned in JSON output, and `--output table` prefixes it to the title. On `calendar update`, `--emoji-icon` is sent only when given, and an empty value is ignored, so an emoji can be changed but not removed. Events also report their assigned profile as `category_id`.
 
 ## Chores
 
