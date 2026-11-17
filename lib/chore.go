@@ -131,9 +131,11 @@ func (c *Client) ListChores(ctx context.Context, frameID string, opts ChoreListO
 	}
 
 	searchLower := strings.ToLower(opts.Search)
+	trackers := apiResp.habitTrackers()
 	chores := make([]Chore, 0, len(apiResp.Data))
 	for i := range apiResp.Data {
 		c := apiResp.Data[i].toChore()
+		c.Habit = trackers[apiResp.Data[i].habitTrackerID()]
 		if opts.Status != "" && c.Status != opts.Status {
 			continue
 		}

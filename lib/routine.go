@@ -41,6 +41,9 @@ type Routine struct {
 	EmojiIcon          string `json:"emoji_icon,omitempty"`
 	Points             int    `json:"points,omitempty"`
 	TrackHabit         bool   `json:"track_habit,omitempty"`
+
+	// Habit is set by list/get when the routine tracks a habit.
+	Habit *HabitTracker `json:"habit,omitempty"`
 }
 
 // RoutineData holds the fields for creating a routine. CategoryID is a
@@ -103,7 +106,25 @@ func routineFromChore(ch Chore, timeOfDay string) Routine {
 		EmojiIcon:          ch.EmojiIcon,
 		Points:             ch.Points,
 		TrackHabit:         ch.TrackHabit,
+		Habit:              ch.Habit,
 	}
+}
+
+// ListHabits lists routines that track a habit, with their streak stats. A
+// habit is a routine with track_habit enabled; the Skylight API has no
+// dedicated habit endpoint, so this filters ListRoutines.
+func (c *Client) ListHabits(ctx context.Context, frameID string) ([]Routine, error) {
+	routines, err := c.ListRoutines(ctx, frameID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list habits: %w", err)
+	}
+	habits := make([]Routine, 0, len(routines))
+	for _, r := range routines {
+		if r.TrackHabit {
+			habits = append(habits, r)
+		}
+	}
+	return habits, nil
 }
 
 // CreateRoutine creates a routine as a chore via create_multiple, with

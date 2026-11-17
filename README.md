@@ -90,7 +90,7 @@ Config file: `~/.skylight/config` (override with `--config`). CLI flags take pre
 | `list` | List and list item CRUD |
 | `meal` | Recipe CRUD, meal sittings, meal categories |
 | `photo` | Photo/video list, upload, download, delete |
-| `routine` | Routine create/get/list/update/delete (a routine is a recurring chore with a morning/afternoon/evening slot) |
+| `routine` | Routine create/get/list/habits/update/delete (a routine is a recurring chore with a morning/afternoon/evening slot; `habits` shows streaks) |
 | `grocery` | Grocery list management, Instacart ordering, recipe import |
 | `category` | Family member category management (list/create/update/delete) |
 | `profile` | Household member profile management (list/create/update/delete) |

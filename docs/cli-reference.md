@@ -251,6 +251,7 @@ A routine is a recurring chore with a fixed time-of-day slot (morning, afternoon
 
 ```bash
 skylight routine list [--assignee-id ID]
+skylight routine habits [--assignee-id ID]
 skylight routine get --routine-id ID
 skylight routine create --title TITLE --time-of-day morning|afternoon|evening --category-id ID --start-date DATE [--emoji-icon E] [--points N] [--track-habit]
 skylight routine update --routine-id ID [--title T] [--time-of-day morning|afternoon|evening] [--emoji-icon E] [--points N] [--track-habit=true|false]
@@ -258,6 +259,8 @@ skylight routine delete --routine-id ID [--dry-run] [--yes]
 ```
 
 `--points` sets the stars awarded each time the routine is done and must be greater than 0. `--track-habit=false` removes the routine's habit tracker; turning it back on starts a new one.
+
+`routine habits` lists only routines with habit tracking on, adding the current streak, longest streak, and progress for the current time range (e.g. `2/2 this week`). In JSON output each routine carries a `habit` object (`current_streak`, `longest_streak`, `time_range_progress`); `routine list` includes it too. There is no habits endpoint: the data comes from the `habit_tracker` record the chores list returns for a tracked routine. With `--output table`, `routine habits` adds STREAK, LONGEST and PROGRESS columns, and so does `routine list` whenever any routine tracks a habit.
 
 ## Grocery
 
