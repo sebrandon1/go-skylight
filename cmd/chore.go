@@ -29,6 +29,8 @@ var (
 	choreRecurFrom       string
 	choreSearchQuery     string
 	choreDeleteRecurring bool
+	choreAllLimit        int
+	choreAllUpForGrabs   bool
 )
 
 var choreStatuses = []string{lib.ChoreStatusPending, lib.ChoreStatusComplete, lib.ChoreStatusSkipped}
@@ -59,6 +61,58 @@ list by date range, and --status to filter by pending/complete/skipped.
   # Find today's pending chores, then complete one
   skylight chore list --after 2026-06-05 --before 2026-06-05 --status pending
   skylight chore complete --chore-id 12345678`,
+}
+
+const choreAllLong = `Show the "All Tasks" view: chores and routines, one entry per recurring
+series, bucketed into late, today, today_timed, any_day and future.
+
+  skylight chore all --limit 50
+  skylight task all --include-up-for-grabs=false -o table
+
+--limit caps the total across all buckets (0 uses the server default).`
+
+func runChoreAll(cmd *cobra.Command, _ []string) error {
+	if err := requireFrameID(); err != nil {
+		return err
+	}
+	if choreAllLimit < 0 {
+		return fmt.Errorf("--limit must be >= 0")
+	}
+	client, err := getClient()
+	if err != nil {
+		return err
+	}
+	tasks, err := client.ListAllTasks(cmd.Context(), frameID, lib.AllTasksOptions{
+		Limit:             choreAllLimit,
+		IncludeUpForGrabs: choreAllUpForGrabs,
+	})
+	if err != nil {
+		return fmt.Errorf("listing all tasks: %w", err)
+	}
+	maybeLoadCatNames(cmd.Context(), client)
+	printOutput(tasks)
+	return nil
+}
+
+var choreAllCmd = &cobra.Command{
+	Use:     resourceAll,
+	Aliases: []string{"all-tasks"},
+	Short:   "Show the consolidated All Tasks view (one entry per series)",
+	Long:    choreAllLong + "\nAlso available as `skylight task all`.",
+	RunE:    runChoreAll,
+}
+
+// taskCmd is a top-level alias group so `skylight task all` works.
+var taskCmd = &cobra.Command{
+	Use:   "task",
+	Short: "Task views (alias for chore all)",
+}
+
+var taskAllCmd = &cobra.Command{
+	Use:   resourceAll,
+	Short: choreAllCmd.Short,
+	Long:  choreAllLong,
+	RunE:  runChoreAll,
 }
 
 var choreListCmd = &cobra.Command{
@@ -482,6 +536,13 @@ var choreClaimCmd = &cobra.Command{
 
 func init() {
 	choreCmd.AddCommand(choreListCmd)
+	choreCmd.AddCommand(choreAllCmd)
+	taskCmd.AddCommand(taskAllCmd)
+	rootCmd.AddCommand(taskCmd)
+	for _, c := range []*cobra.Command{choreAllCmd, taskAllCmd} {
+		c.Flags().IntVar(&choreAllLimit, "limit", 0, "Maximum total entries across all buckets (0 = server default)")
+		c.Flags().BoolVar(&choreAllUpForGrabs, "include-up-for-grabs", true, "Include up-for-grabs (unassigned) tasks")
+	}
 	choreCmd.AddCommand(choreGetCmd)
 	choreCmd.AddCommand(choreCreateCmd)
 	choreCmd.AddCommand(choreUpdateCmd)

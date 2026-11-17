@@ -42,7 +42,7 @@ cmd/                           # Cobra command definitions
   calendar.go                  # calendar list, get, create, create-countdown, day, week, schedule, update, delete, sources, source-enable/disable
   calendar_schedule.go         # `schedule` subcommand — agenda view builder
   calendar_week.go             # Weekly calendar view builder (Mon-Sun slots)
-  chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim
+  chore.go                     # chore list (with --week), get, search, create, update, delete, complete, skip, claim, all (also registers the `task all` alias)
   chore_streak.go              # chore streak — per-assignee completion streak stats
   chore_week.go                # Weekly chore view builder (Mon-Sun slots)
   reward.go                    # reward list, get, create, update, delete, redeem, unredeem, points, remove-stars
@@ -69,6 +69,7 @@ cmd/                           # Cobra command definitions
   week.go                      # Generic weekly slot builder (used by chore_week and calendar_week)
   fanout.go                    # runConcurrent — bounded parallel API calls (used by status)
   table_output.go              # Table renderers for all resource types (--output table)
+  table_all_tasks.go           # Table renderer for the All Tasks view (chore all / task all)
   helpers.go                   # printJSON, printOutput, printSuccess, printDryRun, table writer, utilities
   *_test.go                    # Unit tests
 lib/                           # API client library
@@ -84,6 +85,7 @@ lib/                           # API client library
   category.go                  # Category CRUD (list, create, update, delete), plus profile and label CRUD
   message.go                   # Household messages (API "nudges"): list, send, update, delete
   chore.go                     # Chore CRUD (JSON-API format)
+  chore_all.go                 # All Tasks view (GET /frames/{id}/chores/all): ListAllTasks, buckets late/today/today_timed/any_day/future
   frame.go                     # Frame info, devices, device tab visibility (device_config), avatars, colors
   list.go                      # List CRUD, list item CRUD, task box items
   meal.go                      # Recipes, meal sittings, meal categories, grocery list
@@ -156,11 +158,12 @@ SKYLIGHT_QUIET=false
 - `rotation create` -- Rotating chore assignments
 - `template save|apply|list|delete` -- Named chore+reward templates (stored in `~/.skylight/templates/`)
 - `config show|get|set|unset|edit` -- View and modify the local configuration file
+- `task all` -- alias for `chore all`
 
 ### Resource Commands
 
 - `calendar list|get|create|create-countdown|day|week|schedule|update|delete|sources|source-enable|source-disable` -- Calendar events and source calendars
-- `chore list|get|search|create|update|delete|complete|skip|claim|streak` -- Chore management (list supports `--week` for weekly view)
+- `chore list|get|search|create|update|delete|complete|skip|claim|streak|all` -- Chore management (list supports `--week` for weekly view; `all` is the All Tasks view, also available as the top-level alias `task all`)
 - `reward list|get|create|update|delete|redeem|unredeem|points|remove-stars` -- Rewards and point management
 - `list all|info|create|update|delete|add-item|update-item|delete-item|delete-section|reorder-item|clear-completed|task-box-item` -- List management
 - `meal categories|create-category|update-category|delete-category|recipes|recipe-info|create-recipe|update-recipe|delete-recipe|sittings|get-sitting|create-sitting|update-sitting|delete-sitting|sitting-recipe|plan|add-to-grocery` -- Meal planning

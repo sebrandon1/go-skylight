@@ -51,6 +51,10 @@ ctx := context.Background()
 // Date becomes a same-day window; otherwise the current calendar month)
 chores, err := client.ListChores(ctx, "frame-id", lib.ChoreListOptions{Date: "2024-01-15"})
 
+// All Tasks view: one entry per series, bucketed late/today/today_timed/any_day/future
+all, err := client.ListAllTasks(ctx, "frame-id", lib.AllTasksOptions{Limit: 50, IncludeUpForGrabs: true})
+// all.Chores.Late, all.Routines.TodayTimed, ...
+
 // Create a bounty (chore + matched reward)
 bounty, err := client.CreateBounty(ctx, "frame-id", lib.BountyData{
     Title:       "Clean the kitchen",

@@ -223,6 +223,8 @@ func printTableOutput(data any) bool {
 	switch v := data.(type) {
 	case []lib.Chore:
 		printChoresTable(v)
+	case *lib.AllTasks:
+		printAllTasksTable(v)
 	case []lib.Reward:
 		printRewardsTable(v)
 	case []lib.Frame:
