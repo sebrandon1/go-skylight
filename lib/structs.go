@@ -686,16 +686,29 @@ type MealSitting struct {
 	RecipeID       string `json:"recipe_id,omitempty"`
 	MealCategoryID string `json:"meal_category_id,omitempty"`
 	Date           string `json:"date,omitempty"`
-	CreatedAt      string `json:"created_at,omitempty"`
-	UpdatedAt      string `json:"updated_at,omitempty"`
+	// ProfileIDs are the Profiles (category IDs) the sitting is assigned to.
+	ProfileIDs []string `json:"profile_ids,omitempty"`
+	CreatedAt  string   `json:"created_at,omitempty"`
+	UpdatedAt  string   `json:"updated_at,omitempty"`
 }
 
 // MealSittingData holds the meal sitting fields for create requests.
 type MealSittingData struct {
-	Summary        string `json:"summary,omitempty"`
-	RecipeID       string `json:"meal_recipe_id,omitempty"`
-	MealCategoryID string `json:"meal_category_id,omitempty"`
-	Date           string `json:"date,omitempty"`
+	Summary        string   `json:"summary,omitempty"`
+	RecipeID       string   `json:"meal_recipe_id,omitempty"`
+	MealCategoryID string   `json:"meal_category_id,omitempty"`
+	Date           string   `json:"date,omitempty"`
+	ProfileIDs     []string `json:"profile_ids,omitempty"`
+}
+
+// MealSittingUpdateData holds the fields for updating one dated occurrence of
+// a meal sitting. Only non-empty fields are sent. ProfileIDs is a pointer so
+// an explicit empty list clears the assigned profiles.
+type MealSittingUpdateData struct {
+	Summary        string    `json:"summary,omitempty"`
+	RecipeID       string    `json:"meal_recipe_id,omitempty"`
+	MealCategoryID string    `json:"meal_category_id,omitempty"`
+	ProfileIDs     *[]string `json:"profile_ids,omitempty"`
 }
 
 // MealSittingListOptions holds filters for listing meal sittings.
@@ -707,11 +720,6 @@ type MealSittingListOptions struct {
 // mealSittingAPIResponse wraps the JSON-API envelope for meal sitting list/create responses.
 type mealSittingAPIResponse struct {
 	Data []mealSittingAPIEntry `json:"data"`
-}
-
-// mealSittingAPISingleResponse wraps the JSON-API envelope for single meal sitting responses.
-type mealSittingAPISingleResponse struct {
-	Data mealSittingAPIEntry `json:"data"`
 }
 
 // SittingWithRecipe holds a meal sitting and its linked recipe details.
@@ -734,6 +742,9 @@ type mealSittingAPIEntry struct {
 		MealRecipe struct {
 			Data *apiRelationshipData `json:"data"`
 		} `json:"meal_recipe"`
+		Profiles struct {
+			Data []apiRelationshipData `json:"data"`
+		} `json:"profiles"`
 	} `json:"relationships"`
 }
 
@@ -750,6 +761,9 @@ func (e *mealSittingAPIEntry) toMealSitting() MealSitting {
 	}
 	if e.Relationships.MealRecipe.Data != nil {
 		s.RecipeID = e.Relationships.MealRecipe.Data.ID
+	}
+	for _, p := range e.Relationships.Profiles.Data {
+		s.ProfileIDs = append(s.ProfileIDs, p.ID)
 	}
 	return s
 }

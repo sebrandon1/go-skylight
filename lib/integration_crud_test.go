@@ -555,14 +555,14 @@ func TestIntegration_MealSittingsCRUD(t *testing.T) {
 	}
 	t.Logf("created meal sitting %s (%s)", sitting.Summary, sitting.ID)
 
-	if got, err := client.GetMealSitting(context.Background(), frameID, sitting.ID); noteKnownGap(t, err, "GetMealSitting") {
+	if got, err := client.GetMealSitting(context.Background(), frameID, sitting.ID, date); noteKnownGap(t, err, "GetMealSitting") {
 		// The live API answers 404 for this endpoint.
 	} else if err != nil {
 		t.Errorf("GetMealSitting: %v", err)
 	} else if got.ID != sitting.ID {
 		t.Errorf("GetMealSitting ID = %q, want %q", got.ID, sitting.ID)
 	}
-	if linked, err := client.GetSittingRecipe(context.Background(), frameID, sitting.ID); noteKnownGap(t, err, "GetSittingRecipe") {
+	if linked, err := client.GetSittingRecipe(context.Background(), frameID, sitting.ID, date); noteKnownGap(t, err, "GetSittingRecipe") {
 		// It reads the sitting through GetMealSitting.
 	} else if err != nil {
 		t.Errorf("GetSittingRecipe: %v", err)

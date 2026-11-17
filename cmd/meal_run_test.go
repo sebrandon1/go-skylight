@@ -33,10 +33,10 @@ func mealMockHandler() http.HandlerFunc {
 			fmt.Fprint(w, `{"data":[{"id":"recipe1","type":"meal_recipe","attributes":{"summary":"Tacos","description":""}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/sitting1/instances/2026-01-01"):
 			w.WriteHeader(http.StatusOK)
-		case strings.HasSuffix(r.URL.Path, "/sitting1") && r.Method == http.MethodPatch:
+		case strings.HasSuffix(r.URL.Path, "/sitting1/instances/2026-11-17") && r.Method == http.MethodPatch:
 			fmt.Fprint(w, `{"data":{"id":"sitting1","type":"meal_sitting","attributes":{"summary":"Updated Dinner"},"relationships":{"meal_recipe":{"data":null},"meal_category":{"data":null}}}}`)
-		case strings.HasSuffix(r.URL.Path, "/sitting1"):
-			fmt.Fprint(w, `{"data":{"id":"sitting1","type":"meal_sitting","attributes":{"summary":"dinner"},"relationships":{"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}}`)
+		case strings.HasSuffix(r.URL.Path, "/sitting1/instances"):
+			fmt.Fprint(w, `{"data":[{"id":"sitting1","type":"meal_sitting","attributes":{"summary":"dinner"},"relationships":{"meal_recipe":{"data":{"id":"recipe1","type":"meal_recipe"}}}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings") && r.Method == http.MethodPost:
 			fmt.Fprint(w, `{"data":[{"id":"sitting1","type":"meal_sitting","attributes":{"summary":"dinner"}}]}`)
 		case strings.HasSuffix(r.URL.Path, "/meals/sittings"):
@@ -246,6 +246,9 @@ func TestMealGetSittingCmd(t *testing.T) {
 	origID := sittingID
 	sittingID = "sitting1"
 	t.Cleanup(func() { sittingID = origID })
+	origDate := sittingDate
+	sittingDate = "2026-11-17"
+	t.Cleanup(func() { sittingDate = origDate })
 
 	out := captureStdout(func() {
 		if err := mealGetSittingCmd.RunE(mealGetSittingCmd, nil); err != nil {
@@ -265,6 +268,9 @@ func TestMealSittingRecipeCmd_WithRecipe(t *testing.T) {
 	origID := sittingID
 	sittingID = "sitting1"
 	t.Cleanup(func() { sittingID = origID })
+	origDate := sittingDate
+	sittingDate = "2026-11-17"
+	t.Cleanup(func() { sittingDate = origDate })
 
 	out := captureStdout(func() {
 		if err := mealSittingRecipeCmd.RunE(mealSittingRecipeCmd, nil); err != nil {
@@ -284,6 +290,9 @@ func TestMealSittingRecipeCmd_NoRecipe(t *testing.T) {
 	origID := sittingID
 	sittingID = "sitting2"
 	t.Cleanup(func() { sittingID = origID })
+	origDate := sittingDate
+	sittingDate = "2026-11-17"
+	t.Cleanup(func() { sittingDate = origDate })
 
 	out := captureStdout(func() {
 		if err := mealSittingRecipeCmd.RunE(mealSittingRecipeCmd, nil); err != nil {
@@ -413,6 +422,9 @@ func TestMealUpdateSittingCmd(t *testing.T) {
 	origID := sittingID
 	sittingID = "sitting1"
 	t.Cleanup(func() { sittingID = origID })
+	origDate := sittingDate
+	sittingDate = "2026-11-17"
+	t.Cleanup(func() { sittingDate = origDate })
 
 	// pflag.Set() permanently marks the flag as Changed on the shared singleton.
 	if err := mealUpdateSittingCmd.Flags().Set("summary", "Updated Dinner"); err != nil {

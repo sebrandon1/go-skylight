@@ -707,7 +707,7 @@ func importSittings(ctx context.Context, client *lib.Client, sittings []lib.Meal
 			fmt.Fprintf(os.Stderr, "Skipping existing meal sitting %q on %s\n", s.Summary, s.Date)
 			return 0, 0
 		}
-		data := lib.MealSittingData{Summary: s.Summary, RecipeID: s.RecipeID, MealCategoryID: s.MealCategoryID, Date: s.Date}
+		data := lib.MealSittingData{Summary: s.Summary, RecipeID: s.RecipeID, MealCategoryID: s.MealCategoryID, Date: s.Date, ProfileIDs: s.ProfileIDs}
 		// A sitting takes its name from the recipe. The API rejects a summary
 		// sent alongside one with 422 "must be blank".
 		if data.RecipeID != "" {

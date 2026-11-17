@@ -23,6 +23,7 @@ var (
 	sittingSummary    string
 	sittingDateMin    string
 	sittingDateMax    string
+	sittingProfileIDs []string
 	mealCategoryID    string
 	mealCategoryName  string
 	mealCategoryColor string
@@ -312,9 +313,34 @@ var mealSittingsCmd = &cobra.Command{
 			return fmt.Errorf("listing meal sittings: %w", err)
 		}
 
+		sittings = filterSittingsByProfile(sittings, sittingProfileIDs)
+
+		maybeLoadCatNames(cmd.Context(), client)
 		printOutput(sittings)
 		return nil
 	},
+}
+
+// filterSittingsByProfile keeps sittings assigned to at least one of the given
+// profile IDs. An empty ids list returns sittings unchanged.
+func filterSittingsByProfile(sittings []lib.MealSitting, ids []string) []lib.MealSitting {
+	if len(ids) == 0 {
+		return sittings
+	}
+	want := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		want[id] = true
+	}
+	out := make([]lib.MealSitting, 0, len(sittings))
+	for _, s := range sittings {
+		for _, p := range s.ProfileIDs {
+			if want[p] {
+				out = append(out, s)
+				break
+			}
+		}
+	}
+	return out
 }
 
 var mealCreateSittingCmd = &cobra.Command{
@@ -339,11 +365,13 @@ var mealCreateSittingCmd = &cobra.Command{
 			RecipeID:       recipeID,
 			Date:           sittingDate,
 			MealCategoryID: mealCategoryID,
+			ProfileIDs:     sittingProfileIDs,
 		})
 		if err != nil {
 			return fmt.Errorf("creating meal sitting: %w", err)
 		}
 
+		maybeLoadCatNames(cmd.Context(), client)
 		printOutput([]lib.MealSitting{*sitting})
 		return nil
 	},
@@ -351,9 +379,16 @@ var mealCreateSittingCmd = &cobra.Command{
 
 var mealUpdateSittingCmd = &cobra.Command{
 	Use:   "update-sitting",
-	Short: "Update a meal sitting",
+	Short: "Update one dated occurrence of a meal sitting",
+	Long: `Update one dated occurrence of a meal sitting. --date selects the occurrence
+to edit. Only flags that are set are sent. Use --profile-id to assign Profiles
+(Calendar Plus); pass --profile-id= (empty) to clear them.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := requireFrameID(); err != nil {
+			return err
+		}
+
+		if err := validateDate(sittingDate); err != nil {
 			return err
 		}
 
@@ -362,15 +397,9 @@ var mealUpdateSittingCmd = &cobra.Command{
 			return err
 		}
 
-		data := lib.MealSittingData{}
+		data := lib.MealSittingUpdateData{}
 		if cmd.Flags().Changed("summary") {
 			data.Summary = sittingSummary
-		}
-		if cmd.Flags().Changed(subDate) {
-			if err := validateDate(sittingDate); err != nil {
-				return err
-			}
-			data.Date = sittingDate
 		}
 		if cmd.Flags().Changed("recipe-id") {
 			data.RecipeID = recipeID
@@ -378,15 +407,31 @@ var mealUpdateSittingCmd = &cobra.Command{
 		if cmd.Flags().Changed("meal-category-id") {
 			data.MealCategoryID = mealCategoryID
 		}
+		if cmd.Flags().Changed(flagProfileID) {
+			ids := cleanIDs(sittingProfileIDs)
+			data.ProfileIDs = &ids
+		}
 
-		sitting, err := client.UpdateMealSitting(cmd.Context(), frameID, sittingID, data)
+		sitting, err := client.UpdateMealSitting(cmd.Context(), frameID, sittingID, sittingDate, data)
 		if err != nil {
 			return fmt.Errorf("updating meal sitting: %w", err)
 		}
 
+		maybeLoadCatNames(cmd.Context(), client)
 		printOutput([]lib.MealSitting{*sitting})
 		return nil
 	},
+}
+
+// cleanIDs drops empty entries (so `--profile-id=` yields an empty list).
+func cleanIDs(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id != "" {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 var mealDeleteSittingCmd = &cobra.Command{
@@ -454,16 +499,21 @@ var mealGetSittingCmd = &cobra.Command{
 			return err
 		}
 
+		if err := validateDate(sittingDate); err != nil {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
 		}
 
-		sitting, err := client.GetMealSitting(cmd.Context(), frameID, sittingID)
+		sitting, err := client.GetMealSitting(cmd.Context(), frameID, sittingID, sittingDate)
 		if err != nil {
 			return fmt.Errorf("getting meal sitting: %w", err)
 		}
 
+		maybeLoadCatNames(cmd.Context(), client)
 		printOutput([]lib.MealSitting{*sitting})
 		return nil
 	},
@@ -477,12 +527,16 @@ var mealSittingRecipeCmd = &cobra.Command{
 			return err
 		}
 
+		if err := validateDate(sittingDate); err != nil {
+			return err
+		}
+
 		client, err := getClient()
 		if err != nil {
 			return err
 		}
 
-		result, err := client.GetSittingRecipe(cmd.Context(), frameID, sittingID)
+		result, err := client.GetSittingRecipe(cmd.Context(), frameID, sittingID, sittingDate)
 		if err != nil {
 			return fmt.Errorf("getting sitting recipe: %w", err)
 		}
@@ -626,19 +680,23 @@ func init() {
 	markFlagRequired(mealDeleteRecipeCmd, "recipe-id")
 
 	mealSittingsCmd.Flags().StringVar(&sittingDateMin, "date-min", "", "Minimum date, YYYY-MM-DD (default: start of this month, or one month before --date-max)")
+	mealSittingsCmd.Flags().StringSliceVar(&sittingProfileIDs, flagProfileID, nil, "Only show sittings assigned to this Profile ID (repeatable or comma-separated)")
 	mealSittingsCmd.Flags().StringVar(&sittingDateMax, "date-max", "", "Maximum date, exclusive, YYYY-MM-DD (default: start of next month, or one month after --date-min)")
 
 	mealCreateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealCreateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
 	mealCreateSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Sitting date")
 	mealCreateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
+	mealCreateSittingCmd.Flags().StringSliceVar(&sittingProfileIDs, flagProfileID, nil, "Assign to Profile ID (repeatable or comma-separated; Calendar Plus)")
 	markFlagRequired(mealCreateSittingCmd, "recipe-id")
 	markFlagRequired(mealCreateSittingCmd, subDate)
 	markFlagRequired(mealCreateSittingCmd, "meal-category-id")
 
 	mealUpdateSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
 	mealUpdateSittingCmd.Flags().StringVar(&sittingSummary, "summary", "", "Meal sitting summary/title")
-	mealUpdateSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Sitting date (YYYY-MM-DD)")
+	mealUpdateSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Date of the occurrence to update (YYYY-MM-DD)")
+	mealUpdateSittingCmd.Flags().StringSliceVar(&sittingProfileIDs, flagProfileID, nil, "Profile IDs to assign (repeatable or comma-separated; empty clears; Calendar Plus)")
+	markFlagRequired(mealUpdateSittingCmd, subDate)
 	mealUpdateSittingCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	mealUpdateSittingCmd.Flags().StringVar(&mealCategoryID, "meal-category-id", "", "Meal category ID")
 	markFlagRequired(mealUpdateSittingCmd, "sitting-id")
@@ -651,13 +709,17 @@ func init() {
 	markFlagRequired(mealDeleteSittingCmd, subDate)
 
 	mealGetSittingCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealGetSittingCmd.Flags().StringVar(&sittingDate, subDate, "", "Date of the occurrence (YYYY-MM-DD)")
 	markFlagRequired(mealGetSittingCmd, "sitting-id")
+	markFlagRequired(mealGetSittingCmd, subDate)
 
 	mealAddToGroceryCmd.Flags().StringVar(&recipeID, "recipe-id", "", "Recipe ID")
 	markFlagRequired(mealAddToGroceryCmd, "recipe-id")
 
 	mealSittingRecipeCmd.Flags().StringVar(&sittingID, "sitting-id", "", "Meal sitting ID")
+	mealSittingRecipeCmd.Flags().StringVar(&sittingDate, subDate, "", "Date of the occurrence (YYYY-MM-DD)")
 	markFlagRequired(mealSittingRecipeCmd, "sitting-id")
+	markFlagRequired(mealSittingRecipeCmd, subDate)
 
 	mealPlanCmd.Flags().StringSliceVar(&mealPlanRecipeIDs, "recipes", nil, "Recipe IDs (comma-separated)")
 	mealPlanCmd.Flags().StringSliceVar(&mealPlanCategoryIDs, "categories", nil, "Meal category IDs (comma-separated)")

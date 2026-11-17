@@ -601,7 +601,7 @@ func TestIntegration_UpdateMealSitting(t *testing.T) {
 	summary := testPrefix() + "-sitting"
 	sitting := createSummarySitting(ctx, t, client, frameID, summary, mealCategoryID, futureDate(4))
 
-	updated, err := client.UpdateMealSitting(ctx, frameID, sitting.ID, MealSittingData{Summary: summary + "-updated"})
+	updated, err := client.UpdateMealSitting(ctx, frameID, sitting.ID, futureDate(4), MealSittingUpdateData{Summary: summary + "-updated"})
 	if noteKnownGap(t, err, "UpdateMealSitting") {
 		t.Skip("UpdateMealSitting is not served by the live API")
 	}

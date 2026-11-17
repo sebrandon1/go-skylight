@@ -841,7 +841,7 @@ func TestGetMealSitting(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			sitting, err := client.GetMealSitting(context.Background(), "frame1", tc.sittingID)
+			sitting, err := client.GetMealSitting(context.Background(), "frame1", tc.sittingID, "2024-01-15")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -925,7 +925,7 @@ func TestGetSittingRecipe(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			result, err := client.GetSittingRecipe(context.Background(), "frame1", "s1")
+			result, err := client.GetSittingRecipe(context.Background(), "frame1", "s1", "2024-01-15")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}
@@ -1234,7 +1234,7 @@ func TestUpdateMealSitting(t *testing.T) {
 				if r.Method != http.MethodPatch {
 					t.Errorf("expected PATCH, got %s", r.Method)
 				}
-				if r.URL.Path != "/api/frames/frame1/meals/sittings/"+tc.sittingID {
+				if r.URL.Path != "/api/frames/frame1/meals/sittings/"+tc.sittingID+"/instances/2026-06-01" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
 				}
 				w.Header().Set("Content-Type", "application/json")
@@ -1252,7 +1252,7 @@ func TestUpdateMealSitting(t *testing.T) {
 			defer func() { SkylightURL = old }()
 
 			client, _ := NewClientWithToken("u", "t")
-			sitting, err := client.UpdateMealSitting(context.Background(), "frame1", tc.sittingID, MealSittingData{Summary: "Pasta Night"})
+			sitting, err := client.UpdateMealSitting(context.Background(), "frame1", tc.sittingID, "2026-06-01", MealSittingUpdateData{Summary: "Pasta Night"})
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("wantErr=%v got %v", tc.wantErr, err)
 			}

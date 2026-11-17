@@ -1,7 +1,9 @@
 package lib
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -169,9 +171,8 @@ func (c *Client) ListMealSittings(ctx context.Context, frameID string, opts Meal
 	if opts.DateMax != "" {
 		params["date_max"] = opts.DateMax
 	}
-	if len(params) > 0 {
-		addQueryParams(req, params)
-	}
+	params["include"] = sittingIncludes
+	addQueryParams(req, params)
 
 	var apiResp mealSittingAPIResponse
 	if err := c.get(req, &apiResp); err != nil {
@@ -185,19 +186,66 @@ func (c *Client) ListMealSittings(ctx context.Context, frameID string, opts Meal
 	return sittings, nil
 }
 
-// UpdateMealSitting updates an existing meal sitting.
-func (c *Client) UpdateMealSitting(ctx context.Context, frameID, sittingID string, data MealSittingData) (*MealSitting, error) {
-	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID)), data)
+// sittingIncludes is the include list the web app sends for meal sittings.
+const sittingIncludes = "meal_category,meal_recipe,profiles"
+
+// instanceRange returns date_min (the date) and date_max (the next day, exclusive) for a single occurrence.
+func instanceRange(date string) (string, string, error) {
+	d, err := time.Parse(DateFormat, date)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid date format (expected YYYY-MM-DD): %w", err)
+	}
+	return date, d.AddDate(0, 0, 1).Format(DateFormat), nil
+}
+
+// UpdateMealSitting updates one dated occurrence of a meal sitting
+// (PATCH /meals/sittings/{id}/instances/{date}). Only the fields set in data are sent.
+func (c *Client) UpdateMealSitting(ctx context.Context, frameID, sittingID, date string, data MealSittingUpdateData) (*MealSitting, error) {
+	dateMin, dateMax, err := instanceRange(date)
+	if err != nil {
+		return nil, err
+	}
+	req, err := newRequestWithBody(ctx, "PATCH", fmt.Sprintf("%s/frames/%s/meals/sittings/%s/instances/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID), pathSeg(date)), data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create update meal sitting request: %w", err)
 	}
+	addQueryParams(req, map[string]string{"date_min": dateMin, "date_max": dateMax, "include": sittingIncludes})
 
-	var apiResp mealSittingAPISingleResponse
-	if err := c.patch(req, &apiResp); err != nil {
+	var raw json.RawMessage
+	if err := c.patch(req, &raw); err != nil {
 		return nil, fmt.Errorf("failed to update meal sitting: %w", err)
 	}
+	result, err := decodeSingleSitting(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update meal sitting: %w", err)
+	}
+	return result, nil
+}
 
-	result := apiResp.Data.toMealSitting()
+// decodeSingleSitting decodes a JSON-API response whose data is either one
+// sitting object or an array of sittings (the first element is returned).
+func decodeSingleSitting(raw json.RawMessage) (*MealSitting, error) {
+	var env struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+	data := bytes.TrimSpace(env.Data)
+	var entry mealSittingAPIEntry
+	if len(data) > 0 && data[0] == '[' {
+		var entries []mealSittingAPIEntry
+		if err := json.Unmarshal(data, &entries); err != nil {
+			return nil, fmt.Errorf("decoding response: %w", err)
+		}
+		if len(entries) == 0 {
+			return nil, errors.New("empty response")
+		}
+		entry = entries[0]
+	} else if err := json.Unmarshal(data, &entry); err != nil {
+		return nil, fmt.Errorf("decoding response: %w", err)
+	}
+	result := entry.toMealSitting()
 	return &result, nil
 }
 
@@ -236,26 +284,34 @@ func (c *Client) DeleteMealSitting(ctx context.Context, frameID, sittingID, date
 	return nil
 }
 
-// GetMealSitting retrieves a single meal sitting by ID.
-func (c *Client) GetMealSitting(ctx context.Context, frameID, sittingID string) (*MealSitting, error) {
-	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/meals/sittings/%s", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID)))
+// GetMealSitting retrieves one dated occurrence of a meal sitting
+// (GET /meals/sittings/{id}/instances with date_min=date, date_max=date+1).
+func (c *Client) GetMealSitting(ctx context.Context, frameID, sittingID, date string) (*MealSitting, error) {
+	dateMin, dateMax, err := instanceRange(date)
+	if err != nil {
+		return nil, err
+	}
+	req, err := newRequest(ctx, "GET", fmt.Sprintf("%s/frames/%s/meals/sittings/%s/instances", c.effectiveURL(), pathSeg(frameID), pathSeg(sittingID)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create get meal sitting request: %w", err)
 	}
+	addQueryParams(req, map[string]string{"date_min": dateMin, "date_max": dateMax, "include": sittingIncludes})
 
-	var apiResp mealSittingAPISingleResponse
-	if err := c.get(req, &apiResp); err != nil {
+	var raw json.RawMessage
+	if err := c.get(req, &raw); err != nil {
 		return nil, fmt.Errorf("failed to get meal sitting: %w", err)
 	}
-
-	result := apiResp.Data.toMealSitting()
-	return &result, nil
+	result, err := decodeSingleSitting(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get meal sitting: %w", err)
+	}
+	return result, nil
 }
 
-// GetSittingRecipe fetches a meal sitting and its linked recipe in one call.
+// GetSittingRecipe fetches one dated occurrence of a meal sitting and its linked recipe.
 // Returns a result with a nil Recipe field if the sitting has no linked recipe.
-func (c *Client) GetSittingRecipe(ctx context.Context, frameID, sittingID string) (*SittingWithRecipe, error) {
-	sitting, err := c.GetMealSitting(ctx, frameID, sittingID)
+func (c *Client) GetSittingRecipe(ctx context.Context, frameID, sittingID, date string) (*SittingWithRecipe, error) {
+	sitting, err := c.GetMealSitting(ctx, frameID, sittingID, date)
 	if err != nil {
 		return nil, err
 	}

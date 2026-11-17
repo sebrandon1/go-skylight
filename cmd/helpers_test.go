@@ -528,9 +528,15 @@ func TestPrintOutputMealSittingsTable(t *testing.T) {
 	outputFormat = outputTable
 	t.Cleanup(func() { outputFormat = outputJSON })
 	sittings := []lib.MealSitting{
-		{ID: "s1", Summary: "Taco Tuesday", Date: "2026-05-05", RecipeID: "r1", MealCategoryID: "mc2"},
+		{ID: "s1", Summary: "Taco Tuesday", Date: "2026-05-05", RecipeID: "r1", MealCategoryID: "mc2", ProfileIDs: []string{"6751001", "6751003"}},
 	}
+	prev := activeCatNames
+	activeCatNames = map[string]string{"6751001": "Mom"}
+	t.Cleanup(func() { activeCatNames = prev })
 	output := captureStdout(func() { printOutput(sittings) })
+	if !strings.Contains(output, "PROFILES") || !strings.Contains(output, "Mom, 6751003") {
+		t.Errorf("Expected PROFILES column with names, got: %s", output)
+	}
 	if !strings.Contains(output, "Taco Tuesday") {
 		t.Errorf("Expected sitting summary, got: %s", output)
 	}
@@ -959,5 +965,32 @@ func TestFillDateRange_DecemberRollsIntoNextYear(t *testing.T) {
 	}
 	if start != "2026-12-01" || end != "2027-01-01" {
 		t.Errorf("got %s..%s", start, end)
+	}
+}
+
+func TestFilterSittingsByProfile(t *testing.T) {
+	sittings := []lib.MealSitting{
+		{ID: "a", ProfileIDs: []string{"1", "2"}},
+		{ID: "b", ProfileIDs: []string{"3"}},
+		{ID: "c"},
+	}
+	if got := filterSittingsByProfile(sittings, nil); len(got) != 3 {
+		t.Errorf("no filter: got %d", len(got))
+	}
+	got := filterSittingsByProfile(sittings, []string{"2", "3"})
+	if len(got) != 2 || got[0].ID != "a" || got[1].ID != "b" {
+		t.Errorf("filter: got %+v", got)
+	}
+	if got := filterSittingsByProfile(sittings, []string{"9"}); len(got) != 0 {
+		t.Errorf("no match: got %+v", got)
+	}
+}
+
+func TestCleanIDs(t *testing.T) {
+	if got := cleanIDs([]string{""}); len(got) != 0 || got == nil {
+		t.Errorf("got %#v", got)
+	}
+	if got := cleanIDs([]string{"1", "", "2"}); len(got) != 2 {
+		t.Errorf("got %#v", got)
 	}
 }

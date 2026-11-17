@@ -19,8 +19,8 @@ func isCrossFrame(data ExportData) bool {
 	return data.FrameID != "" && data.FrameID != frameID
 }
 
-// forEachCategoryRef calls fn with a pointer to every assignee or category ID
-// in the resources an import would create. Rows import skips (routine chores
+// forEachCategoryRef calls fn with a pointer to every assignee, category or
+// profile ID in the resources an import would create. Rows import skips (routine chores
 // and finished one-off chores) are left out.
 func forEachCategoryRef(data *ExportData, want map[string]bool, fn func(*string)) {
 	if want[exportResourceChores] {
@@ -53,6 +53,19 @@ func forEachCategoryRef(data *ExportData, want map[string]bool, fn func(*string)
 			fn(&data.Bounties[i].Reward.CategoryID)
 		}
 	}
+	if want[exportResourceSittings] {
+		forEachSittingProfileRef(data.MealSittings, fn)
+	}
+}
+
+// forEachSittingProfileRef calls fn with a pointer to every profile ID
+// assigned to the given meal sittings.
+func forEachSittingProfileRef(sittings []lib.MealSitting, fn func(*string)) {
+	for i := range sittings {
+		for j := range sittings[i].ProfileIDs {
+			fn(&sittings[i].ProfileIDs[j])
+		}
+	}
 }
 
 // remapCategories returns data with every category reference replaced through
@@ -63,6 +76,10 @@ func remapCategories(data ExportData, want map[string]bool, mapping map[string]s
 	data.Routines = slices.Clone(data.Routines)
 	data.CalendarEvents = slices.Clone(data.CalendarEvents)
 	data.Bounties = slices.Clone(data.Bounties)
+	data.MealSittings = slices.Clone(data.MealSittings)
+	for i := range data.MealSittings { // ProfileIDs is rewritten in place, so copy it too
+		data.MealSittings[i].ProfileIDs = slices.Clone(data.MealSittings[i].ProfileIDs)
+	}
 	forEachCategoryRef(&data, want, func(id *string) {
 		if n, ok := mapping[*id]; ok {
 			*id = n

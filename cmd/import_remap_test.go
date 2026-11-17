@@ -295,6 +295,21 @@ func TestRemapCategories_SkipsRowsImportSkips(t *testing.T) {
 	}
 }
 
+func TestRemapCategories_SittingProfiles(t *testing.T) {
+	src := ExportData{MealSittings: []lib.MealSitting{{Summary: "lunch", ProfileIDs: []string{"a", "b"}}}}
+	got := remapCategories(src, wantSet(exportResourceSittings), map[string]string{"a": "A", "b": "B"})
+	if p := got.MealSittings[0].ProfileIDs; len(p) != 2 || p[0] != "A" || p[1] != "B" {
+		t.Errorf("remapped ProfileIDs = %v, want [A B]", p)
+	}
+	if p := src.MealSittings[0].ProfileIDs; p[0] != "a" || p[1] != "b" {
+		t.Errorf("source ProfileIDs modified: %v", p)
+	}
+	untouched := remapCategories(src, wantSet(exportResourceChores), map[string]string{"a": "A"})
+	if untouched.MealSittings[0].ProfileIDs[0] != "a" {
+		t.Error("sitting profiles remapped although sittings were not imported")
+	}
+}
+
 func TestImportRecipesMapped_SkippedRecipeMapsToExistingID(t *testing.T) {
 	ids := &sync.Map{}
 	recipes := []lib.Recipe{{ID: "src-recipe", Title: "Tacos"}}
