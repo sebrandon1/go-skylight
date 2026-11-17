@@ -308,9 +308,13 @@ func printRecipesTable(recipes []lib.Recipe) {
 
 func printMealSittingsTable(sittings []lib.MealSitting) {
 	w := newTableWriter()
-	fmt.Fprintln(w, "ID\tSUMMARY\tDATE\tRECIPE ID\tCATEGORY ID")
+	fmt.Fprintln(w, "ID\tSUMMARY\tDATE\tRECIPE ID\tCATEGORY ID\tPROFILES")
 	for _, s := range sittings {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.Summary, s.Date, s.RecipeID, s.MealCategoryID)
+		names := make([]string, len(s.ProfileIDs))
+		for i, p := range s.ProfileIDs {
+			names[i] = resolveCatName(p)
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, s.Summary, s.Date, s.RecipeID, s.MealCategoryID, strings.Join(names, ", "))
 	}
 	w.Flush()
 }

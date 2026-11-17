@@ -186,15 +186,19 @@ skylight meal recipe-info --recipe-id ID
 skylight meal create-recipe --title TITLE [--description D] [--ingredients a,b] [--url URL] [--meal-category-id ID]
 skylight meal update-recipe --recipe-id ID [--title T] [--description D] [--ingredients a,b] [--url URL]
 skylight meal delete-recipe --recipe-id ID [--dry-run] [--yes]
-skylight meal sittings [--date-min DATE] [--date-max DATE]  # default: this month; end date is exclusive
-skylight meal get-sitting --sitting-id ID
-skylight meal create-sitting --recipe-id ID --date DATE [--summary S] [--meal-category-id ID]
-skylight meal update-sitting --sitting-id ID [--date DATE] [--summary S] [--meal-category-id ID] [--recipe-id ID]
-skylight meal delete-sitting --sitting-id ID [--date DATE] [--dry-run] [--yes]
-skylight meal sitting-recipe --sitting-id ID
+skylight meal sittings [--date-min DATE] [--date-max DATE] [--profile-id ID ...]  # default: this month; end date is exclusive
+skylight meal get-sitting --sitting-id ID --date DATE
+skylight meal create-sitting --recipe-id ID --date DATE --meal-category-id ID [--summary S] [--profile-id ID ...]
+skylight meal update-sitting --sitting-id ID --date DATE [--summary S] [--meal-category-id ID] [--recipe-id ID] [--profile-id ID ...]
+skylight meal delete-sitting --sitting-id ID --date DATE [--dry-run] [--yes]
+skylight meal sitting-recipe --sitting-id ID --date DATE
 skylight meal add-to-grocery --recipe-id ID
 skylight meal plan --recipes ID,ID --start-date DATE [--categories ID,ID]
 ```
+
+**Profiles on meals.** Meals and Profiles (Calendar Plus only) assigns household Profiles to a meal *sitting*, not to a recipe. Profile IDs are the category IDs from `category list`/`profile list`. `--profile-id` is repeatable or comma-separated. On `create-sitting` it assigns the sitting; on `update-sitting` it replaces the assigned set and is only sent when the flag is given (`--profile-id=` clears all Profiles). On `meal sittings` it filters client-side to sittings assigned to any given Profile. `--output table` adds a PROFILES column with names.
+
+**Dated occurrences.** `get-sitting`, `sitting-recipe` and `update-sitting` now act on one dated occurrence of a sitting, so `--date` is required. (They use `/meals/sittings/{id}/instances`; the old `/meals/sittings/{id}` endpoint returns 404.) `update-sitting` no longer moves a sitting to a new date: `--date` selects the occurrence to edit.
 
 ## Photos
 
@@ -353,7 +357,7 @@ skylight import --file PATH [--dry-run] [--resources all] [--skip-existing]
 
 `--skip-existing` skips resources already on the frame, so re-running an import does not create duplicates. Resources match by title, and meal sittings and calendar events match by title and date. If any lookup fails, the import stops before creating anything. Photos are the exception: they are always uploaded again.
 
-**Importing into a different frame.** When the export's `frame_id` differs from the target frame, people are remapped by label: assignee and category IDs on chores, rewards, routines, calendar events and bounties become the ID of the target category with the same label (exact match; target categories are never renamed or deleted). Recipes are imported first and meal sittings are linked to the recipes created in that run. Categories that exist only in the export are created when `--resources` includes `categories`; otherwise the import fails before writing anything and lists the unmatched labels or unknown category IDs. The export must include categories. Meal categories are not remapped. `--dry-run` reads the target frame and prints the mapping and any unmatched labels. Imports into the same frame are unchanged.
+**Importing into a different frame.** When the export's `frame_id` differs from the target frame, people are remapped by label: assignee and category IDs on chores, rewards, routines, calendar events and bounties, and the profiles assigned to meal sittings, become the ID of the target category with the same label (exact match; target categories are never renamed or deleted). Recipes are imported first and meal sittings are linked to the recipes created in that run. Categories that exist only in the export are created when `--resources` includes `categories`; otherwise the import fails before writing anything and lists the unmatched labels or unknown category IDs. The export must include categories. Meal categories are not remapped. `--dry-run` reads the target frame and prints the mapping and any unmatched labels. Imports into the same frame are unchanged.
 
 ## Shell Completion
 

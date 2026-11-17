@@ -30,6 +30,7 @@ const (
 	subLogin         = "login"
 	subPoints        = "points"
 	subDate          = "date"
+	flagProfileID    = "profile-id"
 	subTitle         = "title"
 	subType          = "type"
 	subDeleteItem    = "delete-item"

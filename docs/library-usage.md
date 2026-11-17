@@ -119,6 +119,27 @@ for event := range poller.Events() {
 }
 ```
 
+### Assigning meals to Profiles
+
+Meals and Profiles (Calendar Plus) assigns Profiles (category IDs, the same IDs as `ListCategories`) to a meal **sitting**, not to a recipe. `MealSitting.ProfileIDs` is read from `relationships.profiles`. `ListMealSittings` requests `include=meal_category,meal_recipe,profiles`.
+
+`GetMealSitting`, `GetSittingRecipe` and `UpdateMealSitting` target one dated occurrence of a sitting (the date is `YYYY-MM-DD`): get reads `GET /meals/sittings/{id}/instances` for that day, and update sends `PATCH /meals/sittings/{id}/instances/{date}`. `MealSittingUpdateData.ProfileIDs` is a pointer so that a pointer to an empty slice clears the Profiles, while nil leaves them unchanged.
+
+```go
+sitting, err := client.CreateMealSitting(ctx, "frame-id", lib.MealSittingData{
+    Summary:        "Lunch",
+    MealCategoryID: "2941306",
+    Date:           "2026-11-17",
+    ProfileIDs:     []string{"6751001", "6751003"},
+})
+
+ids := []string{"6751001", "6751003", "6750983"}
+sitting, err = client.UpdateMealSitting(ctx, "frame-id", sitting.ID, "2026-11-17",
+    lib.MealSittingUpdateData{ProfileIDs: &ids})
+
+sitting, err = client.GetMealSitting(ctx, "frame-id", sitting.ID, "2026-11-17")
+```
+
 ## Typed Errors
 
 ```go
