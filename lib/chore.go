@@ -57,8 +57,14 @@ func parseChoreID(choreID string) (baseID, instanceDate, instanceTime string) {
 
 // setCompletion calls the chore completions endpoint with the given data.
 // It fills in InstanceDate and InstanceTime from the choreID before sending.
+// When the ID has a date but no time (e.g. "70190003-2026-04-28"), the
+// occurrence is looked up so a routine still gets its slot; the API rejects a
+// routine completion without one with 422 "instance_time can't be blank".
 func (c *Client) setCompletion(ctx context.Context, frameID, choreID string, data ChoreCompletionData) error {
 	baseID, instanceDate, instanceTime := parseChoreID(choreID)
+	if instanceDate != "" && instanceTime == "" {
+		instanceTime = c.routineInstanceTime(ctx, frameID, choreID)
+	}
 	data.InstanceDate = instanceDate
 	data.InstanceTime = instanceTime
 	req, err := newRequestWithBody(ctx, "PUT",
@@ -68,6 +74,25 @@ func (c *Client) setCompletion(ctx context.Context, frameID, choreID string, dat
 	}
 	var result choreAPISingleResponse
 	return c.put(req, &result)
+}
+
+// routineInstanceTime returns the HH:MM slot of the routine occurrence named
+// by choreID, read from the listed occurrence's ID or its BYHOUR rule. It
+// returns "" for plain chores. A lookup error also returns "": a plain chore
+// completes fine without a time, and for a routine the API's own 422 is the
+// more useful error.
+func (c *Client) routineInstanceTime(ctx context.Context, frameID, choreID string) string {
+	ch, err := c.GetChore(ctx, frameID, choreID)
+	if err != nil {
+		return ""
+	}
+	if _, _, t := parseChoreID(ch.ID); t != "" {
+		return t
+	}
+	if hour, ok := routineByHour[timeOfDayFromRecurrence(ch.RecurrenceSet)]; ok {
+		return fmt.Sprintf("%02d:00", hour)
+	}
+	return ""
 }
 
 func (opts ChoreListOptions) queryParams() map[string]string {

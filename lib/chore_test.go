@@ -327,6 +327,15 @@ func TestSkipChore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			baseID, instanceDate, instanceTime := parseChoreID(tc.choreID)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					// Routine slot lookup, only for dated IDs without a time.
+					if instanceDate == "" || instanceTime != "" {
+						t.Errorf("unexpected lookup GET for %q", tc.choreID)
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"data":[]}`))
+					return
+				}
 				if r.Method != http.MethodPut {
 					t.Errorf("expected PUT, got %s", r.Method)
 				}
@@ -614,6 +623,15 @@ func TestCompleteChore(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			baseID, instanceDate, instanceTime := parseChoreID(tc.choreID)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodGet {
+					// Routine slot lookup, only for dated IDs without a time.
+					if instanceDate == "" || instanceTime != "" {
+						t.Errorf("unexpected lookup GET for %q", tc.choreID)
+					}
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = w.Write([]byte(`{"data":[]}`))
+					return
+				}
 				if r.Method != http.MethodPut {
 					t.Errorf("expected PUT, got %s", r.Method)
 				}
@@ -1319,5 +1337,108 @@ func TestUpdateChoreRecurring(t *testing.T) {
 				t.Errorf("recurring_until: want %v got %v", tc.wantUntil, got)
 			}
 		})
+	}
+}
+
+// TestCompletionRoutineInstanceTime checks that completing or skipping a dated
+// occurrence without a time suffix looks the occurrence up and sends the
+// routine's slot as instance_time, and leaves it out for plain chores (#596).
+func TestCompletionRoutineInstanceTime(t *testing.T) {
+	tests := []struct {
+		name     string
+		listBody string
+		listCode int
+		wantTime string
+	}{
+		{
+			name:     "routine slot read from listed occurrence ID",
+			listBody: `{"data":[{"id":"55819571-2026-11-17-2000","attributes":{"routine":true}}]}`,
+			listCode: http.StatusOK,
+			wantTime: "20:00",
+		},
+		{
+			name:     "routine slot read from BYHOUR rule",
+			listBody: `{"data":[{"id":"55819571","attributes":{"routine":true,"recurrence_set":["RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6"]}}]}`,
+			listCode: http.StatusOK,
+			wantTime: "06:00",
+		},
+		{
+			name:     "plain recurring chore omits instance_time",
+			listBody: `{"data":[{"id":"55819571-2026-11-17","attributes":{"recurrence_set":["RRULE:FREQ=WEEKLY;INTERVAL=1;WKST=SU"]}}]}`,
+			listCode: http.StatusOK,
+		},
+		{
+			name:     "occurrence not listed omits instance_time",
+			listBody: `{"data":[]}`,
+			listCode: http.StatusOK,
+		},
+		{
+			name:     "lookup failure still sends the completion",
+			listBody: `{}`,
+			listCode: http.StatusInternalServerError,
+		},
+	}
+
+	actions := map[string]func(*Client) error{
+		ChoreStatusComplete: func(c *Client) error {
+			return c.CompleteChore(context.Background(), "frame1", "55819571-2026-11-17")
+		},
+		ChoreStatusSkipped: func(c *Client) error {
+			return c.SkipChore(context.Background(), "frame1", "55819571-2026-11-17", "")
+		},
+	}
+
+	for _, tc := range tests {
+		for status, act := range actions {
+			t.Run(tc.name+"/"+status, func(t *testing.T) {
+				var puts int
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					if r.Method == http.MethodGet {
+						if got := r.URL.Query().Get("after"); got != "2026-11-17" {
+							t.Errorf("lookup after: want 2026-11-17 got %q", got)
+						}
+						w.WriteHeader(tc.listCode)
+						_, _ = w.Write([]byte(tc.listBody))
+						return
+					}
+					puts++
+					if r.URL.Path != "/api/frames/frame1/chores/55819571/completions" {
+						t.Errorf("path: got %q", r.URL.Path)
+					}
+					var raw map[string]any
+					if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+						t.Errorf("decode body: %v", err)
+					}
+					if raw["status"] != status {
+						t.Errorf("status: want %q got %v", status, raw["status"])
+					}
+					if raw["instance_date"] != "2026-11-17" {
+						t.Errorf("instance_date: got %v", raw["instance_date"])
+					}
+					got, present := raw["instance_time"]
+					if tc.wantTime == "" && present {
+						t.Errorf("instance_time should be omitted, got %v", got)
+					}
+					if tc.wantTime != "" && got != tc.wantTime {
+						t.Errorf("instance_time: want %q got %v", tc.wantTime, got)
+					}
+					_, _ = w.Write([]byte(`{"data":{"id":"55819571","attributes":{}}}`))
+				}))
+				defer srv.Close()
+
+				old := SkylightURL
+				SkylightURL = srv.URL + "/api"
+				defer func() { SkylightURL = old }()
+
+				client, _ := NewClientWithToken("u", "t")
+				if err := act(client); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if puts != 1 {
+					t.Errorf("want 1 PUT, got %d", puts)
+				}
+			})
+		}
 	}
 }
