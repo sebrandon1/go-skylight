@@ -22,6 +22,7 @@ var (
 	calendarWeekDate      string
 	calendarDayDate       string
 	calendarCountdownDate string
+	calendarCountdown     bool
 	calendarSourceID      string
 	calendarScheduleDate  string
 	calendarScheduleDays  int
@@ -231,6 +232,10 @@ var calendarUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed(flagEmojiIcon) {
 			data.EmojiIcon = calendarEmojiIcon
 		}
+		if cmd.Flags().Changed(flagCountdown) {
+			countdown := calendarCountdown
+			data.CountdownEnabled = &countdown
+		}
 
 		event, err := client.UpdateCalendarEvent(cmd.Context(), frameID, calendarEventID, data)
 		if err != nil {
@@ -259,14 +264,7 @@ var calendarCreateCountdownCmd = &cobra.Command{
 			return err
 		}
 
-		allDayTrue := true
-		event, err := client.CreateCalendarEvent(cmd.Context(), frameID, lib.CalendarEventData{
-			Title:     calendarTitle,
-			StartAt:   calendarCountdownDate,
-			AllDay:    &allDayTrue,
-			EmojiIcon: calendarEmojiIcon,
-			EventType: lib.CalendarEventTypeCountdown,
-		})
+		event, err := client.CreateCalendarEvent(cmd.Context(), frameID, countdownEventData())
 		if err != nil {
 			return fmt.Errorf("creating countdown event: %w", err)
 		}
@@ -274,6 +272,28 @@ var calendarCreateCountdownCmd = &cobra.Command{
 		printOutput([]lib.CalendarEvent{*event})
 		return nil
 	},
+}
+
+const flagCountdown = "countdown"
+
+// countdownEventData builds a countdown the way the Skylight web app does: a
+// standard all-day event with countdown_enabled set. The older
+// event_type:"countdown" form gets an HTTP 500 from the API (#595).
+func countdownEventData() lib.CalendarEventData {
+	allDay, countdown := true, true
+	data := lib.CalendarEventData{
+		Title:            calendarTitle,
+		StartAt:          calendarCountdownDate,
+		EndAt:            calendarCountdownDate,
+		AllDay:           &allDay,
+		EmojiIcon:        calendarEmojiIcon,
+		Kind:             lib.CalendarEventKindStandard,
+		CountdownEnabled: &countdown,
+	}
+	if calendarCategoryID != "" {
+		data.CategoryIDs = []string{calendarCategoryID}
+	}
+	return data
 }
 
 var calendarSourceEnableCmd = &cobra.Command{
@@ -498,6 +518,7 @@ func init() {
 	calendarUpdateCmd.Flags().BoolVar(&calendarAllDay, "all-day", false, "All day event")
 	calendarUpdateCmd.Flags().StringVar(&calendarColor, "color", "", "Event color")
 	calendarUpdateCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Category ID to assign to this event")
+	calendarUpdateCmd.Flags().BoolVar(&calendarCountdown, flagCountdown, false, "Show a countdown to this event on the frame (--countdown=false turns it off)")
 	calendarUpdateCmd.Flags().StringVar(&calendarEmojiIcon, flagEmojiIcon, "", "Emoji shown with the event (e.g. on Buddy)")
 	markFlagRequired(calendarUpdateCmd, "event-id")
 
@@ -509,6 +530,7 @@ func init() {
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarTitle, subTitle, "", "Countdown event title")
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarCountdownDate, subDate, "", "Target date (YYYY-MM-DD)")
 	calendarCreateCountdownCmd.Flags().StringVar(&calendarEmojiIcon, flagEmojiIcon, "", "Emoji shown with the countdown")
+	calendarCreateCountdownCmd.Flags().StringVar(&calendarCategoryID, "category-id", "", "Profile (category) ID the countdown belongs to")
 	markFlagRequired(calendarCreateCountdownCmd, subTitle)
 	markFlagRequired(calendarCreateCountdownCmd, subDate)
 

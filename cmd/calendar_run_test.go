@@ -524,3 +524,70 @@ func TestCalendarUpdateCmd_EmojiIconOnlyWhenChanged(t *testing.T) {
 		t.Errorf("emoji_icon in PUT body: want 🦃 got %q", got)
 	}
 }
+
+// TestCalendarCreateCountdownCmd_RequestShape checks create-countdown sends a
+// standard all-day event with countdown_enabled, never event_type (#595).
+func TestCalendarCreateCountdownCmd_RequestShape(t *testing.T) {
+	var body map[string]any
+	newCmdTestClient(t, emojiCaptureHandler(http.MethodPost, &body))
+	origTitle, origDate, origCat := calendarTitle, calendarCountdownDate, calendarCategoryID
+	t.Cleanup(func() { calendarTitle, calendarCountdownDate, calendarCategoryID = origTitle, origDate, origCat })
+
+	for _, catID := range []string{"", "cat9"} {
+		calendarTitle, calendarCountdownDate, calendarCategoryID = "Trip", "2026-12-20", catID
+		captureStdout(func() {
+			if err := calendarCreateCountdownCmd.RunE(calendarCreateCountdownCmd, nil); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+		want := map[string]any{
+			"summary": "Trip", "kind": "standard", "countdown_enabled": true,
+			"all_day": true, "starts_at": "2026-12-20", "ends_at": "2026-12-20",
+		}
+		for k, v := range want {
+			if body[k] != v {
+				t.Errorf("category %q: body[%s] = %v, want %v", catID, k, body[k], v)
+			}
+		}
+		if _, ok := body["event_type"]; ok {
+			t.Errorf("event_type must not be sent: %v", body)
+		}
+		ids, present := body["category_ids"].([]any)
+		if catID == "" && present {
+			t.Errorf("category_ids sent without --category-id: %v", ids)
+		}
+		if catID != "" && (len(ids) != 1 || ids[0] != catID) {
+			t.Errorf("category_ids = %v, want [%s]", body["category_ids"], catID)
+		}
+	}
+}
+
+func TestCalendarUpdateCmd_CountdownOnlyWhenChanged(t *testing.T) {
+	var body map[string]any
+	newCmdTestClient(t, emojiCaptureHandler(http.MethodPut, &body))
+	origID, origCountdown := calendarEventID, calendarCountdown
+	calendarEventID = "event1"
+	t.Cleanup(func() { calendarEventID, calendarCountdown = origID, origCountdown })
+
+	run := func() {
+		captureStdout(func() {
+			if err := calendarUpdateCmd.RunE(calendarUpdateCmd, nil); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+
+	run()
+	if _, ok := body["countdown_enabled"]; ok {
+		t.Errorf("countdown_enabled sent without flag: %v", body)
+	}
+
+	// pflag.Set() marks the flag permanently Changed, so this stays last.
+	if err := calendarUpdateCmd.Flags().Set(flagCountdown, "false"); err != nil {
+		t.Fatalf("setting flag: %v", err)
+	}
+	run()
+	if v, ok := body["countdown_enabled"]; !ok || v != false {
+		t.Errorf("countdown_enabled = %v (present %v), want false", v, ok)
+	}
+}

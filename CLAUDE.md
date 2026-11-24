@@ -193,7 +193,7 @@ The `get` prefix (`get calendar list`, etc.) is still supported but hidden. Pref
 All update commands use `cmd.Flags().Changed()` to only send fields that were explicitly set:
 
 - `chore update --chore-id ID [--title] [--status] [--points] [--assignee-id] [--assignee-ids] [--apply-to-profiles all|one] [--date] [--due-time]` (`--apply-to-profiles` requires `--date`; `--assignee-ids` requires `--apply-to-profiles all`)
-- `calendar update --event-id ID [--title] [--start-at] [--end-at] [--all-day] [--color] [--category-id] [--emoji-icon]`
+- `calendar update --event-id ID [--title] [--start-at] [--end-at] [--all-day] [--color] [--category-id] [--emoji-icon] [--countdown]`
 - `list update --list-id ID [--title] [--color]`
 - `list update-item --list-id ID --item-id ID [--title] [--completed]`
 - `reward update --reward-id ID [--title] [--points] [--emoji-icon]`

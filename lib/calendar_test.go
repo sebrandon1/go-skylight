@@ -617,3 +617,79 @@ func TestCreateCalendarEvent_SendsEmojiIcon(t *testing.T) {
 		t.Errorf("event = %+v, want emoji 🎉 and category cat1", event)
 	}
 }
+
+// TestCreateCalendarEvent_Countdown checks the request shape the web app uses
+// for countdowns (kind standard + countdown_enabled + category_ids) and that
+// countdown_enabled is decoded from the response (#595).
+func TestCreateCalendarEvent_Countdown(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decoding request body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"data":{"id":"6","type":"calendar_event","attributes":{"summary":"Trip","all_day":true,"countdown_enabled":true}}}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	on := true
+	event, err := client.CreateCalendarEvent(context.Background(), "frame1", CalendarEventData{
+		Title:            "Trip",
+		Kind:             CalendarEventKindStandard,
+		CategoryIDs:      []string{"cat1"},
+		CountdownEnabled: &on,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if body["kind"] != CalendarEventKindStandard || body["countdown_enabled"] != true {
+		t.Errorf("body kind/countdown_enabled = %v/%v", body["kind"], body["countdown_enabled"])
+	}
+	if ids, _ := body["category_ids"].([]any); len(ids) != 1 || ids[0] != "cat1" {
+		t.Errorf("body category_ids = %v, want [cat1]", body["category_ids"])
+	}
+	if _, ok := body["event_type"]; ok {
+		t.Errorf("event_type must not be sent, got %v", body["event_type"])
+	}
+	if !event.CountdownEnabled {
+		t.Errorf("event.CountdownEnabled = false, want true")
+	}
+}
+
+// TestUpdateCalendarEvent_CountdownOmittedWhenNil checks that a nil
+// CountdownEnabled leaves the field out, and false is sent explicitly.
+func TestUpdateCalendarEvent_CountdownOmittedWhenNil(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body = nil
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":{"id":"6","type":"calendar_event","attributes":{"summary":"Trip"}}}`))
+	}))
+	defer srv.Close()
+
+	old := SkylightURL
+	SkylightURL = srv.URL + "/api"
+	defer func() { SkylightURL = old }()
+
+	client, _ := NewClientWithToken("u", "t")
+	if _, err := client.UpdateCalendarEvent(context.Background(), "frame1", "6", CalendarEventData{Title: "Trip"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := body["countdown_enabled"]; ok {
+		t.Errorf("countdown_enabled sent when nil: %v", body)
+	}
+	off := false
+	if _, err := client.UpdateCalendarEvent(context.Background(), "frame1", "6", CalendarEventData{CountdownEnabled: &off}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if v, ok := body["countdown_enabled"]; !ok || v != false {
+		t.Errorf("countdown_enabled = %v (present %v), want false", v, ok)
+	}
+}
