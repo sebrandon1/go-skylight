@@ -51,10 +51,20 @@ type CalendarEvent struct {
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
 	EmojiIcon   string `json:"emoji_icon,omitempty"`
-	CreatedAt   string `json:"created_at,omitempty"`
-	UpdatedAt   string `json:"updated_at,omitempty"`
+	// CountdownEnabled is true when the frame shows a countdown to the event.
+	CountdownEnabled bool   `json:"countdown_enabled"`
+	CreatedAt        string `json:"created_at,omitempty"`
+	UpdatedAt        string `json:"updated_at,omitempty"`
 }
 
+// CalendarEventKindStandard is the kind the Skylight web app sends for
+// events it creates, countdowns included.
+const CalendarEventKindStandard = "standard"
+
+// CalendarEventTypeCountdown was sent as event_type to create a countdown.
+//
+// Deprecated: the API answers event_type "countdown" with HTTP 500. Set
+// CalendarEventData.CountdownEnabled instead.
 const CalendarEventTypeCountdown = "countdown"
 
 // CalendarEventData holds the event fields for create/update requests.
@@ -68,7 +78,16 @@ type CalendarEventData struct {
 	Color       string `json:"color,omitempty"`
 	CategoryID  string `json:"category_id,omitempty"`
 	EmojiIcon   string `json:"emoji_icon,omitempty"`
-	EventType   string `json:"event_type,omitempty"`
+	// Kind is the event kind; the web app sends CalendarEventKindStandard.
+	Kind string `json:"kind,omitempty"`
+	// CategoryIDs assigns the event to profiles, as the web app does.
+	CategoryIDs []string `json:"category_ids,omitempty"`
+	// CountdownEnabled turns the frame's countdown for this event on or off.
+	// nil leaves it unchanged on update.
+	CountdownEnabled *bool `json:"countdown_enabled,omitempty"`
+	// Deprecated: the API answers event_type "countdown" with HTTP 500. Use
+	// CountdownEnabled.
+	EventType string `json:"event_type,omitempty"`
 }
 
 // calendarAPIResponse wraps the JSON-API envelope for calendar event list responses.
@@ -85,15 +104,16 @@ type calendarAPISingleResponse struct {
 type calendarAPIEntry struct {
 	ID         string `json:"id"`
 	Attributes struct {
-		Summary     string `json:"summary"`
-		Description string `json:"description"`
-		StartsAt    string `json:"starts_at"`
-		EndsAt      string `json:"ends_at"`
-		AllDay      bool   `json:"all_day"`
-		Color       string `json:"color"`
-		EmojiIcon   string `json:"emoji_icon"`
-		CreatedAt   string `json:"created_at"`
-		UpdatedAt   string `json:"updated_at"`
+		Summary          string `json:"summary"`
+		Description      string `json:"description"`
+		StartsAt         string `json:"starts_at"`
+		EndsAt           string `json:"ends_at"`
+		AllDay           bool   `json:"all_day"`
+		Color            string `json:"color"`
+		EmojiIcon        string `json:"emoji_icon"`
+		CountdownEnabled bool   `json:"countdown_enabled"`
+		CreatedAt        string `json:"created_at"`
+		UpdatedAt        string `json:"updated_at"`
 	} `json:"attributes"`
 	Relationships struct {
 		// The live API sends a to-one "category" relationship; the to-many
@@ -109,16 +129,17 @@ type calendarAPIEntry struct {
 
 func (e *calendarAPIEntry) toCalendarEvent() CalendarEvent {
 	ev := CalendarEvent{
-		ID:          e.ID,
-		Title:       e.Attributes.Summary,
-		Description: e.Attributes.Description,
-		StartAt:     e.Attributes.StartsAt,
-		EndAt:       e.Attributes.EndsAt,
-		AllDay:      e.Attributes.AllDay,
-		Color:       e.Attributes.Color,
-		EmojiIcon:   e.Attributes.EmojiIcon,
-		CreatedAt:   e.Attributes.CreatedAt,
-		UpdatedAt:   e.Attributes.UpdatedAt,
+		ID:               e.ID,
+		Title:            e.Attributes.Summary,
+		Description:      e.Attributes.Description,
+		StartAt:          e.Attributes.StartsAt,
+		EndAt:            e.Attributes.EndsAt,
+		AllDay:           e.Attributes.AllDay,
+		Color:            e.Attributes.Color,
+		EmojiIcon:        e.Attributes.EmojiIcon,
+		CountdownEnabled: e.Attributes.CountdownEnabled,
+		CreatedAt:        e.Attributes.CreatedAt,
+		UpdatedAt:        e.Attributes.UpdatedAt,
 	}
 	if d := e.Relationships.Category.Data; d != nil {
 		ev.CategoryID = d.ID
